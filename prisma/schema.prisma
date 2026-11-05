@@ -124,6 +124,9 @@ model entity_resources {
   users       users     @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
   resources   resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  cohort_template_resource_id Int?
+  snapshot_sources cohort_template_resources[] @relation("cohort_template_resources_source_template_relation_idToentity_resources")
+  shared_resource cohort_template_resources? @relation("entity_resources_cohort_template_resource_idTocohort_template_resources", fields: [cohort_template_resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_entity_resources_cohort_source")
   @@unique([resource_id, entity_type, entity_id])
 }
 
@@ -427,6 +430,7 @@ model future_letters {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model practices {
+  cohort_resources_initialized_at DateTime? @db.Timestamptz(6)
   id                       Int                       @id @default(autoincrement())
   external_id              String?                   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                  Int
@@ -613,7 +617,7 @@ model resource_review {
 model resources {
   id                                                 Int                @id @default(autoincrement())
   external_id                                        String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_by                                         Int
+  created_by                                         Int?
   major_category_id                                  Int?
   sub_category_id                                    Int?
   name                                               String             @db.VarChar(255)
@@ -630,10 +634,11 @@ model resources {
   deleted_at                                         DateTime?          @db.Timestamptz(6)
   entity_resources                                   entity_resources[]
   resource_review                                    resource_review[]
-  users                                              users              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                              users?              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
   categories_resources_major_category_idTocategories categories?        @relation("resources_major_category_idTocategories", fields: [major_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   categories_resources_sub_category_idTocategories   categories?        @relation("resources_sub_category_idTocategories", fields: [sub_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  cohort_template_resources cohort_template_resources?
   @@index([created_at], map: "idx_resource_created_at")
   @@index([created_by], map: "idx_resource_created_by")
   @@index([type, cost, level], map: "idx_resource_type_cost_level")
@@ -2255,6 +2260,8 @@ model cohort_templates {
   cohort            cohorts            @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_cohort")
   practice_template practice_templates @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_template")
 
+  resources_initialized_at DateTime?                   @db.Timestamptz(6)
+  cohort_template_resources cohort_template_resources[]
   @@unique([cohort_id, template_id], map: "uq_cohort_templates_cohort_template")
 }
 
@@ -2493,4 +2500,20 @@ model chat_room_reads {
 
   @@unique([room_id, user_id], map: "uq_chat_room_reads_room_user")
   @@index([user_id], map: "idx_chat_room_reads_user")
+}
+
+model cohort_template_resources {
+  id                          Int @id @default(autoincrement())
+  cohort_template_id          Int
+  resource_id                 Int @unique
+  source_template_relation_id Int?
+  resource_date               DateTime? @db.Date
+  sort_order                  Int
+  created_at                  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime? @db.Timestamptz(6)
+  deleted_at                  DateTime? @db.Timestamptz(6)
+  cohort_templates            cohort_templates @relation(fields: [cohort_template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  resources                   resources @relation(fields: [resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  source_template_relation    entity_resources? @relation("cohort_template_resources_source_template_relation_idToentity_resources", fields: [source_template_relation_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  practice_relations          entity_resources[] @relation("entity_resources_cohort_template_resource_idTocohort_template_resources")
 }

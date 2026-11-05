@@ -1,3 +1,4 @@
+import type { Prisma } from '../../generated/prisma';
 import { ConflictError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { ForbiddenError } from '../middleware/error.middleware';
@@ -5,12 +6,37 @@ import { notificationEventService } from './notification-event.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 
+/** Preserve detached practices as independent personal copies before leaving the binding scope. */
+async function detachCohortPractices(tx: Prisma.TransactionClient, cohortId: number, userId: number): Promise<Prisma.BatchPayload> {
+  // Match join's ascending template lock order; admin PUT also locks its binding
+  // before touching resources/practices. Never lock a practice before these rows.
+  await tx.$queryRaw`SELECT id FROM cohort_templates WHERE cohort_id = ${cohortId} ORDER BY template_id FOR UPDATE`;
+  const sharedLinks = await tx.entity_resources.findMany({
+    where: { entity_type: 'practice', deleted_at: null, cohort_template_resource_id: { not: null },
+      entity_id: { in: (await tx.practices.findMany({ where: { cohort_id: cohortId, user_id: userId }, select: { id: true } })).map(row => row.id) } },
+    include: { resources: true }
+  });
+  for (const link of sharedLinks) {
+    const source = link.resources;
+    const copy = await tx.resources.create({ data: {
+      created_by: userId, name: source.name, url: source.url, description: source.description,
+      type: source.type, cost: source.cost, level: source.level, image_url: source.image_url,
+      video_url: source.video_url, major_category_id: source.major_category_id,
+      sub_category_id: source.sub_category_id, status: source.status, deleted_at: source.deleted_at
+    } });
+    await tx.entity_resources.update({ where: { id: link.id }, data: {
+      resource_id: copy.id, cohort_template_resource_id: null
+    } });
+  }
+  return tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: userId }, data: { cohort_id: null } });
+}
+
 const exit = async (cohortId: number, userId: number, now = new Date()) => {
   const result = await prisma.$transaction(async tx => {
     const enrollment = await tx.cohort_enrollments.findFirst({ where: { cohort_id: cohortId, user_id: userId }, select: { id: true, status: true } });
     if (!enrollment) throw new NotFoundError('找不到本期參與紀錄');
     if (enrollment.status !== 'joined') throw new ConflictError('目前狀態無法退出');
-    const detached = await tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: userId }, data: { cohort_id: null } });
+    const detached = await detachCohortPractices(tx, cohortId, userId);
     await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'exited', exited_at: now } });
     await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
     return { enrollmentId: enrollment.id, status: 'exited' as const, detachedPracticeCount: detached.count };
@@ -25,7 +51,7 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
     });
     if (!enrollment) throw new ForbiddenError('無權限移除此成員');
     if (enrollment.status !== 'joined' && enrollment.status !== 'invited') throw new ConflictError('此成員目前不在期內');
-    const detached = enrollment.user_id === null ? { count: 0 } : await tx.practices.updateMany({ where: { cohort_id: cohortId, user_id: enrollment.user_id }, data: { cohort_id: null } });
+    const detached = enrollment.user_id === null ? { count: 0 } : await detachCohortPractices(tx, cohortId, enrollment.user_id);
     await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'removed', exited_at: now } });
     await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
     await tx.$executeRaw`

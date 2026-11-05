@@ -4,6 +4,49 @@
  */
 
 export interface paths {
+    "/api/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 健康檢查
+         * @description 檢查 API 服務是否正常運行
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 服務正常運行 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            status: string;
+                            uptime: number;
+                            timestamp: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/activities": {
         parameters: {
             query?: never;
@@ -12499,45 +12542,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * API 健康檢查
-         * @description 回傳 API 運行狀態，供監控與前端連線檢查使用。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description API 運行中 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HealthResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/ideas": {
         parameters: {
             query?: never;
@@ -24310,123 +24314,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/outcomes/public": {
+    "/api/v1/lighthouse/my-cohort-resource-bindings": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * 獲取公開成果列表
-         * @description 獲取所有公開可見的學習成果，支援分頁
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description 公開成果列表的頁碼 */
-                    page?: string;
-                    /** @description 每頁顯示的公開成果數量 */
-                    pageSize?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功獲取公開成果列表 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description Indicates successful API response
-                             * @enum {boolean}
-                             */
-                            success: true;
-                            /** @description The main response data */
-                            data: components["schemas"]["OutcomeResponse"][];
-                            /**
-                             * Format: date-time
-                             * @description ISO 8601 timestamp of the response
-                             */
-                            timestamp: string;
-                            /**
-                             * @description Optional metadata about the response
-                             * @example {
-                             *       "searchQuery": "JavaScript教程",
-                             *       "searchTime": 45,
-                             *       "cacheHit": false,
-                             *       "processingTime": 123.5,
-                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                             *     }
-                             * @example {
-                             *       "categoryCounts": {
-                             *         "前端開發": 25,
-                             *         "後端開發": 18,
-                             *         "資料科學": 12
-                             *       },
-                             *       "filters": {
-                             *         "difficulty": "intermediate",
-                             *         "language": "zh-TW"
-                             *       }
-                             *     }
-                             */
-                            meta?: {
-                                /** @description Search query used for filtering results */
-                                searchQuery?: string;
-                                /** @description Time taken to execute the search query in milliseconds */
-                                searchTime?: number;
-                                /** @description Applied filters for the request */
-                                filters?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Count of items per category */
-                                categoryCounts?: {
-                                    [key: string]: number;
-                                };
-                                /** @description Aggregated statistical data */
-                                aggregateData?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Unique identifier for request tracking */
-                                requestId?: string;
-                                /** @description Whether the response was served from cache */
-                                cacheHit?: boolean;
-                                /** @description Total processing time in milliseconds */
-                                processingTime?: number;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/outcomes/my": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 獲取當前用戶的成果列表
-         * @description 獲取當前已登入用戶的所有學習成果
-         */
+        /** 取得目前帶領的場次資源入口（不要求組織成員） */
         get: {
             parameters: {
                 query?: never;
@@ -24436,7 +24331,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 成功獲取用戶成果列表 */
+                /** @description 負責場次 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -24449,7 +24344,33 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: components["schemas"]["OutcomeResponse"][];
+                            data: {
+                                /**
+                                 * @description 所屬組織識別碼
+                                 * @example 1
+                                 */
+                                organizationId: number;
+                                /**
+                                 * @description 模板識別碼
+                                 * @example 2
+                                 */
+                                templateId: number;
+                                /**
+                                 * @description 負責場次識別碼
+                                 * @example 3
+                                 */
+                                cohortId: number;
+                                /**
+                                 * @description 場次名稱
+                                 * @example 秋季場次
+                                 */
+                                cohortName: string;
+                                /**
+                                 * @description 模板名稱
+                                 * @example 每天閱讀
+                                 */
+                                templateName: string;
+                            }[];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -24506,7 +24427,7 @@ export interface paths {
                     };
                 };
                 401: components["responses"]["UnauthorizedError"];
-                500: components["responses"]["InternalServerError"];
+                403: components["responses"]["ForbiddenError"];
             };
         };
         put?: never;
@@ -24517,30 +24438,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/outcomes/projects/{projectId}": {
+    "/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * 獲取專案的成果列表
-         * @description 獲取指定專案的所有學習成果。支援可選身份驗證以提供個人化內容。
-         */
+        /** 取得場次獨立共用資源 */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description 查詢成果所屬的專案唯一識別ID */
-                    projectId: string;
+                    organizationId: number;
+                    templateId: number;
+                    cohortId: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description 成功獲取專案成果列表 */
+                /** @description 場次資源 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -24553,7 +24472,29 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: components["schemas"]["OutcomeResponse"][];
+                            data: {
+                                /**
+                                 * @description 場次資源穩定識別碼
+                                 * @example 12
+                                 */
+                                id: number;
+                                /**
+                                 * @description 資源名稱
+                                 * @example 活動講義
+                                 */
+                                name: string;
+                                /**
+                                 * @description 資源連結；無連結時為空字串
+                                 * @example https://example.com/course
+                                 */
+                                url: string;
+                                /**
+                                 * Format: date
+                                 * @description 選填參考日期，非排程條件
+                                 * @example 2026-12-01
+                                 */
+                                relevantDate: string | null;
+                            }[];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -24609,326 +24550,64 @@ export interface paths {
                         };
                     };
                 };
-                400: components["responses"]["BadRequestError"];
-                404: components["responses"]["NotFoundError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        put?: never;
-        /**
-         * 創建新成果
-         * @description 為指定專案創建一個新的學習成果
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description 查詢成果所屬的專案唯一識別ID */
-                    projectId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["CreateOutcomeRequest"];
-                };
-            };
-            responses: {
-                /** @description 成果創建成功 */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description Indicates successful API response
-                             * @enum {boolean}
-                             */
-                            success: true;
-                            data: components["schemas"]["OutcomeResponse"] & unknown;
-                            /**
-                             * Format: date-time
-                             * @description ISO 8601 timestamp of the response
-                             */
-                            timestamp: string;
-                            /**
-                             * @description Optional metadata about the response
-                             * @example {
-                             *       "searchQuery": "JavaScript教程",
-                             *       "searchTime": 45,
-                             *       "cacheHit": false,
-                             *       "processingTime": 123.5,
-                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                             *     }
-                             * @example {
-                             *       "categoryCounts": {
-                             *         "前端開發": 25,
-                             *         "後端開發": 18,
-                             *         "資料科學": 12
-                             *       },
-                             *       "filters": {
-                             *         "difficulty": "intermediate",
-                             *         "language": "zh-TW"
-                             *       }
-                             *     }
-                             */
-                            meta?: {
-                                /** @description Search query used for filtering results */
-                                searchQuery?: string;
-                                /** @description Time taken to execute the search query in milliseconds */
-                                searchTime?: number;
-                                /** @description Applied filters for the request */
-                                filters?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Count of items per category */
-                                categoryCounts?: {
-                                    [key: string]: number;
-                                };
-                                /** @description Aggregated statistical data */
-                                aggregateData?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Unique identifier for request tracking */
-                                requestId?: string;
-                                /** @description Whether the response was served from cache */
-                                cacheHit?: boolean;
-                                /** @description Total processing time in milliseconds */
-                                processingTime?: number;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
-                500: components["responses"]["InternalServerError"];
+                403: components["responses"]["ForbiddenError"];
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/outcomes/projects/{projectId}/{outcomeId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 獲取成果詳情
-         * @description 獲取指定專案中特定成果的詳細資訊。支援可選身份驗證以提供個人化內容。
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description 成果所屬的專案唯一識別ID */
-                    projectId: string;
-                    /** @description 成果的唯一識別ID */
-                    outcomeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成功獲取成果詳情 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description Indicates successful API response
-                             * @enum {boolean}
-                             */
-                            success: true;
-                            data: components["schemas"]["OutcomeResponse"] & unknown;
-                            /**
-                             * Format: date-time
-                             * @description ISO 8601 timestamp of the response
-                             */
-                            timestamp: string;
-                            /**
-                             * @description Optional metadata about the response
-                             * @example {
-                             *       "searchQuery": "JavaScript教程",
-                             *       "searchTime": 45,
-                             *       "cacheHit": false,
-                             *       "processingTime": 123.5,
-                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                             *     }
-                             * @example {
-                             *       "categoryCounts": {
-                             *         "前端開發": 25,
-                             *         "後端開發": 18,
-                             *         "資料科學": 12
-                             *       },
-                             *       "filters": {
-                             *         "difficulty": "intermediate",
-                             *         "language": "zh-TW"
-                             *       }
-                             *     }
-                             */
-                            meta?: {
-                                /** @description Search query used for filtering results */
-                                searchQuery?: string;
-                                /** @description Time taken to execute the search query in milliseconds */
-                                searchTime?: number;
-                                /** @description Applied filters for the request */
-                                filters?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Count of items per category */
-                                categoryCounts?: {
-                                    [key: string]: number;
-                                };
-                                /** @description Aggregated statistical data */
-                                aggregateData?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Unique identifier for request tracking */
-                                requestId?: string;
-                                /** @description Whether the response was served from cache */
-                                cacheHit?: boolean;
-                                /** @description Total processing time in milliseconds */
-                                processingTime?: number;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                404: components["responses"]["NotFoundError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        /**
-         * 更新成果
-         * @description 更新指定專案中特定成果的資訊
-         */
+        /** 更新場次獨立共用資源並同步學員 */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description 成果所屬的專案唯一識別ID */
-                    projectId: string;
-                    /** @description 成果的唯一識別ID */
-                    outcomeId: string;
+                    organizationId: number;
+                    templateId: number;
+                    cohortId: number;
                 };
                 cookie?: never;
             };
             requestBody?: {
                 content: {
-                    "application/json": components["schemas"]["UpdateOutcomeRequest"];
+                    "application/json": {
+                        /**
+                         * @description 場次共用資源完整清單；既有項目維持原位置，新增項目按送出順序置前；最多50筆
+                         * @example [
+                         *       {
+                         *         "name": "活動講義",
+                         *         "url": "https://example.com/course",
+                         *         "relevantDate": null
+                         *       }
+                         *     ]
+                         */
+                        resources: {
+                            /**
+                             * @description 既有場次資源識別碼；新增時不填
+                             * @example 12
+                             */
+                            id?: number;
+                            /**
+                             * @description 資源名稱，去除前後空白
+                             * @example 活動講義
+                             */
+                            name: string;
+                            /**
+                             * @description HTTP/HTTPS 連結；未填協定補 HTTPS；無連結輸出空字串
+                             * @example https://example.com/course
+                             */
+                            url?: string;
+                            /**
+                             * Format: date
+                             * @description 選填參考日期，不影響資源可見時間；null 表示清除日期
+                             * @default null
+                             * @example 2026-12-01
+                             */
+                            relevantDate?: string | null;
+                        }[];
+                    };
                 };
             };
             responses: {
-                /** @description 成果更新成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description Indicates successful API response
-                             * @enum {boolean}
-                             */
-                            success: true;
-                            data: components["schemas"]["OutcomeResponse"] & unknown;
-                            /**
-                             * Format: date-time
-                             * @description ISO 8601 timestamp of the response
-                             */
-                            timestamp: string;
-                            /**
-                             * @description Optional metadata about the response
-                             * @example {
-                             *       "searchQuery": "JavaScript教程",
-                             *       "searchTime": 45,
-                             *       "cacheHit": false,
-                             *       "processingTime": 123.5,
-                             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                             *     }
-                             * @example {
-                             *       "categoryCounts": {
-                             *         "前端開發": 25,
-                             *         "後端開發": 18,
-                             *         "資料科學": 12
-                             *       },
-                             *       "filters": {
-                             *         "difficulty": "intermediate",
-                             *         "language": "zh-TW"
-                             *       }
-                             *     }
-                             */
-                            meta?: {
-                                /** @description Search query used for filtering results */
-                                searchQuery?: string;
-                                /** @description Time taken to execute the search query in milliseconds */
-                                searchTime?: number;
-                                /** @description Applied filters for the request */
-                                filters?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Count of items per category */
-                                categoryCounts?: {
-                                    [key: string]: number;
-                                };
-                                /** @description Aggregated statistical data */
-                                aggregateData?: {
-                                    [key: string]: unknown;
-                                };
-                                /** @description Unique identifier for request tracking */
-                                requestId?: string;
-                                /** @description Whether the response was served from cache */
-                                cacheHit?: boolean;
-                                /** @description Total processing time in milliseconds */
-                                processingTime?: number;
-                            } & {
-                                [key: string]: unknown;
-                            };
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                403: components["responses"]["ForbiddenError"];
-                404: components["responses"]["NotFoundError"];
-                500: components["responses"]["InternalServerError"];
-            };
-        };
-        post?: never;
-        /**
-         * 刪除成果
-         * @description 刪除指定專案中的特定成果
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description 成果所屬的專案唯一識別ID */
-                    projectId: string;
-                    /** @description 成果的唯一識別ID */
-                    outcomeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 成果已成功刪除 */
+                /** @description 儲存後場次資源 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -24941,7 +24620,29 @@ export interface paths {
                              */
                             success: true;
                             /** @description The main response data */
-                            data: unknown;
+                            data: {
+                                /**
+                                 * @description 場次資源穩定識別碼
+                                 * @example 12
+                                 */
+                                id: number;
+                                /**
+                                 * @description 資源名稱
+                                 * @example 活動講義
+                                 */
+                                name: string;
+                                /**
+                                 * @description 資源連結；無連結時為空字串
+                                 * @example https://example.com/course
+                                 */
+                                url: string;
+                                /**
+                                 * Format: date
+                                 * @description 選填參考日期，非排程條件
+                                 * @example 2026-12-01
+                                 */
+                                relevantDate: string | null;
+                            }[];
                             /**
                              * Format: date-time
                              * @description ISO 8601 timestamp of the response
@@ -24997,13 +24698,13 @@ export interface paths {
                         };
                     };
                 };
-                400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
                 403: components["responses"]["ForbiddenError"];
-                404: components["responses"]["NotFoundError"];
-                500: components["responses"]["InternalServerError"];
+                409: components["responses"]["ConflictError"];
             };
         };
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -33514,50 +33215,6 @@ export interface paths {
                 500: components["responses"]["InternalServerError"];
             };
         };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/proxy/image": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 圖片代理（R2 → Base64）
-         * @description 將 Cloudflare R2 圖片 URL 轉換為 Base64 data URL，供 PDF 導出使用。僅允許 R2 域名。
-         */
-        get: {
-            parameters: {
-                query: {
-                    url: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Base64 data URL */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            dataUrl: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -42426,6 +42083,18 @@ export interface components {
          */
         PracticeResourceInput: {
             /**
+             * Format: uuid
+             * @description 既有資源 UUID；共用資源更新時保持原識別碼
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            id?: string;
+            /**
+             * Format: date
+             * @description 場次參考日期；學員不得更動
+             * @example 2027-01-01
+             */
+            relevantDate?: string | null;
+            /**
              * @description 實踐資源名稱
              * @example React 官方文檔
              * @example React 官方文檔
@@ -42458,6 +42127,12 @@ export interface components {
          *     }
          */
         PracticeResource: {
+            /**
+             * Format: date
+             * @description 場次參考日期，不限制可見性
+             * @example 2027-01-01
+             */
+            relevantDate?: string | null;
             /**
              * Format: uuid
              * @description 資源唯一識別碼
@@ -42870,6 +42545,12 @@ export interface components {
          */
         PracticeResourceEntity: {
             /**
+             * Format: date
+             * @description 場次參考日期，不限制可見性
+             * @example 2027-01-01
+             */
+            relevantDate?: string | null;
+            /**
              * Format: uuid
              * @description 資源外部 UUID
              * @example 123e4567-e89b-12d3-a456-426614174000
@@ -42974,6 +42655,11 @@ export interface components {
              * @example false
              */
             isChallenge?: boolean;
+            /**
+             * @description 由燈塔場次模板產生且仍屬於場次的實踐
+             * @example false
+             */
+            isCohortPractice?: boolean;
             /**
              * @description 是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）
              * @example false
@@ -46479,8 +46165,13 @@ export interface components {
              */
             pendingCount: number;
             /**
-             * @description 成功率（百分比）
-             * @example 95
+             * @description 略過數量（後台停用模板、沒有真的寄出；不計入已發送與成功率）
+             * @example 15
+             */
+            skippedCount: number;
+            /**
+             * @description 成功率（百分比）＝ sent ÷ (sent + failed)，排除 skipped 與 pending
+             * @example 96.94
              */
             successRate: number;
             /**
@@ -54177,29 +53868,6 @@ export interface components {
              * @example 2026-09-01T08:00:00.000Z
              */
             deliverAt: string;
-        };
-        HealthResponse: {
-            /**
-             * @description 服務正常
-             * @example true
-             * @enum {boolean}
-             */
-            success: true;
-            /**
-             * @description 狀態訊息
-             * @example DaoDao API is running
-             */
-            message: string;
-            /**
-             * @description ISO 8601 時間戳
-             * @example 2026-07-19T00:00:00.000Z
-             */
-            timestamp: string;
-            /**
-             * @description API 版本
-             * @example 1.0.0
-             */
-            version: string;
         };
         /**
          * @description 記錄想法瀏覽的成功回應

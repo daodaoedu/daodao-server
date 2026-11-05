@@ -1,3 +1,4 @@
+import { initializeCohortResources, lockCohortResourceBinding } from './cohort-template-resources.service';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError } from '../middleware/error.middleware';
@@ -347,7 +348,7 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   await assertOrganization(organizationId, userId);
   const [template, cohort] = await Promise.all([
     prisma.practice_templates.findFirst({ where: { id: templateId, organization_id: organizationId, deleted_at: null }, select: { id: true, archived_at: true } }),
-    prisma.cohorts.findFirst({ where: { id: cohortId, deleted_at: null, program: { organization_id: organizationId, ...ACTIVE_PROGRAM_WHERE } }, select: { id: true, status: true, start_date: true } })
+    prisma.cohorts.findFirst({ where: { id: cohortId, deleted_at: null, program: { organization_id: organizationId, ...ACTIVE_PROGRAM_WHERE } }, select: { id: true, status: true, start_date: true, program: { select: { kind: true } } } })
   ]);
   if (!template || !cohort) throw new NotFoundError('找不到同組織的模板或期');
   if (template.archived_at) throw new ConflictError('模板已封存，請先從封存區恢復');
@@ -357,11 +358,18 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   // 只有明確帶了 startDate 才動它，重新綁定時不會把既有的指定日洗掉
   const startDate = input.startDate === undefined ? undefined : input.startDate === null ? null : new Date(`${input.startDate}T00:00:00.000Z`);
   if (bound) {
-    const row = await prisma.cohort_templates.upsert({
-      where: { cohort_id_template_id: { cohort_id: cohortId, template_id: templateId } },
-      create: { cohort_id: cohortId, template_id: templateId, start_date: startDate ?? null },
-      update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
-      select: { start_date: true }
+    const row = await prisma.$transaction(async tx => {
+      const binding = await tx.cohort_templates.upsert({
+        where: { cohort_id_template_id: { cohort_id: cohortId, template_id: templateId } },
+        create: { cohort_id: cohortId, template_id: templateId, start_date: startDate ?? null },
+        update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
+        select: { start_date: true }
+      });
+      if (cohort.program.kind === 'lighthouse') {
+        const locked = await lockCohortResourceBinding(tx, cohortId, templateId);
+        await initializeCohortResources(tx, locked.id);
+      }
+      return binding;
     });
     return { templateId, cohortId, bound, startDate: row.start_date };
   }

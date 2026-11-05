@@ -1,3 +1,4 @@
+import { PUBLIC_RESOURCE_WHERE } from '../constants/resource-visibility';
 /**
  * 資源服務 - Prisma 架構
  * 處理資源相關的業務邏輯
@@ -58,6 +59,7 @@ export async function getResourceById(id: string): Promise<ApiResponse<import('.
   const resource = await prisma.resources.findFirst({
     where: { 
       external_id: id,
+      ...PUBLIC_RESOURCE_WHERE,
       deleted_at: null 
     },
     include: {
@@ -87,7 +89,7 @@ export async function getResourceById(id: string): Promise<ApiResponse<import('.
     }
   });
 
-  if (!resource) {
+  if (!resource || !resource.users) {
     throw new NotFoundError('資源不存在');
   }
 
@@ -182,6 +184,7 @@ export async function getResources(
 
   // 構建查詢條件
   const where: Prisma.resourcesWhereInput = {
+    ...PUBLIC_RESOURCE_WHERE,
     deleted_at: null
   };
 
@@ -292,7 +295,8 @@ export async function getResources(
 
   // 處理分頁
   const hasMore = resources.length > actualLimit;
-  const resourcesData = hasMore ? resources.slice(0, actualLimit) : resources;
+  const resourcesData = (hasMore ? resources.slice(0, actualLimit) : resources)
+    .filter((resource): resource is typeof resource & { users: NonNullable<typeof resource.users> } => resource.users !== null);
 
   // 批量查詢標籤 - entity_tags 表使用數字 ID，不是 UUID
   const resourceIds = resourcesData
@@ -454,6 +458,7 @@ export async function getResources(
 
   // 查詢 facets（分類統計）- 基於基礎條件（排除 deleted_at）
   const facetsBaseWhere: Prisma.resourcesWhereInput = {
+    ...PUBLIC_RESOURCE_WHERE,
     deleted_at: null
   };
 
@@ -680,11 +685,12 @@ export async function updateResource(externalId: string, data: Record<string, un
     const existingResource = await tx.resources.findFirst({
       where: { 
         id: resourceId,
+        ...PUBLIC_RESOURCE_WHERE,
         deleted_at: null 
       }
     });
 
-    if (!existingResource) {
+    if (!existingResource || existingResource.created_by === null) {
       throw new NotFoundError('資源不存在');
     }
 
@@ -772,11 +778,12 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
     const existingResource = await tx.resources.findFirst({
       where: {
         external_id: id,
+        ...PUBLIC_RESOURCE_WHERE,
         deleted_at: null
       }
     });
 
-    if (!existingResource) {
+    if (!existingResource || existingResource.created_by === null) {
       throw new NotFoundError('資源不存在');
     }
 
@@ -792,6 +799,7 @@ export async function deleteResource(id: string, userId: number): Promise<ApiRes
     await tx.resources.update({
       where: {
         external_id: id,
+        ...PUBLIC_RESOURCE_WHERE,
         deleted_at: null
       },
       data: {
@@ -820,8 +828,9 @@ export async function getResourceStats(userId?: number): Promise<ApiResponse<{
   categoryStats: Record<string, number>;
   typeStats: Record<string, number>;
 }>> {
-  const baseWhere: Prisma.resourcesWhereInput = {};
+  const baseWhere: Prisma.resourcesWhereInput = { ...PUBLIC_RESOURCE_WHERE };
   const activeWhere: Prisma.resourcesWhereInput = {
+    ...PUBLIC_RESOURCE_WHERE,
     deleted_at: null
   };
 
