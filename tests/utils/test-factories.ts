@@ -39,6 +39,7 @@ export const createTestUser = (overrides: Partial<any> = {}) => {
     updated_by: overrides.updated_by || null,
     updated_at: overrides.updated_at || new Date(),
     is_active: overrides.is_active ?? true,
+    verified_login_email: overrides.verified_login_email ?? null,
     verified: overrides.verified ?? false,
     verified_at: overrides.verified_at || null,
     custom_id: overrides.custom_id || null,
