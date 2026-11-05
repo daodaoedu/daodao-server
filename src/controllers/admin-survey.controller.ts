@@ -1,4 +1,4 @@
-import { assertGenericSurvey } from '@/services/cohort-feedback.service'
+import { assertGenericSurvey, hasCohortFeedbackSchema } from '@/services/cohort-feedback.service'
 import { Request, Response } from 'express'
 import { asyncHandler, NotFoundError, BadRequestError } from '@/middleware/error.middleware'
 import { createSuccessResponse } from '@/utils/response-helper'
@@ -52,8 +52,9 @@ export const adminSurveyController = {
   listSurveys: asyncHandler(async (req: Request, res: Response) => {
     const { status, q, limit, offset } = listQuerySchema.parse(req.query)
 
+    const feedbackSchemaReady = await hasCohortFeedbackSchema()
     const where = {
-      cohort_feedback: { is: null },
+      ...(feedbackSchemaReady ? { cohort_feedback: { is: null } } : {}),
       ...(status && { status }),
       ...(q && {
         OR: [

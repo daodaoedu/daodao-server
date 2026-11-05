@@ -22,8 +22,19 @@ export function isCohortFeedbackEnabled(): boolean {
   return process.env.APP_ENV === 'dev' || ['dev', 'development', 'local', 'test'].includes(process.env.NODE_ENV ?? '');
 }
 
+/** Server-first rollout must preserve legacy surveys until all additive tables exist. */
+export async function hasCohortFeedbackSchema(): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ ready: boolean }>>`
+    SELECT to_regclass('cohort_feedback_surveys') IS NOT NULL
+      AND to_regclass('cohort_feedback_completions') IS NOT NULL
+      AND to_regclass('cohort_feedback_answers') IS NOT NULL AS ready
+  `;
+  return rows?.[0]?.ready === true;
+}
+
 /** 不容許新問卷回落到一般問卷的建立者權限或追蹤流程。 */
 export async function assertGenericSurvey(surveyId: number): Promise<void> {
+  if (!await hasCohortFeedbackSchema()) return;
   const feedback = await prisma.cohort_feedback_surveys.findUnique({ where: { survey_id: surveyId }, select: { cohort_id: true } });
   if (feedback) throw new ForbiddenError('請由 Lighthouse 場次成果查看學員回饋');
 }
@@ -31,6 +42,7 @@ export async function assertGenericSurvey(surveyId: number): Promise<void> {
 /** 原子建立新問卷與不可由客戶端偽造的版本對應。 */
 export async function createCohortFeedbackSurvey(cohortId: number, creatorId: number, now: Date): Promise<void> {
   if (!isCohortFeedbackEnabled()) throw new ForbiddenError('本功能目前僅供 dev 測試');
+  if (!await hasCohortFeedbackSchema()) throw new NotFoundError('問卷資料尚未開放');
   await prisma.$transaction(async tx => {
     const survey = await tx.surveys.create({ data: {
       title: '活動回饋', description: FEEDBACK_DESCRIPTION, status: 'active', is_public: true, is_anonymous: true,
@@ -44,6 +56,7 @@ export async function createCohortFeedbackSurvey(cohortId: number, creatorId: nu
 
 /** 取得填答資格；完成紀錄只用來回答布林狀態，不回傳完成時間。 */
 export async function getCohortFeedbackMetadata(surveyId: number, userId: number | null): Promise<{ state: 'login_required' | 'ineligible' | 'ready' | 'completed'; privacy_notice: string } | null> {
+  if (!await hasCohortFeedbackSchema()) return null;
   const feedback = await prisma.cohort_feedback_surveys.findUnique({ where: { survey_id: surveyId } });
   if (!feedback) return null;
   if (!isCohortFeedbackEnabled()) throw new NotFoundError('問卷尚未開放');
@@ -61,6 +74,7 @@ export async function getCohortFeedbackMetadata(surveyId: number, userId: number
 
 /** 新期末問卷的提交；同一交易保證唯一完成紀錄及匿名答案同成同敗。 */
 export async function submitCohortFeedback(surveyId: number, userId: number | null, body: SubmitResponseBody): Promise<ApiSuccessResponse<{ completed: true }> | null> {
+  if (!await hasCohortFeedbackSchema()) return null;
   const feedback = await prisma.cohort_feedback_surveys.findUnique({ where: { survey_id: surveyId } });
   if (!feedback) return null;
   if (!isCohortFeedbackEnabled()) throw new NotFoundError('問卷尚未開放');
@@ -110,7 +124,7 @@ export function shuffleFeedbackTexts(values: string[]): string[] {
 
 /** 只允許本場次 owner（含 canonical organization owner）取得進度與匿名結果。 */
 export async function getCohortFeedback(programId: number, cohortId: number, actorId: number, query: CohortFeedbackQuery): Promise<CohortFeedbackResponse> {
-  if (!isCohortFeedbackEnabled()) throw new NotFoundError('本功能目前僅供 dev 測試');
+  if (!isCohortFeedbackEnabled() || !await hasCohortFeedbackSchema()) throw new NotFoundError('本功能目前尚未開放');
   const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, deleted_at: null }, select: {
     id: true, program: { select: { organization: { select: { organization_members: { where: { user_id: actorId, role: 'owner' }, select: { id: true } } } } } },
     cohort_enrollments: { where: { user_id: actorId, status: 'joined', role: 'owner' }, select: { id: true } }

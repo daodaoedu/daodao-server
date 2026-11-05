@@ -21,6 +21,7 @@ app.use(globalErrorHandler);
 const existingSurvey = { id: 471, status: 'active', is_anonymous: true, updated_at: new Date(), created_at: new Date(), questions: [], _count: { responses: 0 } };
 describe('generic admin survey endpoints cannot mutate or inspect mapped cohort feedback', () => {
   beforeEach(() => {
+    prismaMock.$queryRaw.mockResolvedValue([{ ready: true }] as never);
     prismaMock.cohort_feedback_surveys.findUnique.mockResolvedValue({ cohort_id: 471, survey_id: 471 } as never);
     prismaMock.surveys.findUnique.mockResolvedValue(existingSurvey as never);
     prismaMock.surveys.update.mockResolvedValue(existingSurvey as never);

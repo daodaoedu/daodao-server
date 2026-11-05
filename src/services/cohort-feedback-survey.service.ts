@@ -1,4 +1,4 @@
-import { createCohortFeedbackSurvey, isCohortFeedbackEnabled } from './cohort-feedback.service';
+import { createCohortFeedbackSurvey, isCohortFeedbackEnabled, hasCohortFeedbackSchema } from './cohort-feedback.service';
 import { enqueueCohortFeedbackSurvey } from './cohort-feedback-delivery.service';
 import { Prisma } from '../../generated/prisma';
 import { bulkEnqueueEmails, type EmailJobData } from '../queues/email.queue';
@@ -13,6 +13,7 @@ const taipeiDate = (now: Date): Date => {
 const uniqueFeedbackTag = (cohortId: number): string => `lighthouse:cohort-feedback:${cohortId}`;
 
 export const sendCohortFeedbackSurveys = async (now = new Date()): Promise<number> => {
+  if (isCohortFeedbackEnabled() && !await hasCohortFeedbackSchema()) return 0;
   const today = taipeiDate(now);
   const cohorts = await prisma.cohorts.findMany({
     where: { end_date: isCohortFeedbackEnabled() ? { lt: today } : { lte: today }, status: 'published', ...(isCohortFeedbackEnabled() ? { deleted_at: null } : {}) },

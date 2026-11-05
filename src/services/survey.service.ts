@@ -1,4 +1,4 @@
-import { assertGenericSurvey, getCohortFeedbackMetadata, submitCohortFeedback } from './cohort-feedback.service';
+import { assertGenericSurvey, getCohortFeedbackMetadata, submitCohortFeedback, hasCohortFeedbackSchema } from './cohort-feedback.service';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
 import { emailService } from '@/services/email/email.service';
@@ -92,8 +92,9 @@ export const surveyService = {
   },
 
   async listMine(userId: number) {
+    const feedbackSchemaReady = await hasCohortFeedbackSchema();
     const surveys = await prisma.surveys.findMany({
-      where: { created_by: userId, cohort_feedback: { is: null } },
+      where: { created_by: userId, ...(feedbackSchemaReady ? { cohort_feedback: { is: null } } : {}) },
       orderBy: { created_at: 'desc' },
       include: { _count: { select: { responses: true } } },
     });

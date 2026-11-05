@@ -13,6 +13,7 @@ const cohort = { id: 471, display_name: '期末回饋', program: { organization:
 describe('dev cohort feedback scheduling and boundaries', () => {
   const originalEnv = { node: process.env.NODE_ENV, app: process.env.APP_ENV };
   beforeEach(() => {
+    prismaMock.$queryRaw.mockResolvedValue([{ ready: true }] as never);
     process.env.NODE_ENV = 'test'; process.env.APP_ENV = 'dev';
     prismaMock.cohorts.findMany.mockResolvedValue([cohort] as never);
     prismaMock.cohort_feedback_surveys.findUnique.mockResolvedValue(null);
@@ -21,6 +22,15 @@ describe('dev cohort feedback scheduling and boundaries', () => {
     setupTransactionMock();
   });
   afterEach(() => { process.env.NODE_ENV = originalEnv.node; process.env.APP_ENV = originalEnv.app; });
+
+  it('defers dev scheduling before the feedback migration without creating a legacy substitute', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ ready: false }] as never);
+    await expect(sendCohortFeedbackSurveys()).resolves.toBe(0);
+    expect(prismaMock.cohorts.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.cohort_feedback_surveys.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.surveys.create).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
 
   it('creates the four-question anonymous version atomically and hands off delivery after commit', async () => {
     await expect(sendCohortFeedbackSurveys(new Date('2026-11-05T15:30:00Z'))).resolves.toBe(1);

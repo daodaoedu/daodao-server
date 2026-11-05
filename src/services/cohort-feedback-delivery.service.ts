@@ -3,7 +3,7 @@ import { prisma } from './database/prisma.service';
 import { getEmailQueue } from '../queues/email.queue';
 import { generateCohortFeedbackSurveyEmail } from './email/cohort-feedback-survey-template';
 import { loggerService } from './logging/logger.service';
-import { isCohortFeedbackEnabled } from './cohort-feedback.service';
+import { isCohortFeedbackEnabled, hasCohortFeedbackSchema } from './cohort-feedback.service';
 
 const ENTITY = 'cohort_feedback';
 const CODE = 'CF01';
@@ -35,7 +35,7 @@ async function currentFeedbackRecipients(cohortId: number): Promise<Map<number, 
 
 /** Reflect actual successful sends, never merely queue admission, in the survey's state. */
 export async function refreshCohortFeedbackDelivery(cohortId: number): Promise<void> {
-  if (!isCohortFeedbackEnabled()) return;
+  if (!isCohortFeedbackEnabled() || !await hasCohortFeedbackSchema()) return;
   const recipients = await currentFeedbackRecipients(cohortId);
   if (recipients.size === 0) return;
   const logs = await prisma.email_logs.findMany({
@@ -56,7 +56,7 @@ export async function refreshCohortFeedbackDelivery(cohortId: number): Promise<v
 
 /** Persist recipient outbox rows before Redis admission; safe to resume after partial admission. */
 export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<void> {
-  if (!isCohortFeedbackEnabled()) return;
+  if (!isCohortFeedbackEnabled() || !await hasCohortFeedbackSchema()) return;
   const mapping = await prisma.cohort_feedback_surveys.findUnique({
     where: { cohort_id: cohortId },
     include: { survey: { select: { external_id: true } } },
@@ -131,7 +131,7 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
 
 /** Resume committed feedback outboxes without creating historical surveys. */
 export async function recoverPendingCohortFeedbackEmails(): Promise<number> {
-  if (!isCohortFeedbackEnabled()) return 0;
+  if (!isCohortFeedbackEnabled() || !await hasCohortFeedbackSchema()) return 0;
   const mappings = await prisma.cohort_feedback_surveys.findMany({
     where: { delivery_state: { not: 'sent' } }, select: { cohort_id: true },
   });
