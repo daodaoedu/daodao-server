@@ -52,10 +52,10 @@ const resolveRange = (query: { from?: string; to?: string }, timezone: string, n
 const assertCohort = async (programId: number, cohortId: number, actorId: number) => {
   const cohort = await prisma.cohorts.findFirst({
     where: { id: cohortId, program_id: programId, deleted_at: null },
-    select: { id: true, program: { select: { organization: { select: { timezone: true, organization_members: { where: { user_id: actorId }, select: { id: true } } } } } } }
+    select: { id: true, program: { select: { organization: { select: { timezone: true, status: true, organization_members: { where: { user_id: actorId }, select: { id: true } } } } } } }
   });
   if (!cohort) throw new NotFoundError('找不到場次');
-  if (cohort.program.organization.organization_members.length === 0) throw new ForbiddenError('無權限查看此場次動態');
+  if (cohort.program.organization.status !== 'active' || cohort.program.organization.organization_members.length === 0) throw new ForbiddenError('無權限查看此場次動態');
   return { timezone: cohort.program.organization.timezone || APP_TIMEZONE };
 };
 
