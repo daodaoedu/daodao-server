@@ -28,6 +28,7 @@ export function shouldLogRequestBody(path: string, method: string): boolean {
     /\/auth\/password/,
     /\/email/,
     /\/future-letters(?:\/|$)/,
+    /\/surveys\/public\/[^/]+\/responses(?:[/?]|$)/i,
   ];
   
   return !sensitivePatterns.some(pattern => pattern.test(path)) && 
@@ -64,12 +65,12 @@ export function sanitizeHeadersForLogging(headers: unknown): unknown {
   return sanitized;
 }
 
-function isFutureLetterPath(path: string): boolean {
-  return /\/future-letters(?:\/|$)/.test(path);
+function isSensitiveAnswerPath(path: string): boolean {
+  return /\/future-letters(?:\/|$)/.test(path) || /\/surveys\/public\/[^/]+\/responses(?:[/?]|$)/i.test(path);
 }
 
 export function sanitizeRequestBodyForLogging(path: string, data: unknown): unknown {
-  return isFutureLetterPath(path) ? '[REDACTED]' : sanitizeData(data);
+  return isSensitiveAnswerPath(path) ? '[REDACTED]' : sanitizeData(data);
 }
 
 /**
