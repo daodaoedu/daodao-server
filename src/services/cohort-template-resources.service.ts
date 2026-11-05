@@ -75,6 +75,8 @@ async function readResources(tx: Tx, bindingId: number) {
 /** Read an authorized binding snapshot. */
 async function list(organizationId: number, templateId: number, cohortId: number, userId: number) {
   return prisma.$transaction(async tx => {
+    // Reject unauthorized actors before they can wait on an editor's binding lock.
+    await assertCohortTemplateResourceAccess(organizationId, templateId, cohortId, userId, tx);
     const binding = await lockCohortResourceBinding(tx, cohortId, templateId);
     await assertCohortTemplateResourceAccess(organizationId, templateId, cohortId, userId, tx);
     await initializeCohortResources(tx, binding.id);
@@ -106,6 +108,8 @@ async function assertLegacySourcesReviewed(tx: Tx, bindingId: number) {
 /** Save a complete source set atomically and propagate only provenance-marked learner relations. */
 async function update(organizationId: number, templateId: number, cohortId: number, userId: number, input: CohortTemplateResourceInput[]) {
   return prisma.$transaction(async tx => {
+    // Reject unauthorized actors before they can wait on an editor's binding lock.
+    await assertCohortTemplateResourceAccess(organizationId, templateId, cohortId, userId, tx);
     const binding = await lockCohortResourceBinding(tx, cohortId, templateId);
     await assertCohortTemplateResourceAccess(organizationId, templateId, cohortId, userId, tx);
     await initializeCohortResources(tx, binding.id);

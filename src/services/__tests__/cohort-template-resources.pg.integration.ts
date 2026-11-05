@@ -371,6 +371,33 @@ describe('cohort resource persistence and propagation (#401)', () => {
     expect((await findPractice(practice.id, learner)).data.resources).toEqual(detached);
   });
 
+  it('rejects unauthorized reads and writes without waiting for another editor binding lock', async () => {
+    let release!: () => void;
+    let locked!: () => void;
+    const ready = new Promise<void>(resolve => { locked = resolve; });
+    const hold = new Promise<void>(resolve => { release = resolve; });
+    const blocker = prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM cohort_templates WHERE id = ${binding} FOR UPDATE`;
+      locked();
+      await hold;
+    });
+    await ready;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        Promise.all([
+          expect(service.list(org, template, cohort, outsider)).rejects.toMatchObject({ statusCode: 403 }),
+          expect(put([], outsider)).rejects.toMatchObject({ statusCode: 403 })
+        ]),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Unauthorized request waited for the binding lock')), 1000); })
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      release();
+      await blocker;
+    }
+  });
+
   it('serializes simultaneous replacement and learner join without partial source sets', async () => {
     await service.list(org, template, cohort, owner);
     await Promise.all([
