@@ -2,7 +2,7 @@ import { sanitizeRequestBodyForLogging, shouldLogRequestBody } from '../logging.
 
 describe('feedback answer logging privacy', () => {
   const body = { answers: [{ question_id: 3, answer_text: '不可與身分一起記錄的答案' }], session_key: 'correlation-key' };
-  it.each(['/api/v1/surveys/public/uuid/responses', '/api/v1/surveys/public/uuid/responses?retry=1', '/surveys/public/uuid/responses'])('omits answers from request and error logs for %s', path => {
+  it.each(['/api/v1/surveys/public/uuid/responses', '/api/v1/surveys/public/uuid/responses?retry=1', '/surveys/public/uuid/responses', '/api/v1/SURVEYS/public/uuid/RESPONSES', '/API/v1/Surveys/Public/uuid/Responses/?retry=1'])('omits answers from request and error logs for %s', path => {
     expect(shouldLogRequestBody(path, 'POST')).toBe(false);
     expect(sanitizeRequestBodyForLogging(path, body)).toBe('[REDACTED]');
   });
