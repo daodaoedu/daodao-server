@@ -29,6 +29,9 @@
     "user_token_quotas"
   ],
   "prismaOnly": [
+    "cohort_feedback_answers",
+    "cohort_feedback_completions",
+    "cohort_feedback_surveys",
     "email_trigger_logs",
     "notification_events",
     "notification_preferences",
@@ -90,5 +93,6 @@
     "user_permissions.granted_at",
     "user_permissions.granted_by",
     "user_permissions.notes"
-  ]
+  ],
+  "_cohortFeedbackRollout": "Refs daodaoedu/daodao#471: temporary prismaOnly for server-first compatibility PR daodao-server#646 before companion storage#346. Runtime probes ensure old-schema legacy surveys stay available. Remove these three entries after storage#346 is merged/applied; do not retain as permanent drift exceptions."
 }

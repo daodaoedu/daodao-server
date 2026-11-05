@@ -25,9 +25,13 @@ const cohort = {
 };
 
 describe('sendCohortFeedbackSurveys', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
   beforeEach(() => {
+    process.env.NODE_ENV = 'production'; // This suite preserves the unchanged legacy production flow.
     process.env.FRONTEND_URL = 'https://app.example.com';
   });
+
+  afterEach(() => { process.env.NODE_ENV = originalNodeEnv; });
 
   it('creates an active existing-system survey with the required seen-checkin question and emails joined learners', async () => {
     prismaMock.cohorts.findMany.mockResolvedValue([cohort] as never);

@@ -1,3 +1,5 @@
+import { getCohortFeedbackController } from '../controllers/cohort-feedback.controller';
+import { cohortFeedbackQuerySchema, cohortFeedbackResponseSchema } from '../validators/cohort-feedback.validators';
 import { cohortTemplateResourcesController } from '../controllers/cohort-template-resources.controller';
 import { cohortResourceBindingListSchema, cohortTemplateResourcesResponseSchema, updateCohortTemplateResourcesSchema } from '../validators/cohort-template-resources.validators';
 import { Router, type RequestHandler } from 'express';
@@ -56,7 +58,7 @@ import {
   submitCohortEncouragementSchema
 } from '../validators/cohort-encouragement.validators';
 import { enforceCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
-import { requireCohortCoach } from '../middleware/cohort-role.middleware';
+import { requireCohortCoach, requireCohortRole } from '../middleware/cohort-role.middleware';
 import { requireCohortCheckinAccess } from '../middleware/cohort-object-access.middleware';
 
 const router = Router();
@@ -131,6 +133,7 @@ registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{prog
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates', tags: ['Lighthouse Focus'], summary: '取得組織的訊息範本', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, query: cohortMessageTemplateListQuerySchema }, responses: { 200: { description: '範本列表', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortMessageTemplateListResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates', tags: ['Lighthouse Focus'], summary: '存成訊息範本', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, body: { content: { 'application/json': { schema: createCohortMessageTemplateSchema } } } }, responses: { 201: { description: '範本已建立', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortMessageTemplateResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'delete', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates/{templateId}', tags: ['Lighthouse Focus'], summary: '刪除訊息範本（軟刪）', security: [{ bearerAuth: [] }], request: { params: cohortMessageTemplateParamsSchema }, responses: { 204: { description: '範本已刪除' }, 404: { $ref: '#/components/responses/NotFoundError' }, ...authErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/feedback', tags: ['Lighthouse Outcomes'], summary: '場次 owner 查看學員回饋及完成進度', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, query: cohortFeedbackQuerySchema }, responses: { 200: { description: '填答進度與匿名回饋', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortFeedbackResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome', tags: ['Lighthouse Outcomes'], summary: '場次成果（概況、實踐成果、參與者進度、AI 摘要版本、AI 模式可用性）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema }, responses: { 200: { description: '成果報告', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortOutcomeResponseSchema) } } }, 404: { $ref: '#/components/responses/NotFoundError' }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome/summary', tags: ['Lighthouse Outcome'], summary: '產生／重新產生 AI 成果摘要（新版本；平台 AI 每場次每日 5 次）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, body: { content: { 'application/json': { schema: generateOutcomeSummarySchema } } } }, responses: { 201: { description: '新版本摘要', content: { 'application/json': { schema: apiSuccessResponseSchema(outcomeSummaryVersionSchema) } } }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors } });
 registry.registerPath({ method: 'put', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome/summary', tags: ['Lighthouse Outcome'], summary: '人工編輯摘要（新版本 source=manual，不可空白）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, body: { content: { 'application/json': { schema: editOutcomeSummarySchema } } } }, responses: { 200: { description: '新版本摘要', content: { 'application/json': { schema: apiSuccessResponseSchema(outcomeSummaryVersionSchema) } } }, ...authErrors } });
@@ -218,6 +221,7 @@ router.delete('/programs/:programId', validate(programIdParamsSchema, 'params'),
 router.post('/programs/:programId/duplicate', validate(programIdParamsSchema, 'params'), programController.duplicate as RequestHandler);
 router.get('/programs/:programId/cohorts', validate(cohortProgramParamsSchema, 'params'), cohortController.list as RequestHandler);
 router.post('/programs/:programId/cohorts', validate(cohortProgramParamsSchema, 'params'), validate(createCohortSchema), cohortController.create as RequestHandler);
+router.get('/programs/:programId/cohorts/:cohortId/feedback', validate(cohortParamsSchema, 'params'), requireCohortRole('owner'), validate(cohortFeedbackQuerySchema, 'query'), getCohortFeedbackController as RequestHandler);
 router.use('/programs/:programId/cohorts/:cohortId', requireCohortCoach);
 router.get('/programs/:programId/cohorts/:cohortId', validate(cohortParamsSchema, 'params'), cohortController.get as RequestHandler);
 router.patch('/programs/:programId/cohorts/:cohortId', validate(cohortParamsSchema, 'params'), validate(updateCohortSchema), cohortController.update as RequestHandler);

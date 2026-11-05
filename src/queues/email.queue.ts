@@ -25,6 +25,8 @@ export interface EmailJobData {
   bcc?: string[];
   trackingToken?: string;
   emailLogId?: number;
+  /** New feedback survey delivery metadata; never attached to anonymous answers. */
+  cohortFeedbackCohortId?: number;
   emailType?: string;
   userId?: number;
   priority?: 'P1' | 'P2' | 'P3';
