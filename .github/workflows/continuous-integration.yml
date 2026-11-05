@@ -101,17 +101,21 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Read shared test database configuration
+        id: test-db
+        run: python3 .github/scripts/test-database-config.py >> "$GITHUB_OUTPUT"
+
       - name: Checkout database schema for integration tests
         uses: actions/checkout@v4
         with:
-          repository: daodaoedu/daodao-storage
-          ref: 74314dacc42b1a5866c8976d28e3959a72540a40
+          repository: ${{ steps.test-db.outputs.storage_repository }}
+          ref: ${{ steps.test-db.outputs.storage_ref }}
           path: _storage
           token: ${{ secrets.GIT_HUB_ACCESS_TOKEN }}
           persist-credentials: false
 
       - name: Initialize disposable integration database
-        run: bash .github/scripts/init-test-database.sh "${{ job.services.postgres.id }}" _storage/schema
+        run: bash .github/scripts/init-test-database.sh "${{ job.services.postgres.id }}" "_storage/${{ steps.test-db.outputs.schema_directory }}"
 
       # ===== Node.js 環境設定 =====
       # 設定指定版本的 Node.js 環境
@@ -206,6 +210,9 @@ jobs:
       # 逐一 wait PID，收集退出碼並等待所有背景任務完成
       # 任何一個檢查失敗都會導致整個步驟失敗
       # ========================
+      - name: Test local integration runner
+        run: pnpm run test:runner
+
       - name: Run checks in parallel
         shell: bash
         run: |
@@ -240,35 +247,11 @@ jobs:
             openapi.json
           retention-days: 1
 
-  # ===== CI 成功通知階段 =====
-  # 目的：向團隊 Discord 頻道發送 CI 檢查成功通知
-  # 執行條件：只在 test job 成功完成時執行
-  # 通知內容：
-  #   - 倉庫資訊、分支名稱、提交者
-  #   - 提交 SHA 和連結
-  #   - 綠色成功標識
-  # 依賴：需要 test job 完成
-  # ==============================
-  notify-success:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: test
-    if: success()
-    steps:
-      # ===== Discord 成功通知發送 =====
-      # 收集 GitHub 上下文資訊：
-      #   - github.actor：觸發者用戶名
-      #   - github.repository：倉庫全名
-      #   - github.ref_name：分支名稱
-      #   - github.sha：完整提交 SHA
-      # 
-      # 通知格式：
-      #   - 使用 Discord Webhook 發送富文本訊息
-      #   - 綠色 embed（color: 3066993）表示成功
-      #   - 包含倉庫、分支、作者等關鍵資訊
-      #   - 提供提交連結便於查看變更
-      # ================================
+      # 成功通知併入 test job 的最後一步：獨立 job 每次至少計費 1 分鐘（10 月約 100 分鐘）。
+      # continue-on-error：Discord 失敗不能讓 required check `test` 變紅
       - name: Send CI Success Notification
+        if: success()
+        continue-on-error: true
         run: |
           AUTHOR="${{ github.actor }}"
           REPO="${{ github.repository }}"

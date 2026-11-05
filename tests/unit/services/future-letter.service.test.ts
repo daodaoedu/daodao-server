@@ -1,4 +1,4 @@
-import { prismaMock } from '@tests/utils/prisma-mock';
+import { prismaMock, setupTransactionMock } from '@tests/utils/prisma-mock';
 
 jest.mock('@/services/database/prisma.service', () => ({ prisma: prismaMock }));
 
@@ -47,6 +47,8 @@ function updatedAtWindow(updatedAt: Date) {
 describe('futureLetterService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setupTransactionMock();
+    prismaMock.email_logs.findMany.mockResolvedValue([]);
     scheduleFutureLetterDelivery.mockResolvedValue(undefined);
     removeFutureLetterJob.mockResolvedValue(undefined);
   });
@@ -121,11 +123,11 @@ describe('futureLetterService', () => {
     expect(removeFutureLetterJob).toHaveBeenCalledWith(8);
   });
 
-  it('marks delivery without creating a notification side channel', async () => {
+  it('marks a due scheduled letter delivered', async () => {
     prismaMock.future_letters.updateMany.mockResolvedValue({ count: 1 });
     await futureLetterService.deliver(8);
     expect(prismaMock.future_letters.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 8, status: 'scheduled' },
+      where: { id: 8, status: 'scheduled', deliver_at: { lte: expect.any(Date) } },
       data: expect.objectContaining({ status: 'delivered', delivered_at: expect.any(Date) }),
     }));
   });

@@ -28,7 +28,7 @@ import { requireAdmin } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validation.middleware';
 import { apiSuccessResponseSchema } from '../validators/api-response.validators';
 import {
-  addOrganizationMemberSchema, adminUpdateOrganizationSchema, createOrganizationSchema, organizationIdParamsSchema,
+  addOrganizationMemberSchema, adminUpdateOrganizationSchema, createOrganizationSchema, organizationIdParamsSchema, organizationIdValidationErrorResponseSchema,
   adminOrganizationMemberListResponseSchema,
   organizationListResponseSchema, organizationMemberListResponseSchema,
   organizationMemberParamsSchema, organizationMemberResponseSchema,
@@ -70,6 +70,16 @@ registry.registerPath({
 });
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/admin/organizations', tags: ['Lighthouse Organizations'], summary: 'Admin 取得全部組織', security: [{ bearerAuth: [] }], responses: { 200: { description: '組織列表', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationListResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'patch', path: '/api/v1/lighthouse/admin/organizations/{organizationId}', tags: ['Lighthouse Organizations'], summary: 'Admin 編輯或停權組織', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, body: { content: { 'application/json': { schema: adminUpdateOrganizationSchema } } } }, responses: { 200: { description: '組織已更新', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationResponseSchema) } } }, ...authErrors } });
+registry.registerPath({
+  method: 'delete', path: '/api/v1/lighthouse/admin/organizations/{organizationId}', tags: ['Lighthouse Organizations'],
+  summary: '拒絕刪除驗收 fixture 組織（不提供組織刪除功能）', security: [{ bearerAuth: [] }],
+  request: { params: organizationIdParamsSchema },
+  responses: {
+    ...authErrors,
+    400: { description: '組織 ID 驗證失敗', content: { 'application/json': { schema: organizationIdValidationErrorResponseSchema } } },
+    404: { $ref: '#/components/responses/NotFoundError' }
+  }
+});
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/members', tags: ['Lighthouse Organizations'], summary: 'Admin 取得組織成員', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema }, responses: { 200: { description: '成員列表（含 email）', content: { 'application/json': { schema: apiSuccessResponseSchema(adminOrganizationMemberListResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/members', tags: ['Lighthouse Organizations'], summary: 'Admin 新增組織成員', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, body: { content: { 'application/json': { schema: addOrganizationMemberSchema } } } }, responses: { 201: { description: '成員已新增', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationMemberResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'delete', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/members/{userId}', tags: ['Lighthouse Organizations'], summary: 'Admin 移除組織成員', security: [{ bearerAuth: [] }], request: { params: organizationMemberParamsSchema }, responses: { 204: { description: '成員已移除' }, ...authErrors } });
@@ -171,6 +181,7 @@ router.post('/organizations', requireAdmin as RequestHandler, validate(createOrg
 router.post('/admin/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.get('/admin/organizations', requireAdmin as RequestHandler, organizationController.listAllOrganizations as RequestHandler);
 router.patch('/admin/organizations/:organizationId', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), validate(adminUpdateOrganizationSchema), organizationController.adminUpdateOrganization as RequestHandler);
+router.delete('/admin/organizations/:organizationId', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), organizationController.adminDeleteOrganization as RequestHandler);
 router.get('/admin/organizations/:organizationId/members', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), organizationController.adminListMembers as RequestHandler);
 router.post('/admin/organizations/:organizationId/members', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), validate(addOrganizationMemberSchema), organizationController.adminAddMember as RequestHandler);
 router.delete('/admin/organizations/:organizationId/members/:userId', requireAdmin as RequestHandler, validate(organizationMemberParamsSchema, 'params'), organizationController.adminRemoveMember as RequestHandler);
