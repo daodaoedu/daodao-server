@@ -1,3 +1,6 @@
+import { createCohortFeedbackSurvey, isCohortFeedbackEnabled } from './cohort-feedback.service';
+import { enqueueCohortFeedbackSurvey } from './cohort-feedback-delivery.service';
+import { Prisma } from '../../generated/prisma';
 import { bulkEnqueueEmails, type EmailJobData } from '../queues/email.queue';
 import { prisma } from './database/prisma.service';
 import { generateCohortFeedbackSurveyEmail } from './email/cohort-feedback-survey-template';
@@ -12,7 +15,7 @@ const uniqueFeedbackTag = (cohortId: number): string => `lighthouse:cohort-feedb
 export const sendCohortFeedbackSurveys = async (now = new Date()): Promise<number> => {
   const today = taipeiDate(now);
   const cohorts = await prisma.cohorts.findMany({
-    where: { end_date: { lte: today }, status: 'published' },
+    where: { end_date: isCohortFeedbackEnabled() ? { lt: today } : { lte: today }, status: 'published', ...(isCohortFeedbackEnabled() ? { deleted_at: null } : {}) },
     select: {
       id: true,
       display_name: true,
@@ -32,7 +35,7 @@ export const sendCohortFeedbackSurveys = async (now = new Date()): Promise<numbe
         }
       },
       cohort_enrollments: {
-        where: { status: 'joined', role: 'member' },
+        where: isCohortFeedbackEnabled() ? { status: 'joined', user_id: { not: null } } : { status: 'joined', role: 'member' },
         select: {
           email: true,
           user_id: true,
@@ -45,6 +48,26 @@ export const sendCohortFeedbackSurveys = async (now = new Date()): Promise<numbe
   let createdCount = 0;
 
   for (const cohort of cohorts) {
+    if (isCohortFeedbackEnabled()) {
+      const mapping = await prisma.cohort_feedback_surveys.findUnique({ where: { cohort_id: cohort.id } });
+      if (mapping) {
+        if (mapping.delivery_state !== 'sent') await enqueueCohortFeedbackSurvey(cohort.id);
+        continue;
+      }
+      const legacy = await prisma.surveys.findFirst({ where: { tags: { has: uniqueFeedbackTag(cohort.id) } }, select: { id: true } });
+      if (legacy) continue; // Never relabel or replace an existing non-anonymous survey.
+      const creatorId = cohort.program.organization.organization_members[0]?.user_id;
+      if (!creatorId) continue;
+      try {
+        await createCohortFeedbackSurvey(cohort.id, creatorId, now);
+        createdCount += 1;
+      } catch (error) {
+        // A concurrent scheduler created this cohort's unique mapping first.
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+      }
+      await enqueueCohortFeedbackSurvey(cohort.id);
+      continue;
+    }
     const tag = uniqueFeedbackTag(cohort.id);
     const existing = await prisma.surveys.findFirst({ where: { tags: { has: tag } }, select: { id: true } });
     if (existing) continue;

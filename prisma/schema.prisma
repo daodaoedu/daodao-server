@@ -897,6 +897,7 @@ model users {
   archived_practice_templates          practice_templates[]          @relation("practice_templates_archived_by")
   organization_ai_credentials_updates  organization_ai_credentials[]
   cohort_outcome_summaries             cohort_outcome_summaries[]
+  feedback_completions                cohort_feedback_completions[]
   post                                 post[]
   practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
   practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
@@ -1886,6 +1887,7 @@ model surveys {
   questions           questions[]
   responses           survey_responses[]
   partial_submissions survey_partial_submissions[]
+  cohort_feedback     cohort_feedback_surveys?
 
   @@index([created_by], map: "idx_surveys_created_by")
   @@index([status], map: "idx_surveys_status")
@@ -1906,6 +1908,9 @@ model questions {
   options question_options[]
   answers survey_answers[]
 
+  feedback_answers cohort_feedback_answers[]
+
+  @@unique([survey_id, id], map: "uq_questions_survey_id_id")
   @@index([survey_id], map: "idx_questions_survey_id")
 }
 
@@ -2155,6 +2160,7 @@ model cohorts {
   deleted_at            DateTime?  @db.Timestamptz(6)
   archiver              users?     @relation("cohorts_archived_by", fields: [archived_by], references: [id], onUpdate: NoAction, map: "fk_cohorts_archived_by")
   outcome_summaries     cohort_outcome_summaries[]
+  feedback_survey      cohort_feedback_surveys?
 
   @@unique([program_id, slug], map: "uq_cohorts_program_slug")
   @@index([program_id], map: "idx_cohorts_program_id")
@@ -2490,4 +2496,39 @@ model chat_room_reads {
 
   @@unique([room_id, user_id], map: "uq_chat_room_reads_room_user")
   @@index([user_id], map: "idx_chat_room_reads_user")
+}
+
+/// 期末問卷版本及全場次寄送狀態；不含填答者資訊。
+model cohort_feedback_surveys {
+  cohort_id Int @id
+  survey_id Int @unique
+  format_version Int @default(1)
+  delivery_state String @default("pending") @db.VarChar(20)
+  delivery_started_at DateTime? @db.Timestamptz(6)
+  delivered_at DateTime? @db.Timestamptz(6)
+  cohort cohorts @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  survey surveys @relation(fields: [survey_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  completions cohort_feedback_completions[]
+  answers cohort_feedback_answers[]
+}
+
+/// 只記錄完成身分，不連結答案或記錄提交時間。
+model cohort_feedback_completions {
+  cohort_id Int
+  user_id Int
+  feedback cohort_feedback_surveys @relation(fields: [cohort_id], references: [cohort_id], onDelete: Cascade, onUpdate: NoAction)
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([cohort_id, user_id])
+}
+
+/// 按題獨立儲存匿名答案；無填答者、提交批次、時間或遞增序號。
+model cohort_feedback_answers {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  survey_id Int
+  question_id Int
+  rating_value Int?
+  answer_text String?
+  feedback cohort_feedback_surveys @relation(fields: [survey_id], references: [survey_id], onDelete: Cascade, onUpdate: NoAction)
+  question questions @relation(fields: [survey_id, question_id], references: [survey_id, id], onDelete: Cascade, onUpdate: NoAction, map: "fk_feedback_answer_question")
+  @@index([survey_id, question_id], map: "idx_feedback_answers_survey_question")
 }

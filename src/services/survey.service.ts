@@ -1,3 +1,4 @@
+import { assertGenericSurvey, getCohortFeedbackMetadata, submitCohortFeedback } from './cohort-feedback.service';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
 import { emailService } from '@/services/email/email.service';
@@ -92,7 +93,7 @@ export const surveyService = {
 
   async listMine(userId: number) {
     const surveys = await prisma.surveys.findMany({
-      where: { created_by: userId },
+      where: { created_by: userId, cohort_feedback: { is: null } },
       orderBy: { created_at: 'desc' },
       include: { _count: { select: { responses: true } } },
     });
@@ -110,6 +111,7 @@ export const surveyService = {
   },
 
   async getById(id: number, userId: number) {
+    await assertGenericSurvey(id);
     const survey = await prisma.surveys.findFirst({
       where: { id, created_by: userId },
       include: { questions: questionWithOptions },
@@ -117,7 +119,7 @@ export const surveyService = {
     return survey ? createSuccessResponse(formatSurvey(survey)) : null;
   },
 
-  async getPublic(externalId: string) {
+  async getPublic(externalId: string, userId: number | null = null) {
     const now = new Date();
     const survey = await prisma.surveys.findFirst({
       where: {
@@ -130,10 +132,12 @@ export const surveyService = {
     });
     if (!survey) return null;
     if (survey.end_time && survey.end_time < now) return null;
-    return createSuccessResponse(formatSurvey(survey));
+    const feedback = await getCohortFeedbackMetadata(survey.id, userId);
+    return createSuccessResponse({ ...formatSurvey(survey), ...(feedback ? { cohort_feedback: feedback } : {}) });
   },
 
   async updateStatus(id: number, userId: number, body: UpdateSurveyStatusBody) {
+    await assertGenericSurvey(id);
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     const survey = await prisma.surveys.update({
@@ -156,6 +160,9 @@ export const surveyService = {
     });
     if (!survey) return null;
     if (survey.end_time && survey.end_time < now) return null;
+
+    const feedbackResult = await submitCohortFeedback(survey.id, userId, body);
+    if (feedbackResult) return feedbackResult;
 
     const questionTypeMap = new Map(survey.questions.map((q) => [q.id, q.question_type]));
 
@@ -262,6 +269,7 @@ export const surveyService = {
   },
 
   async getAnalytics(id: number, userId: number) {
+    await assertGenericSurvey(id);
     const survey = await prisma.surveys.findFirst({
       where: { id, created_by: userId },
       include: { questions: { include: { options: true }, orderBy: { position: 'asc' } } },
@@ -367,6 +375,7 @@ export const surveyService = {
   },
 
   async delete(id: number, userId: number) {
+    await assertGenericSurvey(id);
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     await prisma.surveys.delete({ where: { id } });
@@ -374,6 +383,7 @@ export const surveyService = {
   },
 
   async update(id: number, userId: number, body: UpdateSurveyBody) {
+    await assertGenericSurvey(id);
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     const survey = await prisma.surveys.update({
@@ -395,6 +405,7 @@ export const surveyService = {
       select: { id: true },
     });
     if (!survey) return;
+    await assertGenericSurvey(survey.id);
     await prisma.survey_partial_submissions.upsert({
       where: { survey_id_session_key: { survey_id: survey.id, session_key: body.session_key } },
       create: { survey_id: survey.id, session_key: body.session_key, last_position: body.last_position },
@@ -403,6 +414,7 @@ export const surveyService = {
   },
 
   async deleteResponse(surveyId: number, userId: number, responseId: number) {
+    await assertGenericSurvey(surveyId);
     const survey = await prisma.surveys.findFirst({ where: { id: surveyId, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const existing = await prisma.survey_responses.findFirst({ where: { id: responseId, survey_id: surveyId } });
@@ -412,6 +424,8 @@ export const surveyService = {
   },
 
   async trackView(externalId: string) {
+    const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true } });
+    if (survey) await assertGenericSurvey(survey.id);
     await prisma.surveys.updateMany({
       where: { external_id: externalId, status: 'active' },
       data: { view_count: { increment: 1 } },
@@ -419,6 +433,7 @@ export const surveyService = {
   },
 
   async getResponse(surveyId: number, userId: number, responseId: number) {
+    await assertGenericSurvey(surveyId);
     const survey = await prisma.surveys.findFirst({ where: { id: surveyId, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const response = await prisma.survey_responses.findFirst({
@@ -443,6 +458,7 @@ export const surveyService = {
   },
 
   async listResponses(id: number, userId: number) {
+    await assertGenericSurvey(id);
     const survey = await prisma.surveys.findFirst({ where: { id, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const responses = await prisma.survey_responses.findMany({

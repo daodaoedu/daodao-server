@@ -5469,6 +5469,11 @@
             "nullable": true,
             "description": "指定第幾天使用此資源（null 代表整段實踐期間皆可使用）",
             "example": 3
+          },
+          "isLocked": {
+            "type": "boolean",
+            "description": "教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除",
+            "example": false
           }
         },
         "required": [
@@ -5500,6 +5505,11 @@
           "isChallenge": {
             "type": "boolean",
             "description": "是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）",
+            "example": false
+          },
+          "isCohortPrivacyLocked": {
+            "type": "boolean",
+            "description": "是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）",
             "example": false
           },
           "practiceAction": {
@@ -5572,6 +5582,11 @@
               "completed",
               "archived"
             ]
+          },
+          "privacyStatus": {
+            "type": "string",
+            "description": "隱私狀態（private／public／delayed）",
+            "example": "public"
           },
           "hasResources": {
             "type": "boolean",
@@ -14446,10 +14461,15 @@
             "description": "待發送數量",
             "example": 20
           },
+          "skippedCount": {
+            "type": "integer",
+            "description": "略過數量（後台停用模板、沒有真的寄出；不計入已發送與成功率）",
+            "example": 15
+          },
           "successRate": {
             "type": "number",
-            "description": "成功率（百分比）",
-            "example": 95
+            "description": "成功率（百分比）＝ sent ÷ (sent + failed)，排除 skipped 與 pending",
+            "example": 96.94
           },
           "openedCount": {
             "type": "integer",
@@ -14467,6 +14487,7 @@
           "sentCount",
           "failedCount",
           "pendingCount",
+          "skippedCount",
           "successRate",
           "openedCount",
           "openRate"
@@ -14708,6 +14729,26 @@
           },
           "actor": {
             "$ref": "#/components/schemas/NotificationActor"
+          },
+          "entityTitle": {
+            "type": "string",
+            "description": "通知關聯內容的名稱",
+            "example": "學習地圖"
+          },
+          "cohortName": {
+            "type": "string",
+            "description": "場次名稱；歷史資料可能缺少",
+            "example": "夏季期"
+          },
+          "message": {
+            "type": "string",
+            "description": "事件說明",
+            "example": "你收到「夏季期」的加入邀請。"
+          },
+          "url": {
+            "type": "string",
+            "description": "有可用目的頁時提供的連結",
+            "example": "https://app.daodao.so/cohorts/join/invitation-token"
           }
         },
         "required": [
@@ -16824,6 +16865,27 @@
             "items": {
               "$ref": "#/components/schemas/QuestionResponse"
             }
+          },
+          "cohort_feedback": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "login_required",
+                  "ineligible",
+                  "ready",
+                  "completed"
+                ]
+              },
+              "privacy_notice": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state",
+              "privacy_notice"
+            ]
           }
         },
         "required": [
@@ -17041,6 +17103,138 @@
             "format": "uri"
           }
         }
+      },
+      "CohortFeedbackResponse": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "sending",
+              "waiting",
+              "available",
+              "legacy"
+            ]
+          },
+          "completedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "eligibleCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "completed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "userId",
+                "name",
+                "completed"
+              ]
+            },
+            "maxItems": 5
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "number",
+                "enum": [
+                  5
+                ]
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ]
+          },
+          "ratingDistribution": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rating": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "rating",
+                "count"
+              ]
+            }
+          },
+          "totalResponses": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "textQuestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "questionId": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "questionId",
+                "title",
+                "answers"
+              ]
+            }
+          }
+        },
+        "required": [
+          "state",
+          "completedCount",
+          "eligibleCount",
+          "participants",
+          "pagination",
+          "ratingDistribution",
+          "totalResponses",
+          "textQuestions"
+        ]
       },
       "RecordIdeaViewResponse": {
         "type": "object",
@@ -21544,6 +21738,12 @@
             "description": "活動課程卡為 cohortId 字串（導向 /cohorts/{id}）；虛擬空間（personal/challenge）為 null",
             "example": "12"
           },
+          "programId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "活動課程卡所屬燈塔系列 id（canManage 時導向管理端 /lighthouse/programs/{programId}/cohorts/{id}）；虛擬空間為 null",
+            "example": 3
+          },
           "name": {
             "type": "string",
             "description": "空間名稱",
@@ -21597,6 +21797,11 @@
             "description": "目前使用者是否為發起人",
             "example": false
           },
+          "canManage": {
+            "type": "boolean",
+            "description": "目前使用者是否為該場次所屬組織成員、可進管理端（前端據此導向 /lighthouse/programs/{programId}/cohorts/{id}/dashboard）",
+            "example": false
+          },
           "lastActivityAt": {
             "type": "string",
             "nullable": true,
@@ -21606,6 +21811,7 @@
         "required": [
           "kind",
           "id",
+          "programId",
           "name",
           "host",
           "memberCount",
@@ -21613,6 +21819,7 @@
           "hasActivePractice",
           "practiceCount",
           "isHost",
+          "canManage",
           "lastActivityAt"
         ]
       },
@@ -29047,19 +29254,20 @@
                           },
                           "canJoin": {
                             "type": "boolean",
-                            "description": "目前是否可加入"
+                            "description": "目前是否可加入（只有未開始的挑戰可加入）"
                           },
                           "unavailableReason": {
                             "type": "string",
                             "nullable": true,
                             "enum": [
                               "ended",
+                              "started",
                               "expired",
                               "full",
                               "paused",
                               null
                             ],
-                            "description": "不可加入原因；可加入時為 null"
+                            "description": "不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null"
                           },
                           "isJoined": {
                             "type": "boolean",
@@ -65346,9 +65554,158 @@
           "Survey"
         ],
         "summary": "取得公開問卷（填寫用）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "問卷公開識別碼"
+            },
+            "required": true,
+            "description": "問卷公開識別碼",
+            "name": "externalId",
+            "in": "path"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "問卷資料"
+            "description": "問卷資料及新期末問卷填答資格",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/SurveyResponse"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
@@ -65362,6 +65719,18 @@
           "Survey"
         ],
         "summary": "提交問卷回應",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "問卷公開識別碼"
+            },
+            "required": true,
+            "description": "問卷公開識別碼",
+            "name": "externalId",
+            "in": "path"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -65374,10 +65743,176 @@
         },
         "responses": {
           "201": {
-            "description": "提交成功"
+            "description": "提交成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "response_id": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "response_id"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "completed": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          },
+                          "required": [
+                            "completed"
+                          ]
+                        }
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
           }
         }
       }
@@ -70135,6 +70670,25 @@
                         "queuedCount": {
                           "type": "integer"
                         },
+                        "sendableCount": {
+                          "type": "integer",
+                          "description": "會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請）"
+                        },
+                        "skippedCount": {
+                          "type": "integer",
+                          "description": "已加入而略過、不重寄的筆數"
+                        },
+                        "blockedReason": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "not_published",
+                            "expired",
+                            "full",
+                            null
+                          ],
+                          "description": "此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null"
+                        },
                         "items": {
                           "type": "array",
                           "items": {
@@ -70180,6 +70734,9 @@
                         "validCount",
                         "errorCount",
                         "queuedCount",
+                        "sendableCount",
+                        "skippedCount",
+                        "blockedReason",
                         "items"
                       ],
                       "description": "The main response data"
@@ -70329,6 +70886,25 @@
                         "queuedCount": {
                           "type": "integer"
                         },
+                        "sendableCount": {
+                          "type": "integer",
+                          "description": "會寄出邀請信的筆數（新邀請、已邀請重寄、曾退出重新邀請）"
+                        },
+                        "skippedCount": {
+                          "type": "integer",
+                          "description": "已加入而略過、不重寄的筆數"
+                        },
+                        "blockedReason": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "not_published",
+                            "expired",
+                            "full",
+                            null
+                          ],
+                          "description": "此期目前不可寄送邀請的原因（未發布／已過加入截止日／已額滿）；可寄送時為 null"
+                        },
                         "items": {
                           "type": "array",
                           "items": {
@@ -70374,6 +70950,9 @@
                         "validCount",
                         "errorCount",
                         "queuedCount",
+                        "sendableCount",
+                        "skippedCount",
+                        "blockedReason",
                         "items"
                       ],
                       "description": "The main response data"
@@ -80013,6 +80592,222 @@
         }
       }
     },
+    "/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/feedback": {
+      "get": {
+        "tags": [
+          "Lighthouse Outcomes"
+        ],
+        "summary": "場次 owner 查看學員回饋及完成進度",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "example": 1
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "example": 1
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "completed",
+                "pending"
+              ],
+              "default": "all",
+              "description": "完成狀態篩選",
+              "example": "all"
+            },
+            "required": false,
+            "description": "完成狀態篩選",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1,
+              "description": "頁碼，每頁最多五人",
+              "example": 1
+            },
+            "required": false,
+            "description": "頁碼，每頁最多五人",
+            "name": "page",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "填答進度與匿名回饋",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/CohortFeedbackResponse"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
     "/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome": {
       "get": {
         "tags": [
@@ -83539,6 +84334,19 @@
                             null
                           ]
                         },
+                        "unavailableReasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "not_published",
+                              "expired",
+                              "full",
+                              "paused"
+                            ]
+                          },
+                          "description": "所有成立的不可加入原因（依優先序，第一個等於 unavailableReason）；可加入時為空陣列"
+                        },
                         "privacy": {
                           "type": "object",
                           "properties": {
@@ -83609,6 +84417,7 @@
                         "inviteMessage",
                         "canJoin",
                         "unavailableReason",
+                        "unavailableReasons",
                         "privacy",
                         "visibilityNotice",
                         "organization"
@@ -85155,19 +85964,20 @@
                           },
                           "canJoin": {
                             "type": "boolean",
-                            "description": "目前是否可加入"
+                            "description": "目前是否可加入（只有未開始的挑戰可加入）"
                           },
                           "unavailableReason": {
                             "type": "string",
                             "nullable": true,
                             "enum": [
                               "ended",
+                              "started",
                               "expired",
                               "full",
                               "paused",
                               null
                             ],
-                            "description": "不可加入原因；可加入時為 null"
+                            "description": "不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null"
                           },
                           "isJoined": {
                             "type": "boolean",
@@ -85407,19 +86217,20 @@
                         },
                         "canJoin": {
                           "type": "boolean",
-                          "description": "目前是否可加入"
+                          "description": "目前是否可加入（只有未開始的挑戰可加入）"
                         },
                         "unavailableReason": {
                           "type": "string",
                           "nullable": true,
                           "enum": [
                             "ended",
+                            "started",
                             "expired",
                             "full",
                             "paused",
                             null
                           ],
-                          "description": "不可加入原因；可加入時為 null"
+                          "description": "不可加入原因；started＝已開始（進行中）不接受新加入；可加入時為 null"
                         },
                         "isJoined": {
                           "type": "boolean",
@@ -89209,20 +90020,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true,
-              "description": "只列某組織底下的挑戰主題"
-            },
-            "required": false,
-            "description": "只列某組織底下的挑戰主題",
-            "name": "organizationId",
-            "in": "query"
-          }
-        ],
         "responses": {
           "200": {
             "description": "主題列表",
@@ -89431,12 +90228,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "organizationId": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true,
-                    "description": "所屬組織 ID（通常為島島官方組織）"
-                  },
                   "name": {
                     "type": "string",
                     "minLength": 1,
@@ -89450,7 +90241,6 @@
                   }
                 },
                 "required": [
-                  "organizationId",
                   "name"
                 ]
               }
@@ -92004,20 +92794,6 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true,
-              "description": "組織 ID（模板隸屬組織）"
-            },
-            "required": true,
-            "description": "組織 ID（模板隸屬組織）",
-            "name": "organizationId",
-            "in": "query"
-          }
-        ],
         "responses": {
           "200": {
             "description": "模板列表",
@@ -92421,16 +93197,10 @@
                       "$ref": "#/components/schemas/PracticeResourceInput"
                     },
                     "maxItems": 5
-                  },
-                  "organizationId": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true
                   }
                 },
                 "required": [
-                  "title",
-                  "organizationId"
+                  "title"
                 ]
               }
             }

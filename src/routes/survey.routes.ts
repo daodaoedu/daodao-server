@@ -10,7 +10,9 @@ import {
   submitResponseBodySchema,
   updateSurveyBodySchema,
   trackPartialBodySchema,
+  surveyResponseSchema,
 } from '@/validators/survey.validators';
+import { apiSuccessResponseSchema } from '@/validators/api-response.validators';
 import { surveyController } from '@/controllers/survey.controller';
 
 const router = Router();
@@ -46,14 +48,15 @@ registry.registerPath({
 registry.registerPath({
   method: 'get', path: '/api/v1/surveys/public/{externalId}', tags: ['Survey'],
   summary: '取得公開問卷（填寫用）',
-  responses: { 200: { description: '問卷資料' }, 404: { $ref: '#/components/responses/NotFoundError' } },
+  request: { params: z.object({ externalId: z.string().openapi({ description: '問卷公開識別碼' }) }) },
+  responses: { 200: { description: '問卷資料及新期末問卷填答資格', content: { 'application/json': { schema: apiSuccessResponseSchema(surveyResponseSchema) } } }, 404: { $ref: '#/components/responses/NotFoundError' } },
 });
 
 registry.registerPath({
   method: 'post', path: '/api/v1/surveys/public/{externalId}/responses', tags: ['Survey'],
   summary: '提交問卷回應',
-  request: { body: { content: { 'application/json': { schema: submitResponseBodySchema } }, required: true } },
-  responses: { 201: { description: '提交成功' }, 404: { $ref: '#/components/responses/NotFoundError' } },
+  request: { params: z.object({ externalId: z.string().openapi({ description: '問卷公開識別碼' }) }), body: { content: { 'application/json': { schema: submitResponseBodySchema } }, required: true } },
+  responses: { 201: { description: '提交成功', content: { 'application/json': { schema: apiSuccessResponseSchema(z.union([z.object({ response_id: z.number() }), z.object({ completed: z.literal(true) })])) } } }, 401: { $ref: '#/components/responses/UnauthorizedError' }, 403: { $ref: '#/components/responses/ForbiddenError' }, 409: { $ref: '#/components/responses/ConflictError' }, 404: { $ref: '#/components/responses/NotFoundError' } },
 });
 
 registry.registerPath({

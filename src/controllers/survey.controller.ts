@@ -33,7 +33,7 @@ export const surveyController = {
   }),
 
   getPublic: asyncHandler(async (req: Request, res: Response) => {
-    const result = await surveyService.getPublic(req.params.externalId);
+    const result = await surveyService.getPublic(req.params.externalId, req.user?.id ?? null);
     if (!result) throw new NotFoundError('問卷不存在或尚未開放');
     res.json(result);
   }),
