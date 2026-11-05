@@ -21,10 +21,10 @@ if(tool==='git'){
  else out('fake git');
 }else if(tool==='pnpm'){
  if(a[0]==='test'){
+  if(mode==='hang'){process.on('SIGTERM',()=>{fs.writeFileSync(home+'/stopped','yes');process.exit(0)});setInterval(()=>{},1000);}
   fs.writeFileSync(home+'/testing','yes');
   out(process.env.DATABASE_URL);out(new URL(process.env.DATABASE_URL).password);
-  if(mode==='hang'){process.on('SIGTERM',()=>{fs.writeFileSync(home+'/stopped','yes');process.exit(0)});setInterval(()=>{},1000);}
-  else fail(mode==='exit37'?37:0);
+  if(mode!=='hang')fail(mode==='exit37'?37:0);
  }else if(a.includes('types:generate')&&mode==='types-fail')fail(31);
  else out('fake pnpm');
 }else{
