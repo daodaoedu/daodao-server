@@ -1,3 +1,4 @@
+import { cohortTimezoneSchema, cohortSessionSchema } from './cohort.validators';
 import { z } from 'zod';
 import { COHORT_INTERACTION_MODES, COHORT_FEE_TYPES, COHORT_SIGNUP_METHODS } from '../constants/cohort-setup';
 
@@ -6,12 +7,7 @@ const feeTypeSchema = z.enum(COHORT_FEE_TYPES);
 const signupMethodSchema = z.enum(COHORT_SIGNUP_METHODS);
 
 /** 聚會時段（回應用） */
-const sessionSchema = z.object({
-  id: z.number().int(),
-  sessionDate: z.string(),
-  startTime: z.string().nullable(),
-  endTime: z.string().nullable()
-});
+const sessionSchema = cohortSessionSchema;
 
 export const activityParamsSchema = z.object({
   cohortId: z.coerce.number().int().positive().openapi({ description: '活動（期）ID', example: 1 })
@@ -70,6 +66,7 @@ export const activityListMetaSchema = z.object({
 export const activityListResponseSchema = z.array(activitySummarySchema);
 
 export const activityDetailResponseSchema = activitySummarySchema.extend({
+  timezone: cohortTimezoneSchema,
   sessions: z.array(sessionSchema).openapi({ description: '聚會時段' }),
   externalSignupUrl: z.string().nullable().openapi({ description: '外部報名連結' }),
   organization: z.object({

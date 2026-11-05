@@ -1,3 +1,4 @@
+import { cohortRecurrenceRuleSchema } from '../validators/cohort.validators';
 import type { CreateCohortInput, CohortResponse, OrganizationCohortResponse, UpdateCohortInput, CohortUpdateResult, CohortSessionInput } from '../validators/cohort.validators';
 import { ACTIVE_PROGRAM_WHERE, COHORT_ARCHIVE_REASONS } from '../constants/archive-state';
 import { writeLighthouseAudit } from '../utils/lighthouse-audit';
@@ -15,11 +16,11 @@ const select = {
   start_date: true, end_date: true, join_token: true, join_paused: true,
   join_deadline: true, capacity: true, invite_message: true,
   show_invite_message_on_signup: true,
-  interaction_modes: true, meeting_url: true, location: true,
+  interaction_modes: true, timezone: true, meeting_url: true, location: true,
   fee_type: true, fee_amount: true, signup_method: true, external_signup_url: true,
   is_private: true, checkin_default_private: true, host_comment_default_private: true,
   status: true, visibility: true, archived_at: true, created_at: true, updated_at: true,
-  cohort_sessions: { select: { id: true, session_date: true, start_time: true, end_time: true, position: true }, orderBy: { position: 'asc' as const } },
+  cohort_sessions: { select: { id: true, session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true }, orderBy: { position: 'asc' as const } },
   _count: { select: { cohort_sessions: true } }
 } as const;
 
@@ -29,11 +30,11 @@ type CohortRow = {
   start_date: Date; end_date: Date; join_token: string | null; join_paused: boolean;
   join_deadline: Date | null; capacity: number | null; invite_message: string | null;
   show_invite_message_on_signup: boolean;
-  interaction_modes: string[]; meeting_url: string | null; location: string | null;
+  interaction_modes: string[]; timezone: string; meeting_url: string | null; location: string | null;
   fee_type: string; fee_amount: number | null; signup_method: string; external_signup_url: string | null;
   is_private: boolean; checkin_default_private: boolean; host_comment_default_private: boolean;
   status: string; visibility: string; archived_at?: Date | null; created_at: Date; updated_at: Date | null;
-  cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>;
+  cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number; recurrence_group_id?: string | null; recurrence_rule?: unknown }>;
   _count: { cohort_sessions: number };
 };
 
@@ -71,12 +72,15 @@ const map = (row: CohortRow): CohortResponse => ({
   joinDeadline: row.join_deadline, capacity: row.capacity, inviteMessage: row.invite_message,
   showInviteMessageOnSignup: row.show_invite_message_on_signup,
   interactionModes: asInteractionModes(row.interaction_modes),
+  timezone: row.timezone ?? 'Asia/Taipei',
   meetingUrl: row.meeting_url, location: row.location,
   sessions: row.cohort_sessions.map(s => ({
     id: s.id,
     sessionDate: formatDate(s.session_date),
     startTime: formatTime(s.start_time),
-    endTime: formatTime(s.end_time)
+    endTime: formatTime(s.end_time),
+    recurrenceGroupId: s.recurrence_group_id ?? null,
+    recurrenceRule: s.recurrence_rule ? cohortRecurrenceRuleSchema.parse(s.recurrence_rule) : null
   })),
   feeType: asFeeType(row.fee_type), feeAmount: row.fee_amount,
   signupMethod: asSignupMethod(row.signup_method), externalSignupUrl: row.external_signup_url,
@@ -301,6 +305,7 @@ const create = async (programId: number, input: CreateCohortInput, userId: numbe
           invite_message: input.inviteMessage ?? null,
           show_invite_message_on_signup: input.showInviteMessageOnSignup ?? false,
           interaction_modes: interactionModes,
+          timezone: input.timezone ?? 'Asia/Taipei',
           meeting_url: normalized.meetingUrl,
           location: normalized.location,
           fee_type: feeType,
@@ -324,6 +329,8 @@ const create = async (programId: number, input: CreateCohortInput, userId: numbe
             session_date: date(s.sessionDate),
             start_time: toTime(s.startTime),
             end_time: toTime(s.endTime),
+            recurrence_group_id: s.recurrenceGroupId ?? null,
+            ...(s.recurrenceRule && { recurrence_rule: s.recurrenceRule }),
             position: i
           }))
         });
@@ -372,6 +379,13 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
     sessions: input.sessions
   });
 
+  // 舊版省略欄位不等於明確解除分組；manual null/null 也不是實際規律資料。
+  if (!normalized.clearSessions && current.cohort_sessions.some(session => session.recurrence_group_id)
+      && input.sessions?.some(session => session.recurrenceGroupId === undefined || session.recurrenceRule === undefined)
+      && !input.sessions.some(session => session.recurrenceGroupId != null && session.recurrenceRule != null)) {
+    throw new ConflictError('聚會規律資料已更新，請重新載入場次後再儲存');
+  }
+
   const isPrivacyChanged = input.isPrivate !== undefined && input.isPrivate !== current.is_private;
 
   try {
@@ -388,6 +402,7 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
           ...(input.capacity !== undefined && { capacity: input.capacity }),
           ...(input.inviteMessage !== undefined && { invite_message: input.inviteMessage }),
           ...(input.showInviteMessageOnSignup !== undefined && { show_invite_message_on_signup: input.showInviteMessageOnSignup }),
+          ...(input.timezone !== undefined && { timezone: input.timezone }),
           ...(input.interactionModes !== undefined && { interaction_modes: mergedInteractionModes }),
           meeting_url: normalized.meetingUrl,
           location: normalized.location,
@@ -418,6 +433,8 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
               session_date: date(s.sessionDate),
               start_time: toTime(s.startTime),
               end_time: toTime(s.endTime),
+              recurrence_group_id: s.recurrenceGroupId ?? null,
+              ...(s.recurrenceRule && { recurrence_rule: s.recurrenceRule }),
               position: i
             }))
           });
@@ -484,7 +501,7 @@ const archive = async (programId: number, cohortId: number, userId: number): Pro
 const duplicate = async (programId: number, cohortId: number, actorId: number): Promise<CohortResponse> => {
   const source = await getOwned(programId, cohortId, actorId);
   const bindings = await prisma.cohort_templates.findMany({ where: { cohort_id: cohortId, unbound_at: null }, select: { template_id: true, start_date: true } });
-  const sessions = await prisma.cohort_sessions.findMany({ where: { cohort_id: cohortId }, select: { session_date: true, start_time: true, end_time: true, position: true }, orderBy: { position: 'asc' } });
+  const sessions = await prisma.cohort_sessions.findMany({ where: { cohort_id: cohortId }, select: { session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true }, orderBy: { position: 'asc' } });
 
   const data = {
     program_id: programId,
@@ -497,6 +514,7 @@ const duplicate = async (programId: number, cohortId: number, actorId: number): 
     invite_message: source.invite_message,
     show_invite_message_on_signup: source.show_invite_message_on_signup,
     interaction_modes: source.interaction_modes,
+    timezone: source.timezone ?? 'Asia/Taipei',
     meeting_url: source.meeting_url,
     location: source.location,
     fee_type: source.fee_type,
@@ -522,6 +540,8 @@ const duplicate = async (programId: number, cohortId: number, actorId: number): 
               session_date: s.session_date,
               start_time: s.start_time,
               end_time: s.end_time,
+              recurrence_group_id: s.recurrence_group_id,
+              ...(s.recurrence_rule && { recurrence_rule: cohortRecurrenceRuleSchema.parse(s.recurrence_rule) }),
               position: s.position
             }))
           });
