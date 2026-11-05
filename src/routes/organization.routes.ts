@@ -138,7 +138,7 @@ registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{progr
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement-draft', tags: ['Lighthouse Feed'], summary: '產生可編輯的鼓勵文字草稿', security: [{ bearerAuth: [] }], request: { params: cohortCheckinParamsSchema }, responses: { 200: { description: '鼓勵草稿', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortEncouragementDraftResponseSchema) } } }, 410: { description: '本期內容已超過保留期限' }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement', tags: ['Lighthouse Feed'], summary: '確認並送出編輯後的鼓勵留言', security: [{ bearerAuth: [] }], request: { params: cohortCheckinParamsSchema, body: { content: { 'application/json': { schema: submitCohortEncouragementSchema } } } }, responses: { 201: { description: '鼓勵留言已送出', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortEncouragementResponseSchema) } } }, 410: { description: '本期內容已超過保留期限' }, ...authErrors } });
 registry.registerPath({
-  method: 'post', path: '/api/v1/lighthouse/organizations', tags: ['Lighthouse Organizations'],
+  method: 'post', path: '/api/v1/lighthouse/admin/organizations', tags: ['Lighthouse Organizations'],
   summary: 'Admin 建立並開通組織', security: [{ bearerAuth: [] }],
   request: { body: { content: { 'application/json': { schema: createOrganizationSchema } } } },
   responses: { 201: { description: '組織已建立', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationResponseSchema) } } }, ...authErrors }

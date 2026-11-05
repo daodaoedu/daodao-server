@@ -42740,6 +42740,146 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '403': &ref_114
           $ref: '#/components/responses/ForbiddenError'
+  /api/v1/lighthouse/admin/organizations:
+    get:
+      tags:
+        - Lighthouse Organizations
+      summary: Admin 取得全部組織
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 組織列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - true
+                    description: Indicates successful API response
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        bio:
+                          type: string
+                          nullable: true
+                        externalLink:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - suspended
+                        approvedBy:
+                          type: integer
+                          nullable: true
+                        approvedAt:
+                          type: string
+                          nullable: true
+                          format: date-time
+                        timezone:
+                          type: string
+                          description: IANA 時區；動態頁最近 7 天與已開始場次判定的基準，預設 Asia/Taipei
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          nullable: true
+                          format: date-time
+                          description: 組織資訊最後更新時間
+                      required:
+                        - id
+                        - name
+                        - bio
+                        - externalLink
+                        - status
+                        - approvedBy
+                        - approvedAt
+                        - timezone
+                        - createdAt
+                        - updatedAt
+                    description: The main response data
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: ISO 8601 timestamp of the response
+                  meta:
+                    type: object
+                    properties:
+                      searchQuery:
+                        type: string
+                        description: Search query used for filtering results
+                      searchTime:
+                        type: number
+                        minimum: 0
+                        description: Time taken to execute the search query in milliseconds
+                      filters:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Applied filters for the request
+                      categoryCounts:
+                        type: object
+                        additionalProperties:
+                          type: integer
+                          minimum: 0
+                        description: Count of items per category
+                      aggregateData:
+                        type: object
+                        additionalProperties:
+                          nullable: true
+                        description: Aggregated statistical data
+                      requestId:
+                        type: string
+                        description: Unique identifier for request tracking
+                      cacheHit:
+                        type: boolean
+                        description: Whether the response was served from cache
+                      processingTime:
+                        type: number
+                        minimum: 0
+                        description: Total processing time in milliseconds
+                    additionalProperties:
+                      nullable: true
+                    description: Optional metadata about the response
+                    examples: *ref_0
+                required:
+                  - success
+                  - data
+                  - timestamp
+                description: Standard success response format
+                examples:
+                  - success: true
+                    data:
+                      id: 123
+                      _id: 550e8400-e29b-41d4-a716-446655440000
+                      name: JavaScript 基礎教程
+                      description: 從零開始學習 JavaScript 程式設計
+                      status: published
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                  - success: true
+                    data:
+                      userId: 456
+                      username: john_doe
+                      email: john@example.com
+                      role: student
+                    timestamp: '2024-01-15T10:30:00.000Z'
+                    meta:
+                      cacheHit: true
+                      processingTime: 23.1
+        '401': *ref_113
+        '403': *ref_114
     post:
       tags:
         - Lighthouse Organizations
@@ -42839,146 +42979,6 @@ paths:
                       - timezone
                       - createdAt
                       - updatedAt
-                    description: The main response data
-                  timestamp:
-                    type: string
-                    format: date-time
-                    description: ISO 8601 timestamp of the response
-                  meta:
-                    type: object
-                    properties:
-                      searchQuery:
-                        type: string
-                        description: Search query used for filtering results
-                      searchTime:
-                        type: number
-                        minimum: 0
-                        description: Time taken to execute the search query in milliseconds
-                      filters:
-                        type: object
-                        additionalProperties:
-                          nullable: true
-                        description: Applied filters for the request
-                      categoryCounts:
-                        type: object
-                        additionalProperties:
-                          type: integer
-                          minimum: 0
-                        description: Count of items per category
-                      aggregateData:
-                        type: object
-                        additionalProperties:
-                          nullable: true
-                        description: Aggregated statistical data
-                      requestId:
-                        type: string
-                        description: Unique identifier for request tracking
-                      cacheHit:
-                        type: boolean
-                        description: Whether the response was served from cache
-                      processingTime:
-                        type: number
-                        minimum: 0
-                        description: Total processing time in milliseconds
-                    additionalProperties:
-                      nullable: true
-                    description: Optional metadata about the response
-                    examples: *ref_0
-                required:
-                  - success
-                  - data
-                  - timestamp
-                description: Standard success response format
-                examples:
-                  - success: true
-                    data:
-                      id: 123
-                      _id: 550e8400-e29b-41d4-a716-446655440000
-                      name: JavaScript 基礎教程
-                      description: 從零開始學習 JavaScript 程式設計
-                      status: published
-                    timestamp: '2024-01-15T10:30:00.000Z'
-                  - success: true
-                    data:
-                      userId: 456
-                      username: john_doe
-                      email: john@example.com
-                      role: student
-                    timestamp: '2024-01-15T10:30:00.000Z'
-                    meta:
-                      cacheHit: true
-                      processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
-  /api/v1/lighthouse/admin/organizations:
-    get:
-      tags:
-        - Lighthouse Organizations
-      summary: Admin 取得全部組織
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: 組織列表
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    enum:
-                      - true
-                    description: Indicates successful API response
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        name:
-                          type: string
-                        bio:
-                          type: string
-                          nullable: true
-                        externalLink:
-                          type: string
-                          nullable: true
-                        status:
-                          type: string
-                          enum:
-                            - active
-                            - suspended
-                        approvedBy:
-                          type: integer
-                          nullable: true
-                        approvedAt:
-                          type: string
-                          nullable: true
-                          format: date-time
-                        timezone:
-                          type: string
-                          description: IANA 時區；動態頁最近 7 天與已開始場次判定的基準，預設 Asia/Taipei
-                        createdAt:
-                          type: string
-                          format: date-time
-                        updatedAt:
-                          type: string
-                          nullable: true
-                          format: date-time
-                          description: 組織資訊最後更新時間
-                      required:
-                        - id
-                        - name
-                        - bio
-                        - externalLink
-                        - status
-                        - approvedBy
-                        - approvedAt
-                        - timezone
-                        - createdAt
-                        - updatedAt
                     description: The main response data
                   timestamp:
                     type: string
