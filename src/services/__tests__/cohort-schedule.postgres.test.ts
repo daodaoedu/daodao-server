@@ -4,7 +4,7 @@ import { prisma } from '../database/prisma.service';
 import { cohortService } from '../cohort.service';
 import { cohortJoinService } from '../cohort-join.service';
 import { activityService } from '../activity.service';
-import { createCohortSchema } from '../../validators/cohort.validators';
+import { createCohortSchema, updateCohortSchema } from '../../validators/cohort.validators';
 
 const suite = process.env.RUN_COHORT_SCHEDULE_POSTGRES === '1' ? describe : describe.skip;
 suite('cohort schedule actual PostgreSQL round-trip', () => {
@@ -119,6 +119,33 @@ suite('cohort schedule actual PostgreSQL round-trip', () => {
     const expected = [...sessions, { ...manual, recurrenceGroupId: null, recurrenceRule: null }];
     expect(updated.sessions.map(({ id: _id, ...session }) => session)).toEqual(expected);
     expect((await cohortService.get(program, created.id, actor)).sessions.map(({ id: _id, ...session }) => session)).toEqual(expected);
+  });
+
+
+  it('rejects legacy omissions even when manual occurrences explicitly contain null pairs, without writing any rows', async () => {
+    const created = await cohortService.create(program, createCohortSchema.parse({
+      slug: 'null-manual-legacy', displayName: '347 null manual guard', startDate: '2026-11-01', endDate: '2099-12-31',
+      interactionModes: ['sync'], sessions
+    }), actor);
+    cohortIds.push(created.id);
+    const before = await prisma.cohort_sessions.findMany({
+      where: { cohort_id: created.id }, orderBy: { position: 'asc' }
+    });
+    for (const explicitManualIndices of [[2], [3], [2, 3]]) {
+      const replacement = sessions.map(({ sessionDate, startTime, endTime }, index) => ({
+        sessionDate, startTime, endTime,
+        ...(explicitManualIndices.includes(index) ? { recurrenceGroupId: null, recurrenceRule: null } : {})
+      }));
+      const input = updateCohortSchema.parse({ displayName: 'must not save', sessions: replacement });
+      await expect(cohortService.update(program, created.id, input, actor)).rejects.toMatchObject({ statusCode: 409 });
+      expect(await prisma.cohort_sessions.findMany({
+        where: { cohort_id: created.id }, orderBy: { position: 'asc' }
+      })).toEqual(before);
+      expect((await cohortService.get(program, created.id, actor)).displayName).toBe(created.displayName);
+    }
+    const cleared = await cohortService.update(program, created.id, { sessions: [] }, actor);
+    expect(cleared.sessions).toEqual([]);
+    expect((await cohortService.get(program, created.id, actor)).sessions).toEqual([]);
   });
 
 });

@@ -379,10 +379,10 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
     sessions: input.sessions
   });
 
-  // 舊版全量表單沒有規律欄位，不能將缺欄位誤解為使用者明確解除分組。
+  // 舊版省略欄位不等於明確解除分組；manual null/null 也不是實際規律資料。
   if (!normalized.clearSessions && current.cohort_sessions.some(session => session.recurrence_group_id)
       && input.sessions?.some(session => session.recurrenceGroupId === undefined || session.recurrenceRule === undefined)
-      && !input.sessions.some(session => session.recurrenceGroupId !== undefined && session.recurrenceRule !== undefined)) {
+      && !input.sessions.some(session => session.recurrenceGroupId != null && session.recurrenceRule != null)) {
     throw new ConflictError('聚會規律資料已更新，請重新載入場次後再儲存');
   }
 
