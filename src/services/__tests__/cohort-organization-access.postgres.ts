@@ -18,6 +18,7 @@ import { cohortExportService } from '../cohort-export.service';
 import { cohortFeedService } from '../cohort-feed.service';
 import { cohortFocusService } from '../cohort-focus.service';
 import { cohortOutcomeService } from '../cohort-outcome.service';
+import { cohortActivityService } from '../cohort-activity.service';
 import { commentService } from '../comment.service';
 
 const actor = 27701;
@@ -33,7 +34,17 @@ const cases = [
   ['dashboard', (): Promise<unknown> => cohortDashboardService.get(id, id, actor, {}, now)],
   ['participants', (): Promise<unknown> => cohortDashboardService.listParticipants(id, id, actor, { sort: 'nickname', order: 'asc' }, now)],
   ['focus', (): Promise<unknown> => cohortFocusService.get(id, id, actor, now)],
-  ['coach feed', (): Promise<unknown> => cohortFeedService.get(id, actor, 20, 0, id)]
+  ['coach feed', (): Promise<unknown> => cohortFeedService.get(id, actor, 20, 0, id)],
+  ['activity list', async (): Promise<unknown> => {
+    const response = await cohortActivityService.list(id, id, actor, { hasText: false, limit: 50, offset: 0 }, now);
+    expect(response.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: String(id), summary: '組織私密打卡' })]));
+    return response;
+  }],
+  ['activity detail', async (): Promise<unknown> => {
+    const response = await cohortActivityService.get(id, id, actor, 'checkin', String(id), now);
+    expect(response).toMatchObject({ id: String(id), detail: '組織私密打卡' });
+    return response;
+  }]
 ] as const;
 
 beforeAll(async () => {

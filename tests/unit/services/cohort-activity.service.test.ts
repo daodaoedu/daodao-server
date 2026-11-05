@@ -4,7 +4,7 @@ import { cohortActivityService } from '@/services/cohort-activity.service';
 import { ForbiddenError, NotFoundError } from '@/middleware/error.middleware';
 
 const now = new Date('2026-09-11T12:00:00.000Z'); // 台北 2026-09-11 20:00
-const allow = () => prismaMock.cohorts.findFirst.mockResolvedValue({ id: 2, program: { organization: { timezone: 'Asia/Taipei', organization_members: [{ id: 1 }] } } } as never);
+const allow = () => prismaMock.cohorts.findFirst.mockResolvedValue({ id: 2, program: { organization: { timezone: 'Asia/Taipei', status: 'active', organization_members: [{ id: 1 }] } } } as never);
 const baseQuery = { hasText: false, limit: 50, offset: 0 };
 const rows = [
   { type: 'checkin', id: '10', occurred_at: new Date('2026-09-11T01:00:00.000Z'), user_id: 5, nickname: '小明', avatar: null, practice_id: 7, practice_title: '晨間書寫', summary: '今天寫了三行', has_text: true, detail: '今天寫了三行', meta: { mood: 'good', imageCount: 0, commentCount: 1 } },
