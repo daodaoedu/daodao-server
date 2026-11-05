@@ -1,3 +1,4 @@
+import { cohortRecurrenceRuleSchema } from '../validators/cohort.validators';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { ensureCohortDrafts } from './cohort-draft.service';
@@ -19,6 +20,7 @@ const cohortSelect = {
   invite_message: true,
   show_invite_message_on_signup: true,
   tagline: true,
+  timezone: true,
   interaction_modes: true,
   meeting_url: true,
   location: true,
@@ -32,7 +34,7 @@ const cohortSelect = {
   status: true,
   join_paused: true,
   cohort_sessions: {
-    select: { id: true, session_date: true, start_time: true, end_time: true, position: true },
+    select: { id: true, session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true },
     orderBy: { position: 'asc' as const }
   },
   program: { select: { organization: { select: { name: true, bio: true, external_link: true } } } }
@@ -45,12 +47,14 @@ const formatTime = (value: Date | null): string | null => {
   return value.toISOString().slice(11, 16);
 };
 
-const mapSessions = (sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>) =>
+const mapSessions = (sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number; recurrence_group_id?: string | null; recurrence_rule?: unknown }>) =>
   sessions.map(s => ({
     id: s.id,
     sessionDate: day(s.session_date),
     startTime: formatTime(s.start_time),
-    endTime: formatTime(s.end_time)
+    endTime: formatTime(s.end_time),
+    recurrenceGroupId: s.recurrence_group_id ?? null,
+    recurrenceRule: s.recurrence_rule ? cohortRecurrenceRuleSchema.parse(s.recurrence_rule) : null
   }));
 
 const resolveJoinTarget = async (token: string) => {
@@ -85,6 +89,7 @@ const getJoinInfoForTarget = async (target: Awaited<ReturnType<typeof resolveJoi
     cohortId: cohort.id, displayName: cohort.display_name, startDate: cohort.start_date, endDate: cohort.end_date,
     tagline: cohort.tagline,
     interactionModes: cohort.interaction_modes,
+    timezone: cohort.timezone ?? 'Asia/Taipei',
     location: cohort.location,
     sessions: mapSessions(cohort.cohort_sessions),
     feeType: cohort.fee_type,
@@ -194,10 +199,10 @@ const getMemberHome = async (cohortId: number, userId: number) => {
       cohort: {
         select: {
           id: true, display_name: true, start_date: true, end_date: true,
-          tagline: true, interaction_modes: true, meeting_url: true, location: true,
+          tagline: true, timezone: true, interaction_modes: true, meeting_url: true, location: true,
           fee_type: true, is_private: true, checkin_default_private: true, host_comment_default_private: true,
           cohort_sessions: {
-            select: { id: true, session_date: true, start_time: true, end_time: true, position: true },
+            select: { id: true, session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true },
             orderBy: { position: 'asc' as const }
           },
           program: { select: { organization: { select: { name: true, bio: true, external_link: true } } } }
@@ -230,6 +235,7 @@ const getMemberHome = async (cohortId: number, userId: number) => {
     endDate: cohort.end_date,
     tagline: cohort.tagline,
     interactionModes: cohort.interaction_modes,
+    timezone: cohort.timezone ?? 'Asia/Taipei',
     meetingUrl: cohort.meeting_url,
     location: cohort.location,
     sessions: mapSessions(cohort.cohort_sessions),
