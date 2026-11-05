@@ -10,6 +10,7 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { PUBLIC_RESOURCE_WHERE } from '../constants/resource-visibility';
 import type { Prisma } from '../../generated/prisma';
 import idConverter, { EntityType } from './id-converter.service';
 import {
@@ -720,11 +721,11 @@ export class CommentService implements CommentServiceInterface {
       }
 
       case 'resource': {
-        const resource = await prisma.resources.findUnique({
-          where: { id: internalId },
+        const resource = await prisma.resources.findFirst({
+          where: { id: internalId, ...PUBLIC_RESOURCE_WHERE, deleted_at: null },
           select: { id: true, created_by: true }
         });
-        if (resource) {
+        if (resource && resource.created_by !== null) {
           entity = { id: resource.id, user_id: resource.created_by };
         }
         break;

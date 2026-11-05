@@ -185,6 +185,8 @@ describe('Resource Service', () => {
       // Assert: Verify behavior and database calls
       expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           external_id: resourceId,
           deleted_at: null
         },
@@ -211,6 +213,13 @@ describe('Resource Service', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should return 404 for an orphaned author rather than invent an identity', async () => {
+      const orphan = { ...createTestResourceWithRelations(), users: null };
+      prismaMock.resources.findFirst.mockResolvedValue(orphan);
+      await expect(resourceService.getResourceById('orphan-resource')).rejects.toThrow('資源不存在');
+      expect(mockTransformService.transformResourceToApi).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundError when resource not found', async () => {
       // Arrange: Resource doesn't exist
       const resourceId = 'non-existent-uuid';
@@ -223,6 +232,8 @@ describe('Resource Service', () => {
         
       expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           external_id: resourceId,
           deleted_at: null
         },
@@ -243,7 +254,7 @@ describe('Resource Service', () => {
           categories_resources_major_category_idTocategories: null,
           categories_resources_sub_category_idTocategories: null
         }),
-        users: null // Test handling of null user
+        users: { id: 1, nickname: 'Test User', contacts: null } // Author is required; optional categories remain null
       };
       
       const mockReviewStats = {
@@ -272,7 +283,7 @@ describe('Resource Service', () => {
         expect.objectContaining({
           external_id: resourceId,
           name: 'Test Resource',
-          User: null,
+          User: { id: 1, nickname: 'Test User', contacts: null },
           majorCategory: null,
           subCategory: null,
           tags: expect.arrayContaining([])
@@ -298,7 +309,7 @@ describe('Resource Service', () => {
 
       // Assert: Verify database calls and response
       expect(prismaMock.resources.findMany).toHaveBeenCalledWith({
-        where: { deleted_at: null },
+        where: { cohort_template_resources: { is: null }, users: { isNot: null }, deleted_at: null },
         include: expect.objectContaining({
           users: expect.any(Object),
           categories_resources_major_category_idTocategories: expect.any(Object),
@@ -334,6 +345,8 @@ describe('Resource Service', () => {
       // Assert: Verify where conditions
       expect(prismaMock.resources.findMany).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           deleted_at: null,
           type: 'books_articles',
           cost: 'free',
@@ -632,8 +645,8 @@ describe('Resource Service', () => {
       prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
       prismaMock.resources.update.mockResolvedValue(existingResource);
 
-      // Mock the internal getResourceById database calls
-      prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
+      // Public detail includes the persisted real author after transaction commit.
+      prismaMock.resources.findFirst.mockResolvedValueOnce({ ...createTestResourceWithRelations(), ...existingResource });
       prismaMock.$queryRaw.mockResolvedValueOnce([]);
       prismaMock.resource_review.aggregate.mockResolvedValueOnce({
         _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
@@ -647,6 +660,8 @@ describe('Resource Service', () => {
       // Assert: Verify update operations
       expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           id: 1, // Using the mocked internal ID
           deleted_at: null
         }
@@ -713,8 +728,8 @@ describe('Resource Service', () => {
       prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
       prismaMock.resources.update.mockResolvedValue(existingResource);
 
-      // Mock the internal getResourceById database calls
-      prismaMock.resources.findFirst.mockResolvedValueOnce(existingResource);
+      // Public detail includes the persisted real author after transaction commit.
+      prismaMock.resources.findFirst.mockResolvedValueOnce({ ...createTestResourceWithRelations(), ...existingResource });
       prismaMock.$queryRaw.mockResolvedValueOnce([]);
       prismaMock.resource_review.aggregate.mockResolvedValueOnce({
         _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
@@ -741,7 +756,7 @@ describe('Resource Service', () => {
       prismaMock.resources.update.mockResolvedValue(existingResource);
       // getResourceById 讀到的內容取決於交易是否已提交
       prismaMock.resources.findFirst.mockImplementationOnce((async () =>
-        ({ ...existingResource, name: committed ? '新名稱' : '舊名稱' })) as any);
+        ({ ...createTestResourceWithRelations(), ...existingResource, name: committed ? '新名稱' : '舊名稱' })) as any);
       prismaMock.$queryRaw.mockResolvedValueOnce([]);
       prismaMock.resource_review.aggregate.mockResolvedValueOnce({
         _avg: { score_impact: null, score_mindset: null, score_problems: null, score_perspectives: null, score_goals: null },
@@ -776,6 +791,8 @@ describe('Resource Service', () => {
       // Assert: Verify soft delete operation
       expect(prismaMock.resources.findFirst).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           external_id: resourceId,
           deleted_at: null
         }
@@ -783,6 +800,8 @@ describe('Resource Service', () => {
 
       expect(prismaMock.resources.update).toHaveBeenCalledWith({
         where: {
+          cohort_template_resources: { is: null },
+          users: { isNot: null },
           external_id: resourceId,
           deleted_at: null
         },
@@ -904,10 +923,10 @@ describe('Resource Service', () => {
 
       // Assert: Verify user-filtered queries
       expect(prismaMock.resources.count).toHaveBeenNthCalledWith(1, {
-        where: { created_by: userId }
+        where: { cohort_template_resources: { is: null }, users: { isNot: null }, created_by: userId }
       });
       expect(prismaMock.resources.count).toHaveBeenNthCalledWith(2, {
-        where: { deleted_at: null, created_by: userId, status: 'active' }
+        where: { cohort_template_resources: { is: null }, users: { isNot: null }, deleted_at: null, created_by: userId, status: 'active' }
       });
 
       expect(result.success).toBe(true);
@@ -925,7 +944,7 @@ describe('Resource Service', () => {
             categories_resources_major_category_idTocategories: null,
             categories_resources_sub_category_idTocategories: null
           }),
-          users: null
+          users: { id: 1, nickname: 'Test User', contacts: null }
         };
         
         prismaMock.resources.findFirst.mockResolvedValue(resourceWithNulls);
@@ -948,7 +967,7 @@ describe('Resource Service', () => {
             video_url: null,
             categories_resources_major_category_idTocategories: null,
             categories_resources_sub_category_idTocategories: null,
-            users: null
+            users: { id: 1, nickname: 'Test User', contacts: null }
           })
         );
       });

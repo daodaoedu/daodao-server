@@ -7,11 +7,12 @@
  */
 
 import { Request, Response } from 'express';
+import type { AllowedPracticeTimePeriod } from '../utils/practice-time-periods';
 
 // Core enums and basic types - 基於 Prisma schema
 export type PracticeStatus = 'draft' | 'not_started' | 'active' | 'completed' | 'archived';
 export type CheckInMood = 'give_up' | 'frustrated' | 'bored' | 'neutral' | 'good' | 'happy';
-export type PracticeTimePeriod = 'morning' | 'afternoon' | 'evening' | 'night';
+export type PracticeTimePeriod = AllowedPracticeTimePeriod;
 export type SortField = 'createdAt' | 'updatedAt' | 'likeCount';
 export type SortOrder = 'asc' | 'desc';
 export type EventType = 'practice';
@@ -46,6 +47,7 @@ export interface PracticeProgressConfig {
 
 // Practice resource response interface
 export interface PracticeResourceEntity {
+  relevantDate?: string | null;
   id: string;
   name: string;
   url?: string;
@@ -57,6 +59,7 @@ export interface PracticeResourceEntity {
 
 // Core practice entity interface - 基於 Prisma schema practices 表
 export interface PracticeEntity {
+  isCohortPractice?: boolean;
   id: string;
   title: string;
   /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
@@ -192,6 +195,9 @@ export interface UpdatePracticeRequest {
   otherContext?: string;
   tags?: string[];
   resources?: Array<{
+    id?: string;
+    relevantDate?: string | null;
+    dayNumber?: number | null;
     name: string;
     url?: string;
   }>;

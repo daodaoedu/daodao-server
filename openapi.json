@@ -4771,6 +4771,19 @@
       "PracticeResourceInput": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "既有資源 UUID；共用資源更新時保持原識別碼",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期；學員不得更動",
+            "example": "2027-01-01"
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -4827,6 +4840,13 @@
       "PracticeResource": {
         "type": "object",
         "properties": {
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期，不限制可見性",
+            "example": "2027-01-01"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5447,6 +5467,13 @@
       "PracticeResourceEntity": {
         "type": "object",
         "properties": {
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期，不限制可見性",
+            "example": "2027-01-01"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5505,6 +5532,11 @@
           "isChallenge": {
             "type": "boolean",
             "description": "是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）",
+            "example": false
+          },
+          "isCohortPractice": {
+            "type": "boolean",
+            "description": "由燈塔場次模板產生且仍屬於場次的實踐",
             "example": false
           },
           "isCohortPrivacyLocked": {
@@ -22434,6 +22466,44 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "健康檢查",
+        "description": "檢查 API 服務是否正常運行",
+        "responses": {
+          "200": {
+            "description": "服務正常運行",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "uptime": {
+                      "type": "number"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "uptime",
+                    "timestamp"
+                  ],
+                  "description": "健康檢查響應"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/resources": {
       "get": {
         "tags": [
@@ -50037,7 +50107,7 @@
                     "items": {
                       "$ref": "#/components/schemas/PracticeResourceInput"
                     },
-                    "maxItems": 10
+                    "maxItems": 60
                   },
                   "status": {
                     "type": "string",
@@ -54043,7 +54113,7 @@
           "Practice Templates"
         ],
         "summary": "取得實踐模板列表",
-        "description": "取得可用的實踐模板列表，支援分頁、分類過濾和搜尋。模板提供預設的實踐配置供用戶參考。",
+        "description": "只列出未封存、未刪除的官方實踐模板，支援分頁、分類過濾和搜尋。組織私有模板請使用燈塔組織模板 API。",
         "parameters": [
           {
             "schema": {
@@ -54853,7 +54923,7 @@
           "Practice Templates"
         ],
         "summary": "取得單一實踐模板",
-        "description": "根據模板 ID 取得單一實踐模板的詳細資訊。",
+        "description": "根據模板 ID 取得未封存、未刪除的官方模板。組織私有模板或不可用模板回傳 404。",
         "parameters": [
           {
             "schema": {
@@ -55490,7 +55560,7 @@
           "Practice Templates"
         ],
         "summary": "拆段批次建立實踐模板",
-        "description": "長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。",
+        "description": "限島島管理員建立官方模板。長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。",
         "security": [
           {
             "bearerAuth": []
@@ -55671,6 +55741,9 @@
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -68628,6 +68701,13 @@
                           "showInviteMessageOnSignup": {
                             "type": "boolean"
                           },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "description": "場次共用 IANA 時區",
+                            "example": "Asia/Taipei"
+                          },
                           "interactionModes": {
                             "type": "array",
                             "items": {
@@ -68665,16 +68745,64 @@
                                 "startTime": {
                                   "type": "string",
                                   "nullable": true,
-                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                   "description": "開始時間（HH:MM），可為 null",
                                   "example": "14:00"
                                 },
                                 "endTime": {
                                   "type": "string",
                                   "nullable": true,
-                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                   "description": "結束時間（HH:MM），可為 null",
                                   "example": "16:00"
+                                },
+                                "recurrenceGroupId": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "format": "uuid",
+                                  "description": "穩定規律群組 ID；非規律時段為 null"
+                                },
+                                "recurrenceRule": {
+                                  "type": "object",
+                                  "nullable": true,
+                                  "properties": {
+                                    "startDate": {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                      "description": "規律範圍起始日期",
+                                      "example": "2026-11-10"
+                                    },
+                                    "weeks": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 52,
+                                      "description": "持續週數（1–52）",
+                                      "example": 4
+                                    },
+                                    "weekdays": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 7
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 7,
+                                      "description": "ISO 星期：週一1至週日7",
+                                      "example": [
+                                        2,
+                                        4
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "startDate",
+                                    "weeks",
+                                    "weekdays"
+                                  ],
+                                  "additionalProperties": false,
+                                  "title": "CohortRecurrenceRule",
+                                  "description": "群組原始規則；非規律時段為 null"
                                 },
                                 "id": {
                                   "type": "integer",
@@ -68789,6 +68917,7 @@
                           "capacity",
                           "inviteMessage",
                           "showInviteMessageOnSignup",
+                          "timezone",
                           "interactionModes",
                           "meetingUrl",
                           "location",
@@ -69014,6 +69143,13 @@
                     "default": false,
                     "description": "在報名頁面顯示邀請訊息"
                   },
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "場次共用 IANA 時區",
+                    "example": "Asia/Taipei"
+                  },
                   "interactionModes": {
                     "type": "array",
                     "items": {
@@ -69059,16 +69195,64 @@
                         "startTime": {
                           "type": "string",
                           "nullable": true,
-                          "pattern": "^\\d{2}:\\d{2}$",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                           "description": "開始時間（HH:MM），可為 null",
                           "example": "14:00"
                         },
                         "endTime": {
                           "type": "string",
                           "nullable": true,
-                          "pattern": "^\\d{2}:\\d{2}$",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                           "description": "結束時間（HH:MM），可為 null",
                           "example": "16:00"
+                        },
+                        "recurrenceGroupId": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "uuid",
+                          "description": "穩定規律群組 ID；非規律時段為 null"
+                        },
+                        "recurrenceRule": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "startDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                              "description": "規律範圍起始日期",
+                              "example": "2026-11-10"
+                            },
+                            "weeks": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 52,
+                              "description": "持續週數（1–52）",
+                              "example": 4
+                            },
+                            "weekdays": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "minItems": 1,
+                              "maxItems": 7,
+                              "description": "ISO 星期：週一1至週日7",
+                              "example": [
+                                2,
+                                4
+                              ]
+                            }
+                          },
+                          "required": [
+                            "startDate",
+                            "weeks",
+                            "weekdays"
+                          ],
+                          "additionalProperties": false,
+                          "title": "CohortRecurrenceRule",
+                          "description": "群組原始規則；非規律時段為 null"
                         }
                       },
                       "required": [
@@ -69228,6 +69412,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -69265,16 +69456,64 @@
                               "startTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "開始時間（HH:MM），可為 null",
                                 "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
                               },
                               "id": {
                                 "type": "integer",
@@ -69389,6 +69628,7 @@
                         "capacity",
                         "inviteMessage",
                         "showInviteMessageOnSignup",
+                        "timezone",
                         "interactionModes",
                         "meetingUrl",
                         "location",
@@ -69640,6 +69880,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -69677,16 +69924,64 @@
                               "startTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "開始時間（HH:MM），可為 null",
                                 "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
                               },
                               "id": {
                                 "type": "integer",
@@ -69801,6 +70096,7 @@
                         "capacity",
                         "inviteMessage",
                         "showInviteMessageOnSignup",
+                        "timezone",
                         "interactionModes",
                         "meetingUrl",
                         "location",
@@ -70030,6 +70326,13 @@
                   "showInviteMessageOnSignup": {
                     "type": "boolean"
                   },
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "場次共用 IANA 時區",
+                    "example": "Asia/Taipei"
+                  },
                   "interactionModes": {
                     "type": "array",
                     "items": {
@@ -70069,16 +70372,64 @@
                         "startTime": {
                           "type": "string",
                           "nullable": true,
-                          "pattern": "^\\d{2}:\\d{2}$",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                           "description": "開始時間（HH:MM），可為 null",
                           "example": "14:00"
                         },
                         "endTime": {
                           "type": "string",
                           "nullable": true,
-                          "pattern": "^\\d{2}:\\d{2}$",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                           "description": "結束時間（HH:MM），可為 null",
                           "example": "16:00"
+                        },
+                        "recurrenceGroupId": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "uuid",
+                          "description": "穩定規律群組 ID；非規律時段為 null"
+                        },
+                        "recurrenceRule": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "startDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                              "description": "規律範圍起始日期",
+                              "example": "2026-11-10"
+                            },
+                            "weeks": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 52,
+                              "description": "持續週數（1–52）",
+                              "example": 4
+                            },
+                            "weekdays": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                              },
+                              "minItems": 1,
+                              "maxItems": 7,
+                              "description": "ISO 星期：週一1至週日7",
+                              "example": [
+                                2,
+                                4
+                              ]
+                            }
+                          },
+                          "required": [
+                            "startDate",
+                            "weeks",
+                            "weekdays"
+                          ],
+                          "additionalProperties": false,
+                          "title": "CohortRecurrenceRule",
+                          "description": "群組原始規則；非規律時段為 null"
                         }
                       },
                       "required": [
@@ -70219,6 +70570,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -70256,16 +70614,64 @@
                               "startTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "開始時間（HH:MM），可為 null",
                                 "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
                               },
                               "id": {
                                 "type": "integer",
@@ -70385,6 +70791,7 @@
                         "capacity",
                         "inviteMessage",
                         "showInviteMessageOnSignup",
+                        "timezone",
                         "interactionModes",
                         "meetingUrl",
                         "location",
@@ -72485,6 +72892,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -72522,16 +72936,64 @@
                               "startTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "開始時間（HH:MM），可為 null",
                                 "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
                                 "nullable": true,
-                                "pattern": "^\\d{2}:\\d{2}$",
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
                               },
                               "id": {
                                 "type": "integer",
@@ -72646,6 +73108,7 @@
                         "capacity",
                         "inviteMessage",
                         "showInviteMessageOnSignup",
+                        "timezone",
                         "interactionModes",
                         "meetingUrl",
                         "location",
@@ -72888,6 +73351,13 @@
                           "showInviteMessageOnSignup": {
                             "type": "boolean"
                           },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "description": "場次共用 IANA 時區",
+                            "example": "Asia/Taipei"
+                          },
                           "interactionModes": {
                             "type": "array",
                             "items": {
@@ -72925,16 +73395,64 @@
                                 "startTime": {
                                   "type": "string",
                                   "nullable": true,
-                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                   "description": "開始時間（HH:MM），可為 null",
                                   "example": "14:00"
                                 },
                                 "endTime": {
                                   "type": "string",
                                   "nullable": true,
-                                  "pattern": "^\\d{2}:\\d{2}$",
+                                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
                                   "description": "結束時間（HH:MM），可為 null",
                                   "example": "16:00"
+                                },
+                                "recurrenceGroupId": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "format": "uuid",
+                                  "description": "穩定規律群組 ID；非規律時段為 null"
+                                },
+                                "recurrenceRule": {
+                                  "type": "object",
+                                  "nullable": true,
+                                  "properties": {
+                                    "startDate": {
+                                      "type": "string",
+                                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                      "description": "規律範圍起始日期",
+                                      "example": "2026-11-10"
+                                    },
+                                    "weeks": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 52,
+                                      "description": "持續週數（1–52）",
+                                      "example": 4
+                                    },
+                                    "weekdays": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 7
+                                      },
+                                      "minItems": 1,
+                                      "maxItems": 7,
+                                      "description": "ISO 星期：週一1至週日7",
+                                      "example": [
+                                        2,
+                                        4
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "startDate",
+                                    "weeks",
+                                    "weekdays"
+                                  ],
+                                  "additionalProperties": false,
+                                  "title": "CohortRecurrenceRule",
+                                  "description": "群組原始規則；非規律時段為 null"
                                 },
                                 "id": {
                                   "type": "integer",
@@ -73068,6 +73586,7 @@
                           "capacity",
                           "inviteMessage",
                           "showInviteMessageOnSignup",
+                          "timezone",
                           "interactionModes",
                           "meetingUrl",
                           "location",
@@ -84175,6 +84694,712 @@
         }
       }
     },
+    "/api/v1/lighthouse/my-cohort-resource-bindings": {
+      "get": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "取得目前帶領的場次資源入口（不要求組織成員）",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "負責場次",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "organizationId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "所屬組織識別碼",
+                            "example": 1
+                          },
+                          "templateId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "模板識別碼",
+                            "example": 2
+                          },
+                          "cohortId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "負責場次識別碼",
+                            "example": 3
+                          },
+                          "cohortName": {
+                            "type": "string",
+                            "description": "場次名稱",
+                            "example": "秋季場次"
+                          },
+                          "templateName": {
+                            "type": "string",
+                            "description": "模板名稱",
+                            "example": "每天閱讀"
+                          }
+                        },
+                        "required": [
+                          "organizationId",
+                          "templateId",
+                          "cohortId",
+                          "cohortName",
+                          "templateName"
+                        ]
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources": {
+      "get": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "取得場次獨立共用資源",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "organizationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "templateId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "場次資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "場次資源穩定識別碼",
+                            "example": 12
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "資源名稱",
+                            "example": "活動講義"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "資源連結；無連結時為空字串",
+                            "example": "https://example.com/course"
+                          },
+                          "relevantDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "format": "date",
+                            "description": "選填參考日期，非排程條件",
+                            "example": "2026-12-01"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "url",
+                          "relevantDate"
+                        ]
+                      },
+                      "maxItems": 50,
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "更新場次獨立共用資源並同步學員",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "organizationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "templateId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "description": "既有場次資源識別碼；新增時不填",
+                          "example": 12
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "資源名稱，去除前後空白",
+                          "example": "活動講義"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "HTTP/HTTPS 連結；未填協定補 HTTPS；無連結輸出空字串",
+                          "example": "https://example.com/course"
+                        },
+                        "relevantDate": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date",
+                          "default": null,
+                          "description": "選填參考日期，不影響資源可見時間；null 表示清除日期",
+                          "example": "2026-12-01"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    },
+                    "maxItems": 50,
+                    "description": "場次共用資源完整清單；既有項目維持原位置，新增項目按送出順序置前；最多50筆",
+                    "example": [
+                      {
+                        "name": "活動講義",
+                        "url": "https://example.com/course",
+                        "relevantDate": null
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "resources"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "儲存後場次資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "場次資源穩定識別碼",
+                            "example": 12
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "資源名稱",
+                            "example": "活動講義"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "資源連結；無連結時為空字串",
+                            "example": "https://example.com/course"
+                          },
+                          "relevantDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "format": "date",
+                            "description": "選填參考日期，非排程條件",
+                            "example": "2026-12-01"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "url",
+                          "relevantDate"
+                        ]
+                      },
+                      "maxItems": 50,
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          }
+        }
+      }
+    },
     "/api/v1/cohorts/join/{joinToken}": {
       "get": {
         "tags": [
@@ -84229,6 +85454,13 @@
                           "nullable": true,
                           "description": "一句話簡介"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -84251,26 +85483,85 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer"
-                              },
                               "sessionDate": {
-                                "type": "string"
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
                               },
                               "startTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
-                              "id",
                               "sessionDate",
                               "startTime",
-                              "endTime"
+                              "endTime",
+                              "id"
                             ],
                             "additionalProperties": false
                           },
@@ -84404,6 +85695,7 @@
                         "startDate",
                         "endDate",
                         "tagline",
+                        "timezone",
                         "interactionModes",
                         "location",
                         "sessions",
@@ -84811,6 +86103,13 @@
                           "nullable": true,
                           "description": "一句話簡介"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -84838,26 +86137,85 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer"
-                              },
                               "sessionDate": {
-                                "type": "string"
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
                               },
                               "startTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
-                              "id",
                               "sessionDate",
                               "startTime",
-                              "endTime"
+                              "endTime",
+                              "id"
                             ],
                             "additionalProperties": false
                           },
@@ -85000,6 +86358,7 @@
                         "startDate",
                         "endDate",
                         "tagline",
+                        "timezone",
                         "interactionModes",
                         "meetingUrl",
                         "location",
@@ -87990,32 +89349,100 @@
                           "format": "uuid",
                           "description": "加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "sessions": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer"
-                              },
                               "sessionDate": {
-                                "type": "string"
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "聚會日期",
+                                "example": "2026-10-01"
                               },
                               "startTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "開始時間（HH:MM），可為 null",
+                                "example": "14:00"
                               },
                               "endTime": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                                "description": "結束時間（HH:MM），可為 null",
+                                "example": "16:00"
+                              },
+                              "recurrenceGroupId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid",
+                                "description": "穩定規律群組 ID；非規律時段為 null"
+                              },
+                              "recurrenceRule": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "startDate": {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "規律範圍起始日期",
+                                    "example": "2026-11-10"
+                                  },
+                                  "weeks": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 52,
+                                    "description": "持續週數（1–52）",
+                                    "example": 4
+                                  },
+                                  "weekdays": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 7
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 7,
+                                    "description": "ISO 星期：週一1至週日7",
+                                    "example": [
+                                      2,
+                                      4
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "startDate",
+                                  "weeks",
+                                  "weekdays"
+                                ],
+                                "additionalProperties": false,
+                                "title": "CohortRecurrenceRule",
+                                "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
-                              "id",
                               "sessionDate",
                               "startTime",
-                              "endTime"
-                            ]
+                              "endTime",
+                              "id"
+                            ],
+                            "title": "CohortSession",
+                            "description": "場次聚會時段"
                           },
                           "description": "聚會時段"
                         },
@@ -88078,6 +89505,7 @@
                         "unavailableReason",
                         "isJoined",
                         "joinToken",
+                        "timezone",
                         "sessions",
                         "externalSignupUrl",
                         "organization",
@@ -101438,44 +102866,6 @@
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      }
-    },
-    "/api/v1/health": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "健康檢查",
-        "description": "檢查 API 服務是否正常運行",
-        "responses": {
-          "200": {
-            "description": "服務正常運行",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string"
-                    },
-                    "uptime": {
-                      "type": "number"
-                    },
-                    "timestamp": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "status",
-                    "uptime",
-                    "timestamp"
-                  ],
-                  "description": "健康檢查響應"
-                }
-              }
-            }
           }
         }
       }
