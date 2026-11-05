@@ -75,7 +75,7 @@ describe('教練資源鎖定：PATCH／DELETE /resources/:id 不可繞過（daod
   const myRow = resourceRow(myResourceId, MY_RESOURCE_EXTERNAL_ID, '我的筆記', 'https://example.com/my-notes');
 
   const practiceRelations = [
-    { id: 500, resource_id: coachResourceId, entity_type: 'practice', entity_id: 1, note: 'day:2', deleted_at: null, resources: { name: '暖身影片', url: 'https://example.com/warmup' } },
+    { id: 500, resource_id: coachResourceId, entity_type: 'practice', entity_id: 1, dayNumber: 2, deleted_at: null, resources: { name: '暖身影片', url: 'https://example.com/warmup' } },
     { id: 501, resource_id: myResourceId, entity_type: 'practice', entity_id: 1, note: null, deleted_at: null, resources: { name: '我的筆記', url: 'https://example.com/my-notes' } }
   ];
 

@@ -114,7 +114,7 @@ describe('ensureCohortDrafts', () => {
     prismaMock.cohort_templates.findMany.mockResolvedValue([bindings[0]] as never);
     prismaMock.practices.createMany.mockResolvedValue({ count: 1 });
     prismaMock.entity_resources.findMany.mockResolvedValue([
-      { entity_id: 5, resource_id: 77, note: 'day:3' },
+      { entity_id: 5, resource_id: 77, dayNumber: 3, note: null },
     ] as never);
     prismaMock.practices.findMany.mockResolvedValue([{ id: 900, template_id: 5 }] as never);
     prismaMock.entity_resources.createMany.mockResolvedValue({ count: 1 });
@@ -122,7 +122,7 @@ describe('ensureCohortDrafts', () => {
     await ensureCohortDrafts(prismaMock, 8, 42);
     expect(prismaMock.entity_resources.createMany).toHaveBeenCalledWith({
       data: [
-        { resource_id: 77, entity_type: 'practice', entity_id: 900, created_by: 42, note: 'day:3' },
+        { resource_id: 77, entity_type: 'practice', entity_id: 900, created_by: 42, dayNumber: 3, note: null },
       ],
       skipDuplicates: true,
     });

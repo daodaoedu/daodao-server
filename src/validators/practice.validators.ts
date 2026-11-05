@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
+import { outOfPeriodResourceIndexes } from '../utils/resource-usage-date';
 import { PRACTICE_TIME_PERIODS } from '../utils/practice-time-periods';
 
 /**
@@ -308,9 +309,18 @@ const frequencyRangeRefine = {
   options: { message: '最低頻率不能大於最高頻率', path: ['frequencyMinDays'] as string[] }
 };
 
+/** 資源使用日必須位於含首尾的實踐期間內；部分更新由 service 補足儲存值。 */
+const validateResourcePeriod = (data: { resources?: Array<{ dayNumber?: number | null }>; durationDays?: number }, ctx: z.RefinementCtx): void => {
+  if (data.durationDays === undefined) return;
+  for (const index of outOfPeriodResourceIndexes(data.resources ?? [], data.durationDays)) {
+    ctx.addIssue({ code: 'custom', path: ['resources', index, 'dayNumber'], message: '資源日期已超出實踐期間，請重新選擇' });
+  }
+};
+
 /** 拆段單一段落 Schema：欄位 + 頻率區間 refine，不含 14 天開始日限制 */
 export const practiceSegmentSchema = createPracticeBaseSchema
-  .refine(frequencyRangeRefine.check, frequencyRangeRefine.options);
+  .refine(frequencyRangeRefine.check, frequencyRangeRefine.options)
+  .superRefine((data, ctx) => validateResourcePeriod({ ...data, durationDays: data.durationDays ?? 14 }, ctx));
 
 export const createPracticeSchema = createPracticeBaseSchema
   .refine(frequencyRangeRefine.check, frequencyRangeRefine.options)
@@ -320,7 +330,7 @@ export const createPracticeSchema = createPracticeBaseSchema
   }, {
     message: '開始日期不能超過 14 天後',
     path: ['startDate']
-  });
+  }).superRefine((data, ctx) => validateResourcePeriod({ ...data, durationDays: data.durationDays ?? 14 }, ctx));
 
 // 註冊 CreatePracticeRequest
 registry.register('CreatePracticeRequest', createPracticeSchema);

@@ -70,6 +70,7 @@ describe('Practice Service', () => {
     mockFanoutToConnectedPartners.mockResolvedValue(undefined);
     prismaMock.follows.findMany.mockResolvedValue([] as any);
     prismaMock.connections.findMany.mockResolvedValue([] as any);
+    prismaMock.entity_resources.findMany.mockResolvedValue([]);
   });
 
   describe('findAll', () => {

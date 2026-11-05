@@ -4,8 +4,6 @@
  * 這裡只看實踐本身；是否為燈塔場次（共同挑戰不鎖）由呼叫端查 cohorts.program.kind。
  */
 
-import { parseResourceDay } from './resource-day';
-
 export interface LockableResource {
   id?: string;
   name: string;
@@ -26,8 +24,8 @@ export const resourceContentKey = (resource: { name: string; url?: string | null
 
 type ResourceLink = {
   resource_id: number;
-  /** entity_resources.note，存 dayNumber（day:N） */
-  note?: string | null;
+  /** entity_resources.day_number，指定第幾天使用 */
+  dayNumber?: number | null;
   deleted_at?: Date | null;
   resources: { name: string; url?: string | null };
 };
@@ -44,7 +42,7 @@ const countContentSlots = (templateLinks: ResourceLink[]): Map<string, number> =
     if (!counts.has(key)) counts.set(key, 1);
     if (link.deleted_at) continue;
     const days = liveDays.get(key) ?? new Set<number | null>();
-    days.add(parseResourceDay(link.note));
+    days.add(link.dayNumber ?? null);
     liveDays.set(key, days);
     counts.set(key, days.size);
   }
