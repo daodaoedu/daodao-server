@@ -958,6 +958,9 @@ const createUser = async (
     const newUser = await tx.users.create({
       data: {
         mongo_id: crypto.randomUUID(),
+        verified_login_email: tempUser.verified_login_email,
+        verified: Boolean(tempUser.verified_login_email),
+        verified_at: tempUser.verified_login_email ? new Date() : null,
         nickname: resolvedNickname,
         gender: gender as 'male' | 'female' | 'other' | undefined,
         education_stage: (educationStage as 'elementary' | 'junior_high' | 'high' | 'associate' | 'university' | 'master' | 'doctorate' | 'other') || 'other',

@@ -4,6 +4,7 @@
  */
 
 import passport from 'passport';
+import { getVerifiedGoogleEmail } from './verified-google-email';
 import { Strategy as GoogleStrategy, Profile, StrategyOptions as GoogleStrategyOptions } from 'passport-google-oauth20';
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
@@ -128,16 +129,18 @@ if (authOptions) {
           throw new Error('No email found in Google profile');
         }
 
-        const email = profile.emails[0].value;
+        const email = getVerifiedGoogleEmail(profile.emails as GoogleProfile['emails']);
         const photoUrl = profile.photos && profile.photos.length > 0 ? profile.photos[0].value : undefined;
 
         // 首先檢查是否存在正式用戶
-        const userResult = await authService.findUserByEmail(email);
+        const userResult = await authService.findUserByGoogleIdentity(profile.id, email);
 
         if (userResult && userResult.success && userResult.data) {
           loggerService.info('Google OAuth - existing user found', { profileId: profile.id });
           // 已存在的用戶不是新用戶
-          const user = userResult.data.user as Express.User & { _isNewUser?: boolean };
+          const account = userResult.data.user;
+          const user = { ...account, roles: [account.roles.name], _isNewUser: false };
+          await prisma.users.update({ where: { id: user.id }, data: { verified_login_email: email, verified: true, verified_at: new Date() } });
           user._isNewUser = false;
           return done(null, user);
         }
@@ -153,6 +156,7 @@ if (authOptions) {
         if (tempUserResult.success && tempUserResult.data) {
           const userData = tempUserResult.data as { user: unknown; isNewUser: boolean };
           const user = userData.user as Express.User & { _isNewUser?: boolean };
+          await prisma.temp_users.update({ where: { id: user.id }, data: { verified_login_email: email } });
           user._isNewUser = userData.isNewUser;
           loggerService.info('Google OAuth - temp user', { profileId: profile.id, isNewUser: userData.isNewUser });
           return done(null, user);

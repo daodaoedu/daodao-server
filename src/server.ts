@@ -7,6 +7,7 @@ if (process.env.NODE_ENV === 'local') {
   require('tsconfig-paths/register');
 }
 import dotenv from 'dotenv';
+import { startOrganizationInvitationDispatch } from './services/email/organization-invitation-dispatch.service';
 // 載入環境變數
 dotenv.config();
 import express from 'express';
@@ -245,11 +246,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // 啟動服務器函數
+let stopOrganizationInvitationDispatch: (() => void) | undefined;
+
 async function startServer() {
   try {
     // 初始化資料庫連線
     await prismaService.connect();
     console.log('🗄️ 資料庫連線已建立');
+    stopOrganizationInvitationDispatch = startOrganizationInvitationDispatch();
 
     // 設置 TypeScript 路由
     setupTypescriptRoutes(app);
@@ -408,6 +412,7 @@ async function initializeBullMQ(): Promise<void> {
 
 // 優雅關閉處理
 async function gracefulShutdown(signal: string) {
+  stopOrganizationInvitationDispatch?.();
   console.log(`\n⏳ 收到 ${signal} 信號，正在關閉服務器...`);
   try {
     // 關閉 Practice Email Worker

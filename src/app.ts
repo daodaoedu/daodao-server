@@ -4,12 +4,12 @@
  */
 
 import express from 'express';
+import { registerHealthOpenApi } from './config/health-openapi';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import { z } from 'zod';
 // Prisma 不需要手動引入模型，在服務層中直接使用
 // 引入 OpenAPI 配置（會自動載入所有 validators）
-import { generateOpenApiDocument, registry } from './config/openapi-registry';
+import { generateOpenApiDocument } from './config/openapi-registry';
 import './validators'; // 載入所有 validators，觸發 schema 註冊
 // 引入實際的資源路由
 import resourceRoutes from './routes/resource.routes';
@@ -155,30 +155,7 @@ export function setupTypescriptRoutes(app: express.Application) {
   ];
   console.log('✅ 路由模組已載入');
 
-  // 註冊健康檢查端點到 OpenAPI
-  registry.registerPath({
-    method: 'get',
-    path: '/api/v1/health',
-    tags: ['System'],
-    summary: '健康檢查',
-    description: '檢查 API 服務是否正常運行',
-    responses: {
-      200: {
-        description: '服務正常運行',
-        content: {
-          'application/json': {
-            schema: z.object({
-              status: z.string(),
-              uptime: z.number(),
-              timestamp: z.string()
-            }).openapi({
-              description: '健康檢查響應'
-            })
-          }
-        }
-      }
-    }
-  });
+  registerHealthOpenApi();
 
   // 運行時生成 OpenAPI 文檔（官方推薦用法）
   console.log('📝 生成 OpenAPI 文檔...');

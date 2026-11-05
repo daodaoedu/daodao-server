@@ -109,6 +109,7 @@ describe('User Service', () => {
   // Test data factories
   const createTestTempUser = (overrides = {}) => ({
     id: 1,
+    verified_login_email: null,
     name: 'Test User',
     email: 'test@example.com',
     google_id: 'google-123',
@@ -157,6 +158,20 @@ describe('User Service', () => {
       tags: ['developer', 'student'],
       customId: 'test_user'
     };
+
+    it.each([null, 'owner@example.com'])('transfers only provider-verified signup Email %s to the formal account', async email => {
+      prismaMock.temp_users.findUnique.mockResolvedValue(createTestTempUser({ verified_login_email: email }));
+      prismaMock.users.findFirst.mockResolvedValue(null);
+      prismaMock.basic_info.create.mockResolvedValue(createTestBasicInfo());
+      prismaMock.contacts.create.mockResolvedValue(createTestContact());
+      const user = createTestUser();
+      prismaMock.users.create.mockResolvedValue(user);
+      prismaMock.users.findUnique.mockResolvedValue(user);
+      await userService.createUser(validUserData, '1');
+      expect(prismaMock.users.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ verified_login_email: email, verified: Boolean(email), verified_at: email ? expect.any(Date) : null })
+      }));
+    });
 
     it('should create user successfully with complete data', async () => {
       const tempUser = createTestTempUser();
