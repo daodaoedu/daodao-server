@@ -1,3 +1,4 @@
+import { cohortRecurrenceRuleSchema } from '../validators/cohort.validators';
 import { NotFoundError } from '../middleware/error.middleware';
 import { prisma } from './database/prisma.service';
 import { PROGRAM_KINDS } from '../constants/program-kind';
@@ -18,6 +19,7 @@ const activitySelect = {
   join_paused: true,
   capacity: true,
   invite_message: true,
+  timezone: true,
   interaction_modes: true,
   fee_type: true,
   fee_amount: true,
@@ -27,7 +29,7 @@ const activitySelect = {
   status: true,
   visibility: true,
   cohort_sessions: {
-    select: { id: true, session_date: true, start_time: true, end_time: true, position: true },
+    select: { id: true, session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true },
     orderBy: { position: 'asc' as const }
   },
   program: {
@@ -54,6 +56,7 @@ type ActivityRow = {
   join_paused: boolean;
   capacity: number | null;
   invite_message: string | null;
+  timezone: string;
   interaction_modes: string[];
   fee_type: string;
   fee_amount: number | null;
@@ -62,7 +65,7 @@ type ActivityRow = {
   location: string | null;
   status: string;
   visibility: string;
-  cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>;
+  cohort_sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number; recurrence_group_id?: string | null; recurrence_rule?: unknown }>;
   program: {
     name: string;
     description: string | null;
@@ -83,12 +86,14 @@ const formatTime = (value: Date | null): string | null => {
 /** 格式化 DATE 欄位為 YYYY-MM-DD */
 const formatDate = (value: Date): string => value.toISOString().slice(0, 10);
 
-const mapSessions = (sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number }>) =>
+const mapSessions = (sessions: Array<{ id: number; session_date: Date; start_time: Date | null; end_time: Date | null; position: number; recurrence_group_id?: string | null; recurrence_rule?: unknown }>) =>
   sessions.map(s => ({
     id: s.id,
     sessionDate: formatDate(s.session_date),
     startTime: formatTime(s.start_time),
-    endTime: formatTime(s.end_time)
+    endTime: formatTime(s.end_time),
+    recurrenceGroupId: s.recurrence_group_id ?? null,
+    recurrenceRule: s.recurrence_rule ? cohortRecurrenceRuleSchema.parse(s.recurrence_rule) : null
   }));
 
 /** 是否為可公開展示的活動：燈塔系列、已發佈、visibility=public、組織未停權 */
@@ -290,6 +295,7 @@ const getDetail = async (cohortId: number, userId: number | null, now = new Date
   const [summary] = await buildSummaries([row as ActivityRow], userId, now);
   return {
     ...summary,
+    timezone: row.timezone ?? 'Asia/Taipei',
     sessions: mapSessions(row.cohort_sessions),
     externalSignupUrl: row.external_signup_url,
     organization: { name: row.program.organization.name, bio: row.program.organization.bio, externalLink: row.program.organization.external_link },
