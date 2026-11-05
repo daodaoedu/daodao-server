@@ -1,3 +1,4 @@
+import { assertGenericSurvey, hasCohortFeedbackSchema } from '@/services/cohort-feedback.service'
 import { Request, Response } from 'express'
 import { asyncHandler, NotFoundError, BadRequestError } from '@/middleware/error.middleware'
 import { createSuccessResponse } from '@/utils/response-helper'
@@ -51,7 +52,9 @@ export const adminSurveyController = {
   listSurveys: asyncHandler(async (req: Request, res: Response) => {
     const { status, q, limit, offset } = listQuerySchema.parse(req.query)
 
+    const feedbackSchemaReady = await hasCohortFeedbackSchema()
     const where = {
+      ...(feedbackSchemaReady ? { cohort_feedback: { is: null } } : {}),
       ...(status && { status }),
       ...(q && {
         OR: [
@@ -110,6 +113,7 @@ export const adminSurveyController = {
 
   getSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
     const survey = await prisma.surveys.findUnique({
       where: { id },
       include: {
@@ -156,6 +160,7 @@ export const adminSurveyController = {
 
   updateStatus: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
     const { status } = updateStatusSchema.parse(req.body)
     const existing = await prisma.surveys.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('問卷不存在')
@@ -173,6 +178,7 @@ export const adminSurveyController = {
 
   deleteSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
     const existing = await prisma.surveys.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('問卷不存在')
     await prisma.surveys.delete({ where: { id } })
@@ -181,6 +187,7 @@ export const adminSurveyController = {
 
   listResponses: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
     const { limit, offset } = listQuerySchema.pick({ limit: true, offset: true }).parse(req.query)
 
     const existing = await prisma.surveys.findUnique({ where: { id }, select: { id: true } })
@@ -211,6 +218,7 @@ export const adminSurveyController = {
 
   getResponse: asyncHandler(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id)
+    await assertGenericSurvey(surveyId)
     const responseId = parseId(req.params.responseId)
 
     const response = await prisma.survey_responses.findFirst({
@@ -242,6 +250,7 @@ export const adminSurveyController = {
 
   deleteResponse: asyncHandler(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id)
+    await assertGenericSurvey(surveyId)
     const responseId = parseId(req.params.responseId)
 
     const existing = await prisma.survey_responses.findFirst({
@@ -286,6 +295,7 @@ export const adminSurveyController = {
 
   updateSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
     const body = updateSurveySchema.parse(req.body)
 
     const existing = await prisma.surveys.findUnique({ where: { id } })
@@ -308,6 +318,7 @@ export const adminSurveyController = {
 
   getAnalytics: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    await assertGenericSurvey(id)
 
     const survey = await prisma.surveys.findUnique({
       where: { id },

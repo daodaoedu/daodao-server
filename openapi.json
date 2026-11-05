@@ -4771,6 +4771,19 @@
       "PracticeResourceInput": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "既有資源 UUID；共用資源更新時保持原識別碼",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期；學員不得更動",
+            "example": "2027-01-01"
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -4812,19 +4825,6 @@
             "maximum": 91,
             "description": "指定第幾天使用此資源（1 = 開始日當天；不填代表整段實踐期間皆可使用）",
             "example": 3
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "既有資源 UUID；共用資源更新時保持原識別碼",
-            "example": "123e4567-e89b-12d3-a456-426614174000"
-          },
-          "relevantDate": {
-            "type": "string",
-            "nullable": true,
-            "format": "date",
-            "description": "場次參考日期；學員不得更動",
-            "example": "2027-01-01"
           }
         },
         "required": [
@@ -4840,6 +4840,13 @@
       "PracticeResource": {
         "type": "object",
         "properties": {
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期，不限制可見性",
+            "example": "2027-01-01"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -4870,13 +4877,6 @@
             "nullable": true,
             "description": "指定第幾天使用此資源（null 代表整段實踐期間皆可使用）",
             "example": 3
-          },
-          "relevantDate": {
-            "type": "string",
-            "nullable": true,
-            "format": "date",
-            "description": "場次參考日期，不限制可見性",
-            "example": "2027-01-01"
           }
         },
         "required": [
@@ -5467,6 +5467,13 @@
       "PracticeResourceEntity": {
         "type": "object",
         "properties": {
+          "relevantDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "description": "場次參考日期，不限制可見性",
+            "example": "2027-01-01"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5494,13 +5501,6 @@
             "type": "boolean",
             "description": "教練加入的資源（燈塔本期草稿由模板帶入），學員不可移除或修改；退出本期後解除",
             "example": false
-          },
-          "relevantDate": {
-            "type": "string",
-            "nullable": true,
-            "format": "date",
-            "description": "場次參考日期，不限制可見性",
-            "example": "2027-01-01"
           }
         },
         "required": [
@@ -5532,6 +5532,11 @@
           "isChallenge": {
             "type": "boolean",
             "description": "是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）",
+            "example": false
+          },
+          "isCohortPractice": {
+            "type": "boolean",
+            "description": "由燈塔場次模板產生且仍屬於場次的實踐",
             "example": false
           },
           "isCohortPrivacyLocked": {
@@ -5689,11 +5694,6 @@
           },
           "stats": {
             "$ref": "#/components/schemas/PracticeStats"
-          },
-          "isCohortPractice": {
-            "type": "boolean",
-            "description": "由燈塔場次模板產生且仍屬於場次的實踐",
-            "example": false
           }
         },
         "required": [
@@ -16897,6 +16897,27 @@
             "items": {
               "$ref": "#/components/schemas/QuestionResponse"
             }
+          },
+          "cohort_feedback": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "login_required",
+                  "ineligible",
+                  "ready",
+                  "completed"
+                ]
+              },
+              "privacy_notice": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state",
+              "privacy_notice"
+            ]
           }
         },
         "required": [
@@ -17114,6 +17135,138 @@
             "format": "uri"
           }
         }
+      },
+      "CohortFeedbackResponse": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "sending",
+              "waiting",
+              "available",
+              "legacy"
+            ]
+          },
+          "completedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "eligibleCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "completed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "userId",
+                "name",
+                "completed"
+              ]
+            },
+            "maxItems": 5
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "number",
+                "enum": [
+                  5
+                ]
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ]
+          },
+          "ratingDistribution": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rating": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "rating",
+                "count"
+              ]
+            }
+          },
+          "totalResponses": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "textQuestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "questionId": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "answers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "questionId",
+                "title",
+                "answers"
+              ]
+            }
+          }
+        },
+        "required": [
+          "state",
+          "completedCount",
+          "eligibleCount",
+          "participants",
+          "pagination",
+          "ratingDistribution",
+          "totalResponses",
+          "textQuestions"
+        ]
       },
       "RecordIdeaViewResponse": {
         "type": "object",
@@ -65436,9 +65589,158 @@
           "Survey"
         ],
         "summary": "取得公開問卷（填寫用）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "問卷公開識別碼"
+            },
+            "required": true,
+            "description": "問卷公開識別碼",
+            "name": "externalId",
+            "in": "path"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "問卷資料"
+            "description": "問卷資料及新期末問卷填答資格",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/SurveyResponse"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
@@ -65452,6 +65754,18 @@
           "Survey"
         ],
         "summary": "提交問卷回應",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "問卷公開識別碼"
+            },
+            "required": true,
+            "description": "問卷公開識別碼",
+            "name": "externalId",
+            "in": "path"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -65464,10 +65778,176 @@
         },
         "responses": {
           "201": {
-            "description": "提交成功"
+            "description": "提交成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "response_id": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "response_id"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "completed": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          },
+                          "required": [
+                            "completed"
+                          ]
+                        }
+                      ],
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
           }
         }
       }
@@ -68188,6 +68668,13 @@
                           "showInviteMessageOnSignup": {
                             "type": "boolean"
                           },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "description": "場次共用 IANA 時區",
+                            "example": "Asia/Taipei"
+                          },
                           "interactionModes": {
                             "type": "array",
                             "items": {
@@ -68236,11 +68723,6 @@
                                   "description": "結束時間（HH:MM），可為 null",
                                   "example": "16:00"
                                 },
-                                "id": {
-                                  "type": "integer",
-                                  "description": "聚會時段 ID",
-                                  "example": 1
-                                },
                                 "recurrenceGroupId": {
                                   "type": "string",
                                   "nullable": true,
@@ -68288,6 +68770,11 @@
                                   "additionalProperties": false,
                                   "title": "CohortRecurrenceRule",
                                   "description": "群組原始規則；非規律時段為 null"
+                                },
+                                "id": {
+                                  "type": "integer",
+                                  "description": "聚會時段 ID",
+                                  "example": 1
                                 }
                               },
                               "required": [
@@ -68381,13 +68868,6 @@
                             "type": "string",
                             "nullable": true,
                             "format": "date-time"
-                          },
-                          "timezone": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 64,
-                            "description": "場次共用 IANA 時區",
-                            "example": "Asia/Taipei"
                           }
                         },
                         "required": [
@@ -68630,6 +69110,13 @@
                     "default": false,
                     "description": "在報名頁面顯示邀請訊息"
                   },
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "場次共用 IANA 時區",
+                    "example": "Asia/Taipei"
+                  },
                   "interactionModes": {
                     "type": "array",
                     "items": {
@@ -68812,13 +69299,6 @@
                       "archived"
                     ],
                     "default": "draft"
-                  },
-                  "timezone": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "description": "場次共用 IANA 時區",
-                    "example": "Asia/Taipei"
                   }
                 },
                 "required": [
@@ -68899,6 +69379,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -68947,11 +69434,6 @@
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
                               },
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "recurrenceGroupId": {
                                 "type": "string",
                                 "nullable": true,
@@ -68999,6 +69481,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -69092,13 +69579,6 @@
                           "type": "string",
                           "nullable": true,
                           "format": "date-time"
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -69367,6 +69847,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -69415,11 +69902,6 @@
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
                               },
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "recurrenceGroupId": {
                                 "type": "string",
                                 "nullable": true,
@@ -69467,6 +69949,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -69560,13 +70047,6 @@
                           "type": "string",
                           "nullable": true,
                           "format": "date-time"
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -69813,6 +70293,13 @@
                   "showInviteMessageOnSignup": {
                     "type": "boolean"
                   },
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "場次共用 IANA 時區",
+                    "example": "Asia/Taipei"
+                  },
                   "interactionModes": {
                     "type": "array",
                     "items": {
@@ -69976,13 +70463,6 @@
                       "published",
                       "archived"
                     ]
-                  },
-                  "timezone": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64,
-                    "description": "場次共用 IANA 時區",
-                    "example": "Asia/Taipei"
                   }
                 }
               }
@@ -70057,6 +70537,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -70105,11 +70592,6 @@
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
                               },
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "recurrenceGroupId": {
                                 "type": "string",
                                 "nullable": true,
@@ -70157,6 +70639,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -70255,13 +70742,6 @@
                           "type": "integer",
                           "minimum": 0,
                           "description": "切換隱私時影響的實踐數量"
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -72379,6 +72859,13 @@
                         "showInviteMessageOnSignup": {
                           "type": "boolean"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -72427,11 +72914,6 @@
                                 "description": "結束時間（HH:MM），可為 null",
                                 "example": "16:00"
                               },
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "recurrenceGroupId": {
                                 "type": "string",
                                 "nullable": true,
@@ -72479,6 +72961,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -72572,13 +73059,6 @@
                           "type": "string",
                           "nullable": true,
                           "format": "date-time"
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -72838,6 +73318,13 @@
                           "showInviteMessageOnSignup": {
                             "type": "boolean"
                           },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "description": "場次共用 IANA 時區",
+                            "example": "Asia/Taipei"
+                          },
                           "interactionModes": {
                             "type": "array",
                             "items": {
@@ -72886,11 +73373,6 @@
                                   "description": "結束時間（HH:MM），可為 null",
                                   "example": "16:00"
                                 },
-                                "id": {
-                                  "type": "integer",
-                                  "description": "聚會時段 ID",
-                                  "example": 1
-                                },
                                 "recurrenceGroupId": {
                                   "type": "string",
                                   "nullable": true,
@@ -72938,6 +73420,11 @@
                                   "additionalProperties": false,
                                   "title": "CohortRecurrenceRule",
                                   "description": "群組原始規則；非規律時段為 null"
+                                },
+                                "id": {
+                                  "type": "integer",
+                                  "description": "聚會時段 ID",
+                                  "example": 1
                                 }
                               },
                               "required": [
@@ -73050,13 +73537,6 @@
                             "type": "integer",
                             "minimum": 0,
                             "description": "值得慶祝的時刻數"
-                          },
-                          "timezone": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 64,
-                            "description": "場次共用 IANA 時區",
-                            "example": "Asia/Taipei"
                           }
                         },
                         "required": [
@@ -80598,6 +81078,222 @@
         }
       }
     },
+    "/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/feedback": {
+      "get": {
+        "tags": [
+          "Lighthouse Outcomes"
+        ],
+        "summary": "場次 owner 查看學員回饋及完成進度",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "example": 1
+            },
+            "required": true,
+            "name": "programId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "example": 1
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "completed",
+                "pending"
+              ],
+              "default": "all",
+              "description": "完成狀態篩選",
+              "example": "all"
+            },
+            "required": false,
+            "description": "完成狀態篩選",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1,
+              "description": "頁碼，每頁最多五人",
+              "example": 1
+            },
+            "required": false,
+            "description": "頁碼，每頁最多五人",
+            "name": "page",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "填答進度與匿名回饋",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/CohortFeedbackResponse"
+                        },
+                        {
+                          "description": "The main response data"
+                        }
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
     "/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome": {
       "get": {
         "tags": [
@@ -83965,6 +84661,712 @@
         }
       }
     },
+    "/api/v1/lighthouse/my-cohort-resource-bindings": {
+      "get": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "取得目前帶領的場次資源入口（不要求組織成員）",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "負責場次",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "organizationId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "所屬組織識別碼",
+                            "example": 1
+                          },
+                          "templateId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "模板識別碼",
+                            "example": 2
+                          },
+                          "cohortId": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "負責場次識別碼",
+                            "example": 3
+                          },
+                          "cohortName": {
+                            "type": "string",
+                            "description": "場次名稱",
+                            "example": "秋季場次"
+                          },
+                          "templateName": {
+                            "type": "string",
+                            "description": "模板名稱",
+                            "example": "每天閱讀"
+                          }
+                        },
+                        "required": [
+                          "organizationId",
+                          "templateId",
+                          "cohortId",
+                          "cohortName",
+                          "templateName"
+                        ]
+                      },
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources": {
+      "get": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "取得場次獨立共用資源",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "organizationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "templateId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "場次資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "場次資源穩定識別碼",
+                            "example": 12
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "資源名稱",
+                            "example": "活動講義"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "資源連結；無連結時為空字串",
+                            "example": "https://example.com/course"
+                          },
+                          "relevantDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "format": "date",
+                            "description": "選填參考日期，非排程條件",
+                            "example": "2026-12-01"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "url",
+                          "relevantDate"
+                        ]
+                      },
+                      "maxItems": 50,
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Lighthouse Templates"
+        ],
+        "summary": "更新場次獨立共用資源並同步學員",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "organizationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "templateId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true
+            },
+            "required": true,
+            "name": "cohortId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "description": "既有場次資源識別碼；新增時不填",
+                          "example": 12
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "資源名稱，去除前後空白",
+                          "example": "活動講義"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "HTTP/HTTPS 連結；未填協定補 HTTPS；無連結輸出空字串",
+                          "example": "https://example.com/course"
+                        },
+                        "relevantDate": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date",
+                          "default": null,
+                          "description": "選填參考日期，不影響資源可見時間；null 表示清除日期",
+                          "example": "2026-12-01"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    },
+                    "maxItems": 50,
+                    "description": "場次共用資源完整清單；既有項目維持原位置，新增項目按送出順序置前；最多50筆",
+                    "example": [
+                      {
+                        "name": "活動講義",
+                        "url": "https://example.com/course",
+                        "relevantDate": null
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "resources"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "儲存後場次資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ],
+                      "description": "Indicates successful API response"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "description": "場次資源穩定識別碼",
+                            "example": 12
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "資源名稱",
+                            "example": "活動講義"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "資源連結；無連結時為空字串",
+                            "example": "https://example.com/course"
+                          },
+                          "relevantDate": {
+                            "type": "string",
+                            "nullable": true,
+                            "format": "date",
+                            "description": "選填參考日期，非排程條件",
+                            "example": "2026-12-01"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "url",
+                          "relevantDate"
+                        ]
+                      },
+                      "maxItems": 50,
+                      "description": "The main response data"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp of the response"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "searchQuery": {
+                          "type": "string",
+                          "description": "Search query used for filtering results"
+                        },
+                        "searchTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Time taken to execute the search query in milliseconds"
+                        },
+                        "filters": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Applied filters for the request"
+                        },
+                        "categoryCounts": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": "Count of items per category"
+                        },
+                        "aggregateData": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          },
+                          "description": "Aggregated statistical data"
+                        },
+                        "requestId": {
+                          "type": "string",
+                          "description": "Unique identifier for request tracking"
+                        },
+                        "cacheHit": {
+                          "type": "boolean",
+                          "description": "Whether the response was served from cache"
+                        },
+                        "processingTime": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Total processing time in milliseconds"
+                        }
+                      },
+                      "additionalProperties": {
+                        "nullable": true
+                      },
+                      "description": "Optional metadata about the response",
+                      "examples": [
+                        {
+                          "searchQuery": "JavaScript教程",
+                          "searchTime": 45,
+                          "cacheHit": false,
+                          "processingTime": 123.5,
+                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+                        },
+                        {
+                          "categoryCounts": {
+                            "前端開發": 25,
+                            "後端開發": 18,
+                            "資料科學": 12
+                          },
+                          "filters": {
+                            "difficulty": "intermediate",
+                            "language": "zh-TW"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ],
+                  "description": "Standard success response format",
+                  "examples": [
+                    {
+                      "success": true,
+                      "data": {
+                        "id": 123,
+                        "_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "JavaScript 基礎教程",
+                        "description": "從零開始學習 JavaScript 程式設計",
+                        "status": "published"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z"
+                    },
+                    {
+                      "success": true,
+                      "data": {
+                        "userId": 456,
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "role": "student"
+                      },
+                      "timestamp": "2024-01-15T10:30:00.000Z",
+                      "meta": {
+                        "cacheHit": true,
+                        "processingTime": 23.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          }
+        }
+      }
+    },
     "/api/v1/lighthouse/organization-invitations/accept": {
       "post": {
         "tags": [
@@ -85511,6 +86913,13 @@
                           "nullable": true,
                           "description": "一句話簡介"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -85533,11 +86942,6 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "sessionDate": {
                                 "type": "string",
                                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
@@ -85605,6 +87009,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -85737,13 +87146,6 @@
                             "externalLink"
                           ],
                           "additionalProperties": false
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -86160,6 +87562,13 @@
                           "nullable": true,
                           "description": "一句話簡介"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "interactionModes": {
                           "type": "array",
                           "items": {
@@ -86187,11 +87596,6 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "sessionDate": {
                                 "type": "string",
                                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
@@ -86259,6 +87663,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -86400,13 +87809,6 @@
                             ],
                             "additionalProperties": false
                           }
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -89406,16 +90808,18 @@
                           "format": "uuid",
                           "description": "加入連結 token（導向 /cohorts/join/{joinToken}）；僅 canJoin 時回傳，否則 null"
                         },
+                        "timezone": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "description": "場次共用 IANA 時區",
+                          "example": "Asia/Taipei"
+                        },
                         "sessions": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "聚會時段 ID",
-                                "example": 1
-                              },
                               "sessionDate": {
                                 "type": "string",
                                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
@@ -89483,6 +90887,11 @@
                                 "additionalProperties": false,
                                 "title": "CohortRecurrenceRule",
                                 "description": "群組原始規則；非規律時段為 null"
+                              },
+                              "id": {
+                                "type": "integer",
+                                "description": "聚會時段 ID",
+                                "example": 1
                               }
                             },
                             "required": [
@@ -89529,13 +90938,6 @@
                           "type": "string",
                           "nullable": true,
                           "description": "組織設定的邀請文案"
-                        },
-                        "timezone": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 64,
-                          "description": "場次共用 IANA 時區",
-                          "example": "Asia/Taipei"
                         }
                       },
                       "required": [
@@ -102961,712 +104363,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/lighthouse/my-cohort-resource-bindings": {
-      "get": {
-        "tags": [
-          "Lighthouse Templates"
-        ],
-        "summary": "取得目前帶領的場次資源入口（不要求組織成員）",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "負責場次",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "enum": [
-                        true
-                      ],
-                      "description": "Indicates successful API response"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "organizationId": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "description": "所屬組織識別碼",
-                            "example": 1
-                          },
-                          "templateId": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "description": "模板識別碼",
-                            "example": 2
-                          },
-                          "cohortId": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "description": "負責場次識別碼",
-                            "example": 3
-                          },
-                          "cohortName": {
-                            "type": "string",
-                            "description": "場次名稱",
-                            "example": "秋季場次"
-                          },
-                          "templateName": {
-                            "type": "string",
-                            "description": "模板名稱",
-                            "example": "每天閱讀"
-                          }
-                        },
-                        "required": [
-                          "organizationId",
-                          "templateId",
-                          "cohortId",
-                          "cohortName",
-                          "templateName"
-                        ]
-                      },
-                      "description": "The main response data"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "ISO 8601 timestamp of the response"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "searchQuery": {
-                          "type": "string",
-                          "description": "Search query used for filtering results"
-                        },
-                        "searchTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Time taken to execute the search query in milliseconds"
-                        },
-                        "filters": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Applied filters for the request"
-                        },
-                        "categoryCounts": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "integer",
-                            "minimum": 0
-                          },
-                          "description": "Count of items per category"
-                        },
-                        "aggregateData": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Aggregated statistical data"
-                        },
-                        "requestId": {
-                          "type": "string",
-                          "description": "Unique identifier for request tracking"
-                        },
-                        "cacheHit": {
-                          "type": "boolean",
-                          "description": "Whether the response was served from cache"
-                        },
-                        "processingTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Total processing time in milliseconds"
-                        }
-                      },
-                      "additionalProperties": {
-                        "nullable": true
-                      },
-                      "description": "Optional metadata about the response",
-                      "examples": [
-                        {
-                          "searchQuery": "JavaScript教程",
-                          "searchTime": 45,
-                          "cacheHit": false,
-                          "processingTime": 123.5,
-                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                        },
-                        {
-                          "categoryCounts": {
-                            "前端開發": 25,
-                            "後端開發": 18,
-                            "資料科學": 12
-                          },
-                          "filters": {
-                            "difficulty": "intermediate",
-                            "language": "zh-TW"
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "data",
-                    "timestamp"
-                  ],
-                  "description": "Standard success response format",
-                  "examples": [
-                    {
-                      "success": true,
-                      "data": {
-                        "id": 123,
-                        "_id": "550e8400-e29b-41d4-a716-446655440000",
-                        "name": "JavaScript 基礎教程",
-                        "description": "從零開始學習 JavaScript 程式設計",
-                        "status": "published"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z"
-                    },
-                    {
-                      "success": true,
-                      "data": {
-                        "userId": 456,
-                        "username": "john_doe",
-                        "email": "john@example.com",
-                        "role": "student"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z",
-                      "meta": {
-                        "cacheHit": true,
-                        "processingTime": 23.1
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          }
-        }
-      }
-    },
-    "/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources": {
-      "get": {
-        "tags": [
-          "Lighthouse Templates"
-        ],
-        "summary": "取得場次獨立共用資源",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "organizationId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "templateId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "cohortId",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "場次資源",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "enum": [
-                        true
-                      ],
-                      "description": "Indicates successful API response"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "description": "場次資源穩定識別碼",
-                            "example": 12
-                          },
-                          "name": {
-                            "type": "string",
-                            "description": "資源名稱",
-                            "example": "活動講義"
-                          },
-                          "url": {
-                            "type": "string",
-                            "description": "資源連結；無連結時為空字串",
-                            "example": "https://example.com/course"
-                          },
-                          "relevantDate": {
-                            "type": "string",
-                            "nullable": true,
-                            "format": "date",
-                            "description": "選填參考日期，非排程條件",
-                            "example": "2026-12-01"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "name",
-                          "url",
-                          "relevantDate"
-                        ]
-                      },
-                      "maxItems": 50,
-                      "description": "The main response data"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "ISO 8601 timestamp of the response"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "searchQuery": {
-                          "type": "string",
-                          "description": "Search query used for filtering results"
-                        },
-                        "searchTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Time taken to execute the search query in milliseconds"
-                        },
-                        "filters": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Applied filters for the request"
-                        },
-                        "categoryCounts": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "integer",
-                            "minimum": 0
-                          },
-                          "description": "Count of items per category"
-                        },
-                        "aggregateData": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Aggregated statistical data"
-                        },
-                        "requestId": {
-                          "type": "string",
-                          "description": "Unique identifier for request tracking"
-                        },
-                        "cacheHit": {
-                          "type": "boolean",
-                          "description": "Whether the response was served from cache"
-                        },
-                        "processingTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Total processing time in milliseconds"
-                        }
-                      },
-                      "additionalProperties": {
-                        "nullable": true
-                      },
-                      "description": "Optional metadata about the response",
-                      "examples": [
-                        {
-                          "searchQuery": "JavaScript教程",
-                          "searchTime": 45,
-                          "cacheHit": false,
-                          "processingTime": 123.5,
-                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                        },
-                        {
-                          "categoryCounts": {
-                            "前端開發": 25,
-                            "後端開發": 18,
-                            "資料科學": 12
-                          },
-                          "filters": {
-                            "difficulty": "intermediate",
-                            "language": "zh-TW"
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "data",
-                    "timestamp"
-                  ],
-                  "description": "Standard success response format",
-                  "examples": [
-                    {
-                      "success": true,
-                      "data": {
-                        "id": 123,
-                        "_id": "550e8400-e29b-41d4-a716-446655440000",
-                        "name": "JavaScript 基礎教程",
-                        "description": "從零開始學習 JavaScript 程式設計",
-                        "status": "published"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z"
-                    },
-                    {
-                      "success": true,
-                      "data": {
-                        "userId": 456,
-                        "username": "john_doe",
-                        "email": "john@example.com",
-                        "role": "student"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z",
-                      "meta": {
-                        "cacheHit": true,
-                        "processingTime": 23.1
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Lighthouse Templates"
-        ],
-        "summary": "更新場次獨立共用資源並同步學員",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "organizationId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "templateId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "exclusiveMinimum": true
-            },
-            "required": true,
-            "name": "cohortId",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "resources": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "description": "既有場次資源識別碼；新增時不填",
-                          "example": 12
-                        },
-                        "name": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 100,
-                          "description": "資源名稱，去除前後空白",
-                          "example": "活動講義"
-                        },
-                        "url": {
-                          "type": "string",
-                          "description": "HTTP/HTTPS 連結；未填協定補 HTTPS；無連結輸出空字串",
-                          "example": "https://example.com/course"
-                        },
-                        "relevantDate": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date",
-                          "default": null,
-                          "description": "選填參考日期，不影響資源可見時間；null 表示清除日期",
-                          "example": "2026-12-01"
-                        }
-                      },
-                      "required": [
-                        "name"
-                      ]
-                    },
-                    "maxItems": 50,
-                    "description": "場次共用資源完整清單；既有項目維持原位置，新增項目按送出順序置前；最多50筆",
-                    "example": [
-                      {
-                        "name": "活動講義",
-                        "url": "https://example.com/course",
-                        "relevantDate": null
-                      }
-                    ]
-                  }
-                },
-                "required": [
-                  "resources"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "儲存後場次資源",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "enum": [
-                        true
-                      ],
-                      "description": "Indicates successful API response"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "description": "場次資源穩定識別碼",
-                            "example": 12
-                          },
-                          "name": {
-                            "type": "string",
-                            "description": "資源名稱",
-                            "example": "活動講義"
-                          },
-                          "url": {
-                            "type": "string",
-                            "description": "資源連結；無連結時為空字串",
-                            "example": "https://example.com/course"
-                          },
-                          "relevantDate": {
-                            "type": "string",
-                            "nullable": true,
-                            "format": "date",
-                            "description": "選填參考日期，非排程條件",
-                            "example": "2026-12-01"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "name",
-                          "url",
-                          "relevantDate"
-                        ]
-                      },
-                      "maxItems": 50,
-                      "description": "The main response data"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "ISO 8601 timestamp of the response"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "searchQuery": {
-                          "type": "string",
-                          "description": "Search query used for filtering results"
-                        },
-                        "searchTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Time taken to execute the search query in milliseconds"
-                        },
-                        "filters": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Applied filters for the request"
-                        },
-                        "categoryCounts": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "integer",
-                            "minimum": 0
-                          },
-                          "description": "Count of items per category"
-                        },
-                        "aggregateData": {
-                          "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          },
-                          "description": "Aggregated statistical data"
-                        },
-                        "requestId": {
-                          "type": "string",
-                          "description": "Unique identifier for request tracking"
-                        },
-                        "cacheHit": {
-                          "type": "boolean",
-                          "description": "Whether the response was served from cache"
-                        },
-                        "processingTime": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Total processing time in milliseconds"
-                        }
-                      },
-                      "additionalProperties": {
-                        "nullable": true
-                      },
-                      "description": "Optional metadata about the response",
-                      "examples": [
-                        {
-                          "searchQuery": "JavaScript教程",
-                          "searchTime": 45,
-                          "cacheHit": false,
-                          "processingTime": 123.5,
-                          "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
-                        },
-                        {
-                          "categoryCounts": {
-                            "前端開發": 25,
-                            "後端開發": 18,
-                            "資料科學": 12
-                          },
-                          "filters": {
-                            "difficulty": "intermediate",
-                            "language": "zh-TW"
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "data",
-                    "timestamp"
-                  ],
-                  "description": "Standard success response format",
-                  "examples": [
-                    {
-                      "success": true,
-                      "data": {
-                        "id": 123,
-                        "_id": "550e8400-e29b-41d4-a716-446655440000",
-                        "name": "JavaScript 基礎教程",
-                        "description": "從零開始學習 JavaScript 程式設計",
-                        "status": "published"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z"
-                    },
-                    {
-                      "success": true,
-                      "data": {
-                        "userId": 456,
-                        "username": "john_doe",
-                        "email": "john@example.com",
-                        "role": "student"
-                      },
-                      "timestamp": "2024-01-15T10:30:00.000Z",
-                      "meta": {
-                        "cacheHit": true,
-                        "processingTime": 23.1
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "409": {
-            "$ref": "#/components/responses/ConflictError"
           }
         }
       }
