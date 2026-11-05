@@ -17,9 +17,8 @@ export const getOrganizationInvitationStatus = (row: Pick<organization_invitatio
 /** Serialize only admin-visible invitation fields; nonce/hash never leave the service. */
 const present = async (tx: Tx, row: organization_invitations): Promise<OrganizationInvitationResponse> => {
   const requests = await tx.$queryRaw<Array<{ id: number; user_id: number; email: string | null; nickname: string | null; created_at: Date }>>`
-    SELECT r.id, r.user_id, c.email, u.nickname, r.created_at
+    SELECT r.id, r.user_id, u.verified_login_email AS email, u.nickname, r.created_at
     FROM organization_invitation_requests r JOIN users u ON u.id = r.user_id
-    LEFT JOIN contacts c ON c.id = u.contact_id
     WHERE r.invitation_id = ${row.id} AND r.approved_at IS NULL ORDER BY r.created_at, r.id`;
   const dispatch = await tx.organization_invitation_dispatches.findUnique({ where: { invitation_id: row.id } });
   return {

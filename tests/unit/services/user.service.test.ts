@@ -67,6 +67,11 @@ jest.mock('@/services/email/email.service', () => ({
   emailService: mockEmailService
 }));
 
+const mockSendWelcomeEmailInBackground = jest.fn();
+jest.mock('@/services/email/welcome-email.service', () => ({
+  sendWelcomeEmailInBackground: (...args: unknown[]) => mockSendWelcomeEmailInBackground(...args)
+}));
+
 jest.mock('@/services/professional-field.service', () => ({
   default: mockProfessionalFieldService,
   ...mockProfessionalFieldService
@@ -171,6 +176,47 @@ describe('User Service', () => {
       expect(prismaMock.users.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ verified_login_email: email, verified: Boolean(email), verified_at: email ? expect.any(Date) : null })
       }));
+    });
+
+    it.each([
+      ['owner@example.com', true, true],
+      [null, true, false],
+      ['owner@example.com', false, false]
+    ])('routes signup email for trusted=%s send=%s to welcome=%s after commit', async (email, send, welcome) => {
+      prismaMock.temp_users.findUnique.mockResolvedValue(createTestTempUser({ verified_login_email: email }));
+      prismaMock.users.findFirst.mockResolvedValue(null);
+      prismaMock.basic_info.create.mockResolvedValue(createTestBasicInfo());
+      const contact = createTestContact();
+      prismaMock.contacts.create.mockResolvedValue(contact);
+      const user = createTestUser({ contacts: contact, verified: Boolean(email) });
+      prismaMock.users.create.mockResolvedValue(user);
+      prismaMock.users.findUnique.mockResolvedValue(user);
+      await userService.createUser({ ...validUserData, isSendEmail: send }, '1');
+      if (welcome) {
+        expect(mockSendWelcomeEmailInBackground).toHaveBeenCalledTimes(1);
+        expect(mockSendWelcomeEmailInBackground).toHaveBeenCalledWith(user.id, 'google-signup');
+      } else expect(mockSendWelcomeEmailInBackground).not.toHaveBeenCalled();
+      expect(mockEmailService.sendVerificationEmail).toHaveBeenCalledTimes(send && !email ? 1 : 0);
+    });
+    it('does not send a welcome email before commit or after a verified signup rolls back', async () => {
+      prismaMock.temp_users.findUnique.mockResolvedValue(createTestTempUser({ verified_login_email: 'owner@example.com' }));
+      prismaMock.users.findFirst.mockResolvedValue(null);
+      prismaMock.basic_info.create.mockResolvedValue(createTestBasicInfo());
+      const contact = createTestContact();
+      prismaMock.contacts.create.mockResolvedValue(contact);
+      const user = createTestUser({ contacts: contact, verified: true });
+      prismaMock.users.create.mockResolvedValue(user);
+      prismaMock.users.findUnique.mockResolvedValue(user);
+      prismaMock.$transaction.mockImplementationOnce(async (callback: unknown) => {
+        if (typeof callback !== 'function') throw new Error('Expected transaction callback');
+        await callback(prismaMock);
+        // All signup work ran, but the transaction has not committed yet.
+        expect(mockSendWelcomeEmailInBackground).not.toHaveBeenCalled();
+        throw new Error('commit failed');
+      });
+      await expect(userService.createUser({ ...validUserData, isSendEmail: true }, '1')).rejects.toThrow('commit failed');
+      expect(mockSendWelcomeEmailInBackground).not.toHaveBeenCalled();
+      expect(mockEmailService.sendVerificationEmail).not.toHaveBeenCalled();
     });
 
     it('should create user successfully with complete data', async () => {

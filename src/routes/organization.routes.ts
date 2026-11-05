@@ -1,7 +1,7 @@
-import { organizationInvitationController } from '../controllers/organization-invitation.controller';
-import { acceptOrganizationInvitationSchema, acceptOrganizationInvitationResponseSchema, createOrganizationInvitationSchema, organizationInvitationResponseSchema, organizationInvitationParamsSchema, organizationInvitationRequestParamsSchema } from '../validators/organization-invitation.validators';
 import { Router, type RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
+import { organizationInvitationController } from '../controllers/organization-invitation.controller';
+import { acceptOrganizationInvitationSchema, acceptOrganizationInvitationResponseSchema, createOrganizationInvitationSchema, organizationInvitationResponseSchema, organizationInvitationParamsSchema, organizationInvitationRequestParamsSchema } from '../validators/organization-invitation.validators';
 import { organizationController } from '../controllers/organization.controller';
 import { programController } from '../controllers/program.controller';
 import { cohortController } from '../controllers/cohort.controller';

@@ -7,6 +7,7 @@ import { prisma } from './database/prisma.service';
 import { anonymizeCohortEnrollments } from './cohort-anonymization.service';
 import { jwtService } from './jwt.service';
 import { emailService } from './email/email.service';
+import { sendWelcomeEmailInBackground } from './email/welcome-email.service';
 import { quizService } from './quiz.service';
 import { cityService } from './city.service';
 import {
@@ -853,7 +854,7 @@ const createUser = async (
 ): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }> & { quizClaimed?: boolean }> => {
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
-  const { response, emailData, newUserId } = await prisma.$transaction(async (tx) => {
+  const { response, emailData, newUserId, shouldSendWelcome } = await prisma.$transaction(async (tx) => {
     const {
       gender,
       birthDay,
@@ -1068,7 +1069,7 @@ const createUser = async (
 
     // 收集郵件發送資料，在 transaction commit 後才發送
     let pendingEmail: PendingEmailData | null = null;
-    if (isSendEmail && createdUser.contacts?.email) {
+    if (isSendEmail && !tempUser.verified_login_email && createdUser.contacts?.email) {
       pendingEmail = {
         email: createdUser.contacts.email,
         verifyLink: `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
@@ -1090,8 +1091,12 @@ const createUser = async (
       response: createSuccessResponse(result),
       emailData: pendingEmail,
       newUserId: newUser.id,
+      shouldSendWelcome: isSendEmail && Boolean(tempUser.verified_login_email),
     };
   });
+
+  // Provider verification bypasses verify-email; retain its welcome side effect after commit.
+  if (shouldSendWelcome) sendWelcomeEmailInBackground(newUserId, 'google-signup');
 
   // Transaction 已 commit，現在發送驗證郵件（含 email_logs 記錄）
   if (emailData) {

@@ -5,6 +5,7 @@
 
 import passport from 'passport';
 import { getVerifiedGoogleEmail } from './verified-google-email';
+import { sendWelcomeEmailInBackground } from '../email/welcome-email.service';
 import { Strategy as GoogleStrategy, Profile, StrategyOptions as GoogleStrategyOptions } from 'passport-google-oauth20';
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
@@ -140,7 +141,16 @@ if (authOptions) {
           // 已存在的用戶不是新用戶
           const account = userResult.data.user;
           const user = { ...account, roles: [account.roles.name], _isNewUser: false };
-          await prisma.users.update({ where: { id: user.id }, data: { verified_login_email: email, verified: true, verified_at: new Date() } });
+          const firstVerification = await prisma.$transaction(async tx => {
+            const transition = await tx.users.updateMany({
+              where: { id: user.id, OR: [{ verified: false }, { verified: null }] },
+              data: { verified: true, verified_at: new Date() }
+            });
+            await tx.users.update({ where: { id: user.id }, data: { verified_login_email: email } });
+            return transition.count > 0;
+          });
+          // Only a committed first verification sends welcome; stale/concurrent logins lose the transition.
+          if (firstVerification) sendWelcomeEmailInBackground(user.id, 'google-oauth');
           user._isNewUser = false;
           return done(null, user);
         }
