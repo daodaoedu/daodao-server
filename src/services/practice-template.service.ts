@@ -25,6 +25,13 @@ import type { PracticeResourceEntity } from '../types/practice.types';
 
 const prismaClient = prisma;
 
+// Organization templates belong exclusively to the organization template API.
+const PUBLIC_TEMPLATE_WHERE = {
+  organization_id: null,
+  archived_at: null,
+  deleted_at: null
+} satisfies Prisma.practice_templatesWhereInput;
+
 /**
  * 模板實體
  */
@@ -184,8 +191,7 @@ export async function getTemplates(
     const take = Math.min(limit, 100);
 
     // 基本查詢條件
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
+    const where: Prisma.practice_templatesWhereInput = { ...PUBLIC_TEMPLATE_WHERE };
     if (search) {
       where.title = { contains: search, mode: 'insensitive' };
     }
@@ -219,6 +225,10 @@ export async function getTemplates(
       }),
       prismaClient.practice_templates.count({ where })
     ]);
+
+    if (templates.length === 0) {
+      return createPaginatedResponse([], calculatePagination(page, take, total));
+    }
 
     if (templates.length > 0) {
       // 查詢所有模板的標籤、資源和使用人數
@@ -340,7 +350,7 @@ export async function getTemplateById(
 ): Promise<ApiSuccessResponse<PracticeTemplateEntity | null>> {
   try {
     const template = await prismaClient.practice_templates.findFirst({
-      where: { external_id: id },
+      where: { external_id: id, ...PUBLIC_TEMPLATE_WHERE },
       include: {
         organization: { select: { id: true, name: true, bio: true, external_link: true } },
         practice_template_categories: {
@@ -439,15 +449,13 @@ export async function getTemplateCategories(): Promise<ApiSuccessResponse<string
     const categories = await prismaClient.content_categories.findMany({
       where: {
         practice_template_categories: {
-          some: {}
+          some: { practice_templates: PUBLIC_TEMPLATE_WHERE }
         }
       },
       select: { name: true }
     });
 
-    if (categories.length > 0) {
-      return createSuccessResponse(categories.map(c => c.name));
-    }
+    return createSuccessResponse(categories.map(c => c.name));
   } catch (error) {
     loggerService.warn('Failed to get template categories from database', { error });
   }
@@ -482,8 +490,7 @@ export async function getRandomTemplates(
 
   try {
     // 基本查詢條件
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
+    const where: Prisma.practice_templatesWhereInput = { ...PUBLIC_TEMPLATE_WHERE };
 
     // 如果有分類過濾，透過關聯表查詢
     if (category) {
@@ -509,6 +516,10 @@ export async function getRandomTemplates(
         }
       }
     });
+
+    if (templates.length === 0) {
+      return createSuccessResponse([]);
+    }
 
     if (templates.length > 0) {
       // 查詢所有模板的標籤、資源和使用人數
@@ -786,7 +797,7 @@ export async function updateTemplate(
 
   // 查找模板
   const existingTemplate = await prismaClient.practice_templates.findFirst({
-    where: { external_id: id }
+    where: { external_id: id, ...PUBLIC_TEMPLATE_WHERE }
   });
 
   if (!existingTemplate) {
@@ -797,7 +808,7 @@ export async function updateTemplate(
   await prismaClient.$transaction(async (tx) => {
     // 更新模板基本資料
     await tx.practice_templates.update({
-      where: { id: existingTemplate.id },
+      where: { id: existingTemplate.id, ...PUBLIC_TEMPLATE_WHERE },
       data: {
         ...(title !== undefined && { title }),
         ...(practiceAction !== undefined && { practice_action: practiceAction }),
@@ -859,6 +870,11 @@ export async function updateTemplate(
         });
       }
     }
+  }).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw new NotFoundError('實踐模板不存在');
+    }
+    throw error;
   });
 
   // 重新查詢完整資料
@@ -877,7 +893,7 @@ export async function deleteTemplate(
 ): Promise<ApiSuccessResponse<{ deleted: boolean }>> {
   // 查找模板
   const existingTemplate = await prismaClient.practice_templates.findFirst({
-    where: { external_id: id }
+    where: { external_id: id, ...PUBLIC_TEMPLATE_WHERE }
   });
 
   if (!existingTemplate) {
@@ -896,9 +912,14 @@ export async function deleteTemplate(
       }
     }),
     prismaClient.practice_templates.delete({
-      where: { id: existingTemplate.id }
+      where: { id: existingTemplate.id, ...PUBLIC_TEMPLATE_WHERE }
     })
-  ]);
+  ]).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw new NotFoundError('實踐模板不存在');
+    }
+    throw error;
+  });
 
   loggerService.info('Practice template deleted', { templateId: existingTemplate.id });
 
@@ -930,7 +951,7 @@ export async function getTemplateUsageStats(
   try {
     // 查找模板
     const template = await prismaClient.practice_templates.findFirst({
-      where: { external_id: templateId },
+      where: { external_id: templateId, ...PUBLIC_TEMPLATE_WHERE },
       select: {
         id: true,
         external_id: true,
@@ -1015,6 +1036,7 @@ export async function getPopularTemplates(
       by: ['template_id'],
       where: {
         template_id: { not: null },
+        practice_templates: PUBLIC_TEMPLATE_WHERE,
         deleted_at: null
       },
       _count: { id: true },
@@ -1034,7 +1056,7 @@ export async function getPopularTemplates(
 
     // 3. 查詢模板詳細資料
     const templates = await prismaClient.practice_templates.findMany({
-      where: { id: { in: sortedTemplateIds } },
+      where: { id: { in: sortedTemplateIds }, ...PUBLIC_TEMPLATE_WHERE },
       include: {
         practice_template_categories: {
           include: {
