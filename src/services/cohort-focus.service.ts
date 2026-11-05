@@ -14,7 +14,7 @@ export type CelebrationMoment = keyof typeof CELEBRATION_MOMENTS;
  * messageCount 讓「訊息紀錄」欄能顯示已往來幾則，沒有就顯示「尚未送出」
  */
 const get = async (programId: number, cohortId: number, actorId: number, now = new Date()) => {
-  const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, program: { organization: { organization_members: { some: { user_id: actorId } } } } }, select: { id: true } });
+  const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } }, select: { id: true } });
   if (!cohort) throw new ForbiddenError('無權限查看此場次焦點');
   const [needs, celebrations, messageRows] = await Promise.all([
     prisma.$queryRaw<Array<{ user_id: number; nickname: string | null; avatar: string | null; practice_id: number; practice_title: string; last_at: Date; last_date: Date; preview: string | null; interrupted_days: number }>>`

@@ -10,7 +10,7 @@ const setConsent = async (cohortId: number, userId: number, consent: boolean, no
 };
 
 const exportOutcome = async (programId: number, cohortId: number, actorId: number, now = new Date()) => {
-  const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, program: { organization: { organization_members: { some: { user_id: actorId } } } } }, select: { id: true } });
+  const cohort = await prisma.cohorts.findFirst({ where: { id: cohortId, program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } }, select: { id: true } });
   if (!cohort) throw new ForbiddenError('無權限匯出此期成果');
   const enrollments = await prisma.cohort_enrollments.findMany({
     where: { cohort_id: cohortId, export_opt_in: true, user_id: { not: null } },
