@@ -108,4 +108,17 @@ suite('cohort schedule actual PostgreSQL round-trip', () => {
     expect((await cohortService.get(program, created.id, actor)).sessions).toEqual([]);
   });
 
+  it('preserves explicit recurrence while adding a manual occurrence with omitted optional metadata', async () => {
+    const created = await cohortService.create(program, createCohortSchema.parse({
+      slug: 'mixed-schedule', displayName: '347 mixed schedule', startDate: '2026-11-01', endDate: '2099-12-31',
+      interactionModes: ['sync'], sessions
+    }), actor);
+    cohortIds.push(created.id);
+    const manual = { sessionDate: '2026-12-01', startTime: '18:00', endTime: '19:00' };
+    const updated = await cohortService.update(program, created.id, { sessions: [...sessions, manual] }, actor);
+    const expected = [...sessions, { ...manual, recurrenceGroupId: null, recurrenceRule: null }];
+    expect(updated.sessions.map(({ id: _id, ...session }) => session)).toEqual(expected);
+    expect((await cohortService.get(program, created.id, actor)).sessions.map(({ id: _id, ...session }) => session)).toEqual(expected);
+  });
+
 });
