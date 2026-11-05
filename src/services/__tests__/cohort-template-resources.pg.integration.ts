@@ -304,6 +304,34 @@ describe('cohort resource persistence and propagation (#401)', () => {
     expect(final.find(row => row.name === '原舊筆記')?.id).toBe(originalPersonal[1].id);
   });
 
+  it('keeps personal edit order and relation identity without changing another practice sharing its body', async () => {
+    await prisma.$transaction(tx => ensureCohortDrafts(tx, cohort, learner));
+    await prisma.$transaction(tx => ensureCohortDrafts(tx, cohort, newcomer));
+    const practice = await prisma.practices.findFirstOrThrow({ where: { cohort_id: cohort, user_id: learner } });
+    const other = await prisma.practices.findFirstOrThrow({ where: { cohort_id: cohort, user_id: newcomer } });
+    const shared = (await findPractice(practice.id, learner)).data.resources ?? [];
+    await updatePractice(practice.id, updatePracticeSchema.parse({ resources: [...shared,
+      { name: 'older personal', url: 'https://example.com/older', dayNumber: 1 },
+      { name: 'newer personal', url: 'https://example.com/newer' }
+    ] }), learner);
+    const before = (await findPractice(practice.id, learner)).data.resources ?? [];
+    const older = before.find(row => row.name === 'older personal')!;
+    const body = await prisma.resources.findUniqueOrThrow({ where: { external_id: older.id } });
+    const relation = await prisma.entity_resources.findFirstOrThrow({ where: { entity_type: 'practice', entity_id: practice.id, resource_id: body.id, deleted_at: null } });
+    await prisma.entity_resources.create({ data: { resource_id: body.id, entity_type: 'practice', entity_id: other.id, created_by: newcomer } });
+    await updatePractice(practice.id, updatePracticeSchema.parse({ resources: before.map(row => row.id === older.id
+      ? { ...row, name: 'edited older', url: 'https://example.com/edited', dayNumber: 3 } : row) }), learner);
+    const after = (await findPractice(practice.id, learner)).data.resources ?? [];
+    expect(after.filter(row => !row.isLocked).map(row => row.name)).toEqual(['newer personal', 'edited older']);
+    expect(after.find(row => row.name === 'edited older')).toMatchObject({ url: 'https://example.com/edited', dayNumber: 3 });
+    const savedRelation = await prisma.entity_resources.findUniqueOrThrow({ where: { id: relation.id } });
+    expect(savedRelation).toMatchObject({ deleted_at: null, created_at: relation.created_at, cohort_template_resource_id: null });
+    expect(await prisma.resources.findUniqueOrThrow({ where: { id: body.id } })).toEqual(body);
+    expect((await findPractice(other.id, newcomer)).data.resources?.find(row => row.id === older.id)).toMatchObject({ name: 'older personal', url: 'https://example.com/older' });
+    expect(after.filter(row => row.isLocked)).toEqual(before.filter(row => row.isLocked));
+    expect(after.find(row => row.name === 'newer personal')).toEqual(before.find(row => row.name === 'newer personal'));
+  });
+
   it('serializes simultaneous replacement and learner join without partial source sets', async () => {
     await service.list(org, template, cohort, owner);
     await Promise.all([

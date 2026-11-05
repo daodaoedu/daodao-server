@@ -1407,6 +1407,19 @@ async function updateResources(
             retained.add(old.id);
             continue;
           }
+          // Resource bodies may be linked elsewhere. Replace this practice's body
+          // while retaining the relation identity used for personal creation order.
+          const body = await db.resources.create({ data: {
+            name: candidate.name, url: candidate.url || '', description: '',
+            type: 'other', cost: 'free', created_by: userId
+          } });
+          await db.entity_resources.update({ where: { id: old.id }, data: {
+            resource_id: body.id,
+            note: candidate.dayNumber === undefined ? old.note : encodeResourceDay(candidate.dayNumber),
+            updated_at: new Date()
+          } });
+          retained.add(old.id);
+          continue;
         }
         additions.push(candidate);
       }
@@ -1723,7 +1736,7 @@ async function getCoachLockedResources(practice: CoachLockSubject, db: Db = pris
  * #278 修正前存檔過的實踐，教練資源列已重建成學員所有；若先改名，內容就對不上模板、鎖定判定失效，
  * 所以要在改之前擋。例外：資源建立者改別人實踐上的資源列——模板共用的資源列屬於教練，教練改自己的資源不受影響。
  */
-export async function assertResourceNotCoachLocked(resource: { id: number; created_by: number }, userId: number): Promise<void> {
+export async function assertResourceNotCoachLocked(resource: { id: number; created_by: number | null }, userId: number): Promise<void> {
   const source = await prismaClient.cohort_template_resources.findUnique({ where: { resource_id: resource.id }, select: { id: true } });
   if (source) throw new ForbiddenError('場次共用資源只能透過場次資源編輯器修改');
   const links = (await prismaClient.entity_resources.findMany({
