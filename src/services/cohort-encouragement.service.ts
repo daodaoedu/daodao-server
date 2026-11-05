@@ -21,6 +21,7 @@ const assertCoachCheckinAccess = async (
           program_id: programId,
           program: {
             organization: {
+              status: 'active',
               organization_members: { some: { user_id: actorId, role: 'owner' } }
             }
           }
