@@ -64,7 +64,7 @@ async function main() {
     await assert.rejects(feedback.createCohortFeedbackSurvey(471, user.id, new Date()), error => error.statusCode === 404);
     await assert.rejects(feedback.getCohortFeedback(471, 471, user.id, { status: 'all', page: 1 }), error => error.statusCode === 404);
   });
-  const migration = fs.readFileSync(path.join(storage, 'migrate/sql/099_create_cohort_feedback_privacy.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(storage, 'migrate/sql/100_create_cohort_feedback_privacy.sql'), 'utf8');
   await check('partial schema does not enable feedback; full additive migration becomes visible without restart', async () => {
     // Isolated database only: a table appearing first must not enable the flow.
     sql(migration.slice(0, migration.indexOf('CREATE TABLE IF NOT EXISTS "cohort_feedback_completions"')));
