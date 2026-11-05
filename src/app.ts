@@ -1,16 +1,15 @@
-import './config/health-openapi';
 /**
  * TypeScript 應用程式整合
  * 負責初始化 TypeScript 模型和路由
  */
 
 import express from 'express';
+import { registerHealthOpenApi } from './config/health-openapi';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import { z } from 'zod';
 // Prisma 不需要手動引入模型，在服務層中直接使用
 // 引入 OpenAPI 配置（會自動載入所有 validators）
-import { generateOpenApiDocument, registry } from './config/openapi-registry';
+import { generateOpenApiDocument } from './config/openapi-registry';
 import './validators'; // 載入所有 validators，觸發 schema 註冊
 // 引入實際的資源路由
 import resourceRoutes from './routes/resource.routes';
@@ -155,6 +154,8 @@ export function setupTypescriptRoutes(app: express.Application) {
     meChatRoomRoutes, chatRoomRoutes, feedbackRoutes
   ];
   console.log('✅ 路由模組已載入');
+
+  registerHealthOpenApi();
 
   // 運行時生成 OpenAPI 文檔（官方推薦用法）
   console.log('📝 生成 OpenAPI 文檔...');

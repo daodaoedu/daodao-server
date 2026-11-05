@@ -14,6 +14,9 @@ import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { isAcceptanceFixtureOrganization } from '../constants/acceptance-fixtures';
 import { enqueueEmail } from '../queues/email.queue';
 import { generateOrganizationOwnerEmail } from './email/organization-owner-template';
+import { organizationInvitationService } from './organization-invitation.service';
+import { recoverOrganizationInvitationEmails } from './email/organization-invitation-dispatch.service';
+import { BadRequestError } from '../middleware/error.middleware';
 import { loggerService } from './logging/logger.service';
 
 const organizationSelect = {
@@ -182,9 +185,16 @@ const sendOwnerEmail = async (organizationName: string, userId: number) => {
 };
 
 const create = async (input: CreateOrganizationInput, adminId: number): Promise<OrganizationResponse> => {
+  if (input.ownerEmail !== undefined) {
+    const organization = await organizationInvitationService.createOrganization({ ...input, ownerEmail: input.ownerEmail }, adminId);
+    void recoverOrganizationInvitationEmails().catch(() => undefined);
+    return toOrganization(organization);
+  }
+  const ownerUserId = input.ownerUserId;
+  if (ownerUserId === undefined) throw new BadRequestError('必須指定首位 owner');
   const result = await prisma.$transaction(async tx => {
     const owner = await tx.users.findUnique({
-      where: { id: input.ownerUserId },
+      where: { id: ownerUserId },
       select: { id: true }
     });
     if (!owner) throw new NotFoundError('找不到首位組織成員');
@@ -198,7 +208,7 @@ const create = async (input: CreateOrganizationInput, adminId: number): Promise<
         approved_by: adminId,
         approved_at: new Date(),
         organization_members: {
-          create: { user_id: input.ownerUserId, role: 'owner' }
+          create: { user_id: ownerUserId, role: 'owner' }
         }
       },
       select: organizationSelect
@@ -209,9 +219,9 @@ const create = async (input: CreateOrganizationInput, adminId: number): Promise<
       actionType: LIGHTHOUSE_AUDIT_ACTIONS.ORGANIZATION_CREATED,
       targetResource: 'organization',
       targetId: String(row.id),
-      newValue: { status: 'active', ownerUserId: input.ownerUserId, affectedCount: 1 }
+      newValue: { status: 'active', ownerUserId: ownerUserId, affectedCount: 1 }
     });
-    return { org: toOrganization(row), orgName: row.name, ownerId: input.ownerUserId };
+    return { org: toOrganization(row), orgName: row.name, ownerId: ownerUserId };
   });
   await sendOwnerEmail(result.orgName, result.ownerId);
   return result.org;
@@ -348,6 +358,7 @@ const addMember = async (
 const removeMember = async (organizationId: number, actorId: number, userId: number, skipMembership = false): Promise<void> => {
   if (!skipMembership) await assertOrganizationMember(organizationId, actorId, { requireActive: true });
   await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM organization WHERE id = ${organizationId} FOR UPDATE`;
     const member = await tx.organization_members.findUnique({
       where: { organization_id_user_id: { organization_id: organizationId, user_id: userId } },
       select: { id: true, role: true }
