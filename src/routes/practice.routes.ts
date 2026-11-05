@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import { practiceController } from '../controllers/practice.controller';
 import { authenticate, optionalAuth } from '../middleware/auth';
+import { requireAdmin } from '../middleware/permission.middleware';
 import { validate } from '../middleware/validation.middleware';
 import upload from '../middleware/multer.middleware';
 import { enforcePracticeCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
@@ -907,7 +908,7 @@ registry.registerPath({
   path: '/api/v1/practices/templates',
   tags: ['Practice Templates'],
   summary: '取得實踐模板列表',
-  description: '取得可用的實踐模板列表，支援分頁、分類過濾和搜尋。模板提供預設的實踐配置供用戶參考。',
+  description: '只列出未封存、未刪除的官方實踐模板，支援分頁、分類過濾和搜尋。組織私有模板請使用燈塔組織模板 API。',
   request: {
     query: practiceTemplateQuerySchema
   },
@@ -981,7 +982,7 @@ registry.registerPath({
   path: '/api/v1/practices/templates/{id}',
   tags: ['Practice Templates'],
   summary: '取得單一實踐模板',
-  description: '根據模板 ID 取得單一實踐模板的詳細資訊。',
+  description: '根據模板 ID 取得未封存、未刪除的官方模板。組織私有模板或不可用模板回傳 404。',
   request: {
     params: practiceTemplateParamsSchema
   },
@@ -1007,7 +1008,7 @@ registry.registerPath({
   path: '/api/v1/practices/templates/batch',
   tags: ['Practice Templates'],
   summary: '拆段批次建立實踐模板',
-  description: '長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。',
+  description: '限島島管理員建立官方模板。長天數模板拆成 2–3 段，一次 request 在同一交易內建立多筆模板；模板無開始日，不驗日期接續。',
   request: {
     body: {
       content: {
@@ -1028,6 +1029,7 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   },
   security: [{ bearerAuth: [] }]
@@ -1282,6 +1284,7 @@ router.get('/templates/:id',
  */
 router.post('/templates',
   authenticate,
+  requireAdmin,
   validate(createPracticeTemplateSchema, 'body'),
   practiceController.createTemplate as RequestHandler);
 
@@ -1291,6 +1294,7 @@ router.post('/templates',
  */
 router.post('/templates/batch',
   authenticate,
+  requireAdmin,
   validate(batchCreatePracticeTemplateSchema, 'body'),
   practiceController.batchCreateTemplates as RequestHandler);
 
@@ -1301,6 +1305,7 @@ router.post('/templates/batch',
  */
 router.put('/templates/:id',
   authenticate,
+  requireAdmin,
   validate(practiceTemplateParamsSchema, 'params'),
   validate(updatePracticeTemplateSchema, 'body'),
   practiceController.updateTemplate as RequestHandler);
@@ -1312,6 +1317,7 @@ router.put('/templates/:id',
  */
 router.delete('/templates/:id',
   authenticate,
+  requireAdmin,
   validate(practiceTemplateParamsSchema, 'params'),
   practiceController.deleteTemplate as RequestHandler);
 

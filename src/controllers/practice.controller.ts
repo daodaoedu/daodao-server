@@ -13,7 +13,7 @@ import * as tagPromptService from '../services/tag-prompt.service';
 import * as practiceTemplateService from '../services/practice-template.service';
 import { externalToInternalId } from '../services/id-converter.service';
 import { asyncHandler } from '../middleware/error.middleware';
-import { BadRequestError, UnauthorizedError } from '../middleware/error.middleware';
+import { BadRequestError, UnauthorizedError, NotFoundError } from '../middleware/error.middleware';
 import type {
   CreatePracticeRequest,
   BatchCreatePracticeRequest,
@@ -711,6 +711,7 @@ export class PracticeController {
   getTemplateById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const templateId = req.params.id;
     const result = await practiceTemplateService.getTemplateById(templateId);
+    if (!result.data) throw new NotFoundError('實踐模板不存在');
     res.json(result);
   });
 
@@ -765,6 +766,7 @@ export class PracticeController {
     const templateId = req.params.id;
     const input = req.body;
     const result = await practiceTemplateService.updateTemplate(templateId, input);
+    if (!result.data) throw new NotFoundError('實踐模板不存在');
     res.json(result);
   });
 
