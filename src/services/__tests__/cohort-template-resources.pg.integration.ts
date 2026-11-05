@@ -332,6 +332,45 @@ describe('cohort resource persistence and propagation (#401)', () => {
     expect(after.find(row => row.name === 'newer personal')).toEqual(before.find(row => row.name === 'newer personal'));
   });
 
+  it.each(['exit', 'remove'] as const)('isolates former learner resources after %s from subsequent cohort edits and deletion', async action => {
+    await prisma.cohort_enrollments.create({ data: { cohort_id: cohort, user_id: learner, email: `${prefix}-${action}@example.test`, role: 'member', status: 'joined' } });
+    await prisma.$transaction(tx => ensureCohortDrafts(tx, cohort, learner));
+    const practice = await prisma.practices.findFirstOrThrow({ where: { cohort_id: cohort, user_id: learner } });
+    const before = (await findPractice(practice.id, learner)).data.resources ?? [];
+    const links = await prisma.entity_resources.findMany({ where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null }, orderBy: { id: 'asc' } });
+    if (action === 'exit') await cohortMembershipService.exit(cohort, learner);
+    else {
+      const enrollment = await prisma.cohort_enrollments.findFirstOrThrow({ where: { cohort_id: cohort, user_id: learner } });
+      const run = await prisma.cohorts.findUniqueOrThrow({ where: { id: cohort } });
+      await cohortMembershipService.remove(run.program_id, cohort, enrollment.id, owner);
+    }
+    const sources = await service.list(org, template, cohort, owner);
+    await put(sources.map(row => ({ ...row, name: 'cohort renamed', url: 'https://example.com/cohort-renamed' })));
+    await put([]);
+    const after = (await findPractice(practice.id, learner)).data.resources ?? [];
+    expect(after.map(row => ({ name: row.name, url: row.url }))).toEqual(before.map(row => ({ name: row.name, url: row.url })));
+    expect(after.every(row => !row.isLocked && row.relevantDate === null)).toBe(true);
+    expect(await prisma.practices.findUniqueOrThrow({ where: { id: practice.id } })).toMatchObject({ cohort_id: null, has_resources: true });
+    const detached = await prisma.entity_resources.findMany({ where: { entity_type: 'practice', entity_id: practice.id, deleted_at: null }, orderBy: { id: 'asc' } });
+    expect(detached.map(row => ({ id: row.id, created_at: row.created_at, note: row.note, source: row.cohort_template_resource_id }))).toEqual(links.map(row => ({ id: row.id, created_at: row.created_at, note: row.note, source: null })));
+  });
+
+  it('serializes concurrent learner exit and admin replacement before later deletion', async () => {
+    await prisma.cohort_enrollments.create({ data: { cohort_id: cohort, user_id: learner, email: `${prefix}-concurrent-exit@example.test`, role: 'member', status: 'joined' } });
+    await prisma.$transaction(tx => ensureCohortDrafts(tx, cohort, learner));
+    const practice = await prisma.practices.findFirstOrThrow({ where: { cohort_id: cohort, user_id: learner } });
+    const sources = await service.list(org, template, cohort, owner);
+    await Promise.all([
+      cohortMembershipService.exit(cohort, learner),
+      put(sources.map(row => ({ ...row, name: 'concurrent edit' })))
+    ]);
+    const detached = (await findPractice(practice.id, learner)).data.resources ?? [];
+    expect(detached).toHaveLength(1);
+    expect(['原模板', 'concurrent edit']).toContain(detached[0].name);
+    await put([]);
+    expect((await findPractice(practice.id, learner)).data.resources).toEqual(detached);
+  });
+
   it('serializes simultaneous replacement and learner join without partial source sets', async () => {
     await service.list(org, template, cohort, owner);
     await Promise.all([
