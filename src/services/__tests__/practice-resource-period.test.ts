@@ -107,12 +107,22 @@ describe('personal resource assigned-day readback', () => {
   it('GET returns the stored assigned day and whole-period null', async () => {
     const result = await findById(1, 42);
     expect(result.data.resources?.map(resource => ({ name: resource.name, dayNumber: resource.dayNumber }))).toEqual([
-      { name: '中文 Book', dayNumber: 2 }, { name: '整段', dayNumber: null }
+      { name: '整段', dayNumber: null }, { name: '中文 Book', dayNumber: 2 }
     ]);
+  });
+  it('returns formal assigned days together with absolute shared-resource dates', async () => {
+    prismaMock.entity_resources.findMany.mockResolvedValue([
+      { ...relations[0], note: '一般筆記', dayNumber: 7, shared_resource: { sort_order: 0, resource_date: new Date('2026-11-07') } },
+      relations[1]
+    ] as never);
+    const result = await findById(1, 42);
+    expect(result.data.resources?.find(resource => resource.id === 'resource-id')).toMatchObject({
+      dayNumber: 7, relevantDate: '2026-11-07'
+    });
   });
   it('changing only the title preserves both resource dates without rewriting relations', async () => {
     const result = await update(1, { title: '換個標題' }, 42);
-    expect(result.data.resources?.map(resource => resource.dayNumber)).toEqual([2, null]);
+    expect(result.data.resources?.map(resource => resource.dayNumber)).toEqual([null, 2]);
     expect(prismaMock.entity_resources.updateMany).not.toHaveBeenCalled();
     expect(prismaMock.entity_resources.create).not.toHaveBeenCalled();
   });

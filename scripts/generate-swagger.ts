@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { generateOpenApiDocument, registry } from '../src/config/openapi-registry';
+import '../src/config/health-openapi';
 
 /**
  * 自動載入所有使用 registry 的 validators

@@ -1,3 +1,4 @@
+import { attachCohortResources, initializeCohortResources, lockCohortResourceBinding } from './cohort-template-resources.service';
 import type { PrismaClient } from '../../generated/prisma';
 import { MS_PER_DAY, inclusiveEndDate } from '../utils/date-utils';
 import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
@@ -125,7 +126,7 @@ export const ensureCohortDrafts = async (
   const [cohort, bindings] = await Promise.all([
     tx.cohorts.findUnique({
       where: { id: cohortId },
-      select: { start_date: true, end_date: true, is_private: true },
+      select: { start_date: true, end_date: true, is_private: true, program: { select: { kind: true } } },
     }),
     tx.cohort_templates.findMany({
       where: { cohort_id: cohortId, unbound_at: null },
@@ -148,6 +149,19 @@ export const ensureCohortDrafts = async (
     }),
   ]);
   if (bindings.length === 0) return 0;
+  // Initialize and lock snapshots before creating drafts so joins see a complete source set.
+  if (cohort?.program.kind === 'lighthouse') {
+    for (const binding of [...bindings].sort((a, b) => a.template_id - b.template_id)) {
+      const locked = await lockCohortResourceBinding(tx, cohortId, binding.template_id);
+      await initializeCohortResources(tx, locked.id);
+    }
+  }
+
+  const existingDrafts = cohort?.program.kind === 'lighthouse' ? await tx.practices.findMany({
+    where: { user_id: userId, cohort_id: cohortId, template_id: { in: bindings.map(row => row.template_id) }, creation_source: 'cohort_template', deleted_at: null },
+    select: { id: true }
+  }) : [];
+  const existingDraftIds = new Set(existingDrafts.map(row => row.id));
 
   // D7：依 is_private 決定實踐的 privacy_status
   const privacyStatus = cohort?.is_private ? 'private' : 'public';
@@ -195,11 +209,18 @@ export const ensureCohortDrafts = async (
     skipDuplicates: true,
   });
 
-  await copyTemplateResources(
-    tx,
-    cohortId,
-    userId,
-    bindings.map((binding) => binding.template_id)
-  );
+  if (cohort?.program.kind === 'lighthouse') {
+    for (const binding of bindings) {
+      const snapshot = await tx.cohort_templates.findUniqueOrThrow({ where: { cohort_id_template_id: { cohort_id: cohortId, template_id: binding.template_id } } });
+      const modern = await tx.practices.findMany({ where: {
+        cohort_id: cohortId, template_id: binding.template_id, user_id: userId,
+        creation_source: 'cohort_template', deleted_at: null,
+        id: { notIn: [...existingDraftIds] }
+      }, select: { id: true } });
+      await attachCohortResources(tx, snapshot.id, modern.map(row => row.id));
+    }
+  } else {
+    await copyTemplateResources(tx, cohortId, userId, bindings.map(binding => binding.template_id));
+  }
   return result.count;
 };

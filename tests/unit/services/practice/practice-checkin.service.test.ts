@@ -106,6 +106,7 @@ describe('Practice CheckIn Service', () => {
     user_id: 1,
     template_id: null,
     cohort_id: null,
+    cohort_resources_initialized_at: null,
     title: 'TypeScript 學習',
     practice_action: '閱讀技術書籍',
     start_date: futureStart,

@@ -1,3 +1,4 @@
+import type { Prisma } from '../../../generated/prisma';
 /**
  * 教練資源鎖定 API 測試（daodao#278）
  *
@@ -181,6 +182,43 @@ describe('教練資源鎖定（daodao#278）', () => {
     expect(prismaMock.resources.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ name: '新的參考書' })
     }));
+  });
+
+  it('縮短期間時，省略個人資源日期仍驗證原有日期', async () => {
+    mockPractice();
+    const personal = { ...practiceRelations[1], dayNumber: 10, note: '一般筆記' };
+    prismaMock.entity_resources.findMany.mockImplementation((async (args: Prisma.entity_resourcesFindManyArgs) => (
+      args?.where?.entity_type === 'practice_template'
+        ? [{ entity_id: templateId, resource_id: coachResourceId, dayNumber: 2, resources: practiceRelations[0].resources }]
+        : [practiceRelations[0], personal]
+    )) as never);
+    const response = await put({ durationDays: 7, resources: [
+      { name: '暖身影片', url: 'https://example.com/warmup', dayNumber: 2 },
+      { id: personal.resources.external_id, name: '我的筆記' }
+    ] });
+    expect(response.status).toBe(400);
+    expect(prismaMock.entity_resources.update).not.toHaveBeenCalled();
+    expect(prismaMock.practices.update).not.toHaveBeenCalled();
+  });
+
+  it('保留場次共用資源時，個人日期修改保留關聯識別碼與一般筆記', async () => {
+    mockPractice();
+    const personal = { ...practiceRelations[1], dayNumber: 3, note: '一般筆記' };
+    prismaMock.entity_resources.findMany.mockImplementation((async (args: Prisma.entity_resourcesFindManyArgs) => (
+      args?.where?.entity_type === 'practice_template'
+        ? [{ entity_id: templateId, resource_id: coachResourceId, dayNumber: 2, resources: practiceRelations[0].resources }]
+        : [practiceRelations[0], personal]
+    )) as never);
+    const response = await put({ resources: [
+      { name: '暖身影片', url: 'https://example.com/warmup', dayNumber: 2 },
+      { id: personal.resources.external_id, name: '我的筆記', dayNumber: 7 }
+    ] });
+    expect(response.status).toBe(200);
+    expect(prismaMock.entity_resources.update).toHaveBeenCalledWith({
+      where: { id: personal.id },
+      data: { resource_id: 300, dayNumber: 7, updated_at: expect.any(Date) }
+    });
+    expect(prismaMock.entity_resources.create).not.toHaveBeenCalled();
   });
 
   it('教練資源的 resources 列已被重建（id 不同、內容相同）→ 仍視為教練資源而擋下', async () => {

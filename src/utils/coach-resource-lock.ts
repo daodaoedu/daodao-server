@@ -5,9 +5,11 @@
  */
 
 export interface LockableResource {
+  id?: string;
   name: string;
   url?: string | null;
   dayNumber?: number | null;
+  relevantDate?: string | null;
 }
 
 export const isCoachResourceLockActive = (practice: {
@@ -85,6 +87,8 @@ export const pickCoachLockedRelationIds = <R extends ResourceLink & { id: number
 /** strict：送出時明確帶了相同天數；lenient：沒帶 dayNumber 視為沿用（編輯頁表單不帶天數） */
 const sameContent = (locked: LockableResource, incoming: LockableResource, mode: 'strict' | 'lenient'): boolean =>
   resourceContentKey(locked) === resourceContentKey(incoming)
+  && (incoming.id === undefined || locked.id === undefined || incoming.id === locked.id)
+  && (incoming.relevantDate === undefined || (incoming.relevantDate ?? null) === (locked.relevantDate ?? null))
   && (mode === 'strict'
     ? incoming.dayNumber !== undefined && (incoming.dayNumber ?? null) === (locked.dayNumber ?? null)
     : incoming.dayNumber === undefined);
