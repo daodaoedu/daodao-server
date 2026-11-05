@@ -80,4 +80,32 @@ suite('cohort schedule actual PostgreSQL round-trip', () => {
     expect(publicJoin).toMatchObject({ timezone: 'Asia/Tokyo', sessions: reloaded.sessions });
     expect(publicJoin).not.toHaveProperty('meetingUrl');
   });
+  it('rejects legacy session replacements without destroying recurrence, but permits explicit ungrouping and async clearing', async () => {
+    const created = await cohortService.create(program, createCohortSchema.parse({
+      slug: 'legacy-schedule', displayName: '347 legacy payload guard', startDate: '2026-11-01', endDate: '2099-12-31',
+      interactionModes: ['sync'], sessions
+    }), actor);
+    cohortIds.push(created.id);
+    const legacySessions = sessions.map(({ sessionDate, startTime, endTime }) => ({ sessionDate, startTime, endTime }));
+    const replacements = [
+      legacySessions,
+      legacySessions.map(session => ({ ...session, recurrenceGroupId: null })),
+      legacySessions.map(session => ({ ...session, recurrenceRule: null }))
+    ];
+    for (const replacement of replacements) {
+      await expect(cohortService.update(program, created.id, { sessions: replacement }, actor)).rejects.toMatchObject({ statusCode: 409 });
+      expect((await cohortService.get(program, created.id, actor)).sessions).toEqual(created.sessions);
+    }
+    const ungrouped = await cohortService.update(program, created.id, {
+      sessions: legacySessions.map(session => ({ ...session, recurrenceGroupId: null, recurrenceRule: null }))
+    }, actor);
+    expect(ungrouped.sessions.map(({ id: _id, ...session }) => session)).toEqual(
+      legacySessions.map(session => ({ ...session, recurrenceGroupId: null, recurrenceRule: null }))
+    );
+    await cohortService.update(program, created.id, { sessions }, actor);
+    const asyncCohort = await cohortService.update(program, created.id, { interactionModes: ['async'], sessions: legacySessions }, actor);
+    expect(asyncCohort.sessions).toEqual([]);
+    expect((await cohortService.get(program, created.id, actor)).sessions).toEqual([]);
+  });
+
 });
