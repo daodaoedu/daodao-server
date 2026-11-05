@@ -22,7 +22,7 @@ require('tsconfig-paths/register');
 const { Queue } = require('bullmq');
 const { prisma } = require('../database/prisma.service');
 const { createCohortFeedbackSurvey } = require('../cohort-feedback.service');
-const { enqueueCohortFeedbackSurvey, refreshCohortFeedbackDelivery } = require('../cohort-feedback-delivery.service');
+const { enqueueCohortFeedbackSurvey, refreshCohortFeedbackDelivery, cohortFeedbackReceiptKey } = require('../cohort-feedback-delivery.service');
 const { EMAIL_QUEUE_NAME, setEmailQueue } = require('../../queues/email.queue');
 const { getQueueConnection, closeQueueConnection } = require('../../queues/connection');
 const { createEmailWorker } = require('../../queues/email.worker');
@@ -62,10 +62,10 @@ async function setup() {
   organizationId = org.id;
   const program = await prisma.programs.create({ data: { id: randomInt(500000000, 800000000), organization_id: org.id, name: marker } });
   programId = program.id;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const cohort = await prisma.cohorts.create({ data: { id: randomInt(500000000, 800000000), program_id: program.id, slug: `${marker}-${i}`, display_name: `寄送驗證 ${i}`, start_date: new Date('2026-01-01'), end_date: new Date('2026-01-31'), status: 'published' } });
     cohortIds.push(cohort.id);
-    const recipients = i === 0 ? userIds.slice(1, 3) : userIds.slice(3);
+    const recipients = i === 0 || i === 4 ? userIds.slice(1, 3) : userIds.slice(3);
     await prisma.cohort_enrollments.createMany({ data: recipients.map((userId, index) => ({ cohort_id: cohort.id, user_id: userId, email: `${marker}-${i}-${index}@example.invalid`, status: 'joined', role: 'member' })) });
     await createCohortFeedbackSurvey(cohort.id, userIds[0], new Date('2026-02-01'));
     surveyIds.push((await mappingFor(cohort.id)).survey_id);
@@ -238,12 +238,89 @@ async function main() {
       delegate.findMany = originalFindMany;
     }
   });
+  await check('pruned BullMQ completion cannot erase SMTP acceptance and cause duplicate delivery', async () => {
+    const receiptCohort = cohortIds[3];
+    await worker.pause();
+    await enqueueCohortFeedbackSurvey(receiptCohort);
+    const [log] = await rememberJobs(receiptCohort);
+    const jobId = `cohort-feedback-email-${log.id}`;
+    const delegate = prisma.email_logs;
+    const originalUpdate = delegate.update.bind(delegate);
+    let injected = 0;
+    delegate.update = async args => {
+      if (args.where.id === log.id && args.data.status === 'sent' && injected === 0) {
+        injected++;
+        throw new Error('feedback471 injected status-write failure before completed-job pruning');
+      }
+      return originalUpdate(args);
+    };
+    try {
+      await worker.resume();
+      const accepted = await waitFor('SMTP acceptance and completed job before pruning', async () => {
+        const job = await queue.getJob(jobId);
+        return job && await job.getState() === 'completed' && job;
+      });
+      assert.equal(injected, 1);
+      assert.equal((await logsFor(receiptCohort))[0].status, 'pending');
+      await waitFor('fifth accepted SMTP message', async () => (await ownedMessages()).length === 5);
+      await worker.pause();
+      await accepted.remove();
+      assert.equal(await queue.getJob(jobId), undefined);
+      assert.equal(await (await queue.client).get(cohortFeedbackReceiptKey(log.id)), 'accepted');
+    } finally {
+      delegate.update = originalUpdate;
+    }
+    await enqueueCohortFeedbackSurvey(receiptCohort);
+    assert.equal((await logsFor(receiptCohort))[0].status, 'sent');
+    assert.equal((await mappingFor(receiptCohort)).delivery_state, 'sent');
+    assert.equal(await queue.getJob(jobId), undefined, 'Recovery must not enqueue another SMTP job');
+    assert.equal((await logsFor(receiptCohort)).length, 1);
+    assert.equal(await (await queue.client).get(cohortFeedbackReceiptKey(log.id)), null);
+    assert.equal((await ownedMessages()).filter(message => message.To.some(to => to.Address.endsWith('-3-0@example.invalid'))).length, 1);
+    await worker.resume();
+  });
+  await check('departed pending recipient cannot hold current delivery state queued forever', async () => {
+    const changingCohort = cohortIds[4];
+    await worker.pause();
+    setEmailQueue(null);
+    try {
+      await assert.rejects(enqueueCohortFeedbackSurvey(changingCohort), /queue is not initialized/);
+    } finally {
+      setEmailQueue(queue);
+    }
+    const logs = await rememberJobs(changingCohort);
+    assert.equal(logs.length, 2);
+    assert.ok(logs.every(log => log.status === 'pending'));
+    const departed = logs.find(log => log.user_id === userIds[2]);
+    const current = logs.find(log => log.user_id === userIds[1]);
+    assert.ok(departed && current);
+    await prisma.cohort_enrollments.updateMany({ where: { cohort_id: changingCohort, user_id: departed.user_id }, data: { status: 'exited' } });
+    assert.equal(await prisma.cohort_enrollments.count({ where: { cohort_id: changingCohort, status: 'joined' } }), 1);
+    await enqueueCohortFeedbackSurvey(changingCohort);
+    assert.equal(await queue.getJob(`cohort-feedback-email-${departed.id}`), undefined);
+    await worker.resume();
+    await waitFor('only remaining joined recipient accepted', async () => {
+      const rows = await logsFor(changingCohort);
+      return rows.find(row => row.id === current.id).status === 'sent' && (await ownedMessages()).length === 6;
+    });
+    assert.equal((await logsFor(changingCohort)).find(log => log.id === departed.id).status, 'pending');
+    assert.equal((await mappingFor(changingCohort)).delivery_state, 'sent');
+    assert.equal((await ownedMessages()).filter(message => message.To.some(to => to.Address.endsWith('-4-1@example.invalid'))).length, 0);
+    // With no currently reachable recipient, keep a pending survey pending;
+    // historical sent rows must not make the empty current set look delivered.
+    await prisma.cohort_enrollments.updateMany({ where: { cohort_id: changingCohort, user_id: current.user_id }, data: { email: null } });
+    await prisma.cohort_feedback_surveys.update({ where: { cohort_id: changingCohort }, data: { delivery_state: 'pending', delivered_at: null } });
+    await refreshCohortFeedbackDelivery(changingCohort);
+    assert.equal((await mappingFor(changingCohort)).delivery_state, 'pending');
+    assert.equal((await mappingFor(changingCohort)).delivered_at, null);
+  });
   console.log(`PASS ${checks} real PostgreSQL/BullMQ/SMTP delivery checks`);
 }
 async function cleanup() {
   if (worker) await worker.close();
   if (queue) {
     for (const jobId of jobIds) {
+      await (await queue.client).del(cohortFeedbackReceiptKey(Number(jobId.replace('cohort-feedback-email-', ''))));
       const job = await queue.getJob(jobId);
       if (job) await job.remove();
     }

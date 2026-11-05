@@ -8,21 +8,42 @@ import { isCohortFeedbackEnabled } from './cohort-feedback.service';
 const ENTITY = 'cohort_feedback';
 const CODE = 'CF01';
 
+/** Queue-pruning-independent SMTP receipt; contains only an email delivery-log identity. */
+export function cohortFeedbackReceiptKey(emailLogId: number): string {
+  return `cohort-feedback:accepted:${emailLogId}`;
+}
+
 /** Stable outbox identity, unrelated to anonymous answer or completion identifiers. */
 function deliveryToken(cohortId: number, userId: number): string {
   const hex = createHash('sha256').update(`cohort-feedback-v1:${cohortId}:${userId}`).digest('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
+/** Match dispatch and aggregate status to the same currently joined, reachable recipients. */
+async function currentFeedbackRecipients(cohortId: number): Promise<Map<number, string>> {
+  const enrollments = await prisma.cohort_enrollments.findMany({
+    where: { cohort_id: cohortId, status: 'joined', user_id: { not: null } },
+    select: { user_id: true, email: true, user: { select: { contacts: { select: { email: true } } } } },
+  });
+  const recipients = new Map<number, string>();
+  for (const enrollment of enrollments) {
+    const address = enrollment.user?.contacts?.email ?? enrollment.email;
+    if (enrollment.user_id !== null && address) recipients.set(enrollment.user_id, address);
+  }
+  return recipients;
+}
+
 /** Reflect actual successful sends, never merely queue admission, in the survey's state. */
 export async function refreshCohortFeedbackDelivery(cohortId: number): Promise<void> {
   if (!isCohortFeedbackEnabled()) return;
+  const recipients = await currentFeedbackRecipients(cohortId);
+  if (recipients.size === 0) return;
   const logs = await prisma.email_logs.findMany({
-    where: { entity_type: ENTITY, entity_id: cohortId, email_code: CODE },
-    select: { status: true },
+    where: { entity_type: ENTITY, entity_id: cohortId, email_code: CODE, user_id: { in: [...recipients.keys()] } },
+    select: { user_id: true, status: true },
   });
   if (logs.length === 0) return;
-  const sent = logs.every((log) => log.status === 'sent');
+  const sent = [...recipients.keys()].every(userId => logs.some(log => log.user_id === userId && log.status === 'sent'));
   await prisma.cohort_feedback_surveys.updateMany({
     // A stale pending snapshot must not overwrite a later successful worker.
     where: { cohort_id: cohortId, ...(!sent ? { delivery_state: { not: 'sent' } } : {}) },
@@ -46,10 +67,6 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
     select: {
       display_name: true,
       program: { select: { organization: { select: { name: true } } } },
-      cohort_enrollments: {
-        where: { status: 'joined', user_id: { not: null } },
-        select: { user_id: true, email: true, user: { select: { contacts: { select: { email: true } } } } },
-      },
     },
   });
   if (!cohort) return;
@@ -62,11 +79,7 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
     cohortName: cohort.display_name,
     surveyUrl: surveyUrl.toString(),
   });
-  const recipients = new Map<number, string>();
-  for (const enrollment of cohort.cohort_enrollments) {
-    const address = enrollment.user?.contacts?.email ?? enrollment.email;
-    if (enrollment.user_id !== null && address) recipients.set(enrollment.user_id, address);
-  }
+  const recipients = await currentFeedbackRecipients(cohortId);
   // Create the full outbox before the first worker can mark the survey sent.
   const logs = await prisma.$transaction([...recipients].map(([userId]) => prisma.email_logs.upsert({
     where: { tracking_token: deliveryToken(cohortId, userId) },
@@ -80,8 +93,19 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
   })));
   const queue = getEmailQueue();
   if (!queue) throw new Error('Email queue is not initialized; feedback outbox remains pending');
+  const connection = await queue.client;
+  const receiptsToClear: string[] = [];
   for (const log of logs) {
-    if (log.status === 'sent') continue;
+    const receiptKey = cohortFeedbackReceiptKey(log.id);
+    if (log.status === 'sent') {
+      receiptsToClear.push(receiptKey);
+      continue;
+    }
+    if (await connection.get(receiptKey)) {
+      await prisma.email_logs.update({ where: { id: log.id }, data: { status: 'sent', sent_at: new Date() } });
+      receiptsToClear.push(receiptKey);
+      continue;
+    }
     const to = recipients.get(log.user_id);
     if (!to) continue;
     const jobId = `cohort-feedback-email-${log.id}`;
@@ -89,6 +113,7 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
     const previousState = previous ? await previous.getState() : null;
     if (previousState === 'completed' && previous?.returnvalue?.cohortFeedbackDelivered === true) {
       await prisma.email_logs.update({ where: { id: log.id }, data: { status: 'sent', sent_at: new Date() } });
+      receiptsToClear.push(receiptKey);
     } else if (previousState === 'failed' && previous) {
       await previous.retry();
     } else {
@@ -101,6 +126,7 @@ export async function enqueueCohortFeedbackSurvey(cohortId: number): Promise<voi
     }
   }
   await refreshCohortFeedbackDelivery(cohortId);
+  if (receiptsToClear.length > 0) await connection.del(...receiptsToClear);
 }
 
 /** Resume committed feedback outboxes without creating historical surveys. */

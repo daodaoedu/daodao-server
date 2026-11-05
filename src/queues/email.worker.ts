@@ -8,14 +8,14 @@
  */
 
 import { Worker, Job } from 'bullmq';
-import { getQueueConnection } from './connection';
+import { getQueueConnection, getRawConnection } from './connection';
 import { EMAIL_QUEUE_NAME } from './email.queue';
 import type { EmailJobData } from './email.queue';
 import { loggerService } from '../services/logging/logger.service';
 import { emailService } from '../services/email/email.service';
 import { updateEmailLogStatus } from '../services/email/email-log.service';
 import { retryFailedEmails } from './email.queue';
-import { recoverPendingCohortFeedbackEmails, refreshCohortFeedbackDelivery } from '../services/cohort-feedback-delivery.service';
+import { cohortFeedbackReceiptKey, recoverPendingCohortFeedbackEmails, refreshCohortFeedbackDelivery } from '../services/cohort-feedback-delivery.service';
 import { prisma } from '../services/database/prisma.service';
 import { recoverPendingFutureLetterEmails } from '../services/email/future-letter-email.service';
 
@@ -44,9 +44,13 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void | { cohortF
 
   if (job.data.cohortFeedbackCohortId && emailLogId) {
     const log = await prisma.email_logs.findUnique({ where: { id: emailLogId }, select: { status: true } });
-    if (log?.status === 'sent') {
+    const connection = getRawConnection();
+    const receiptKey = cohortFeedbackReceiptKey(emailLogId);
+    if (log?.status === 'sent' || await connection.get(receiptKey)) {
+      if (log?.status !== 'sent') await updateEmailLogStatus(emailLogId, 'sent');
       await refreshCohortFeedbackDelivery(job.data.cohortFeedbackCohortId);
-      return;
+      await connection.del(receiptKey);
+      return { cohortFeedbackDelivered: true };
     }
   }
 
@@ -75,12 +79,24 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void | { cohortF
     throw new Error(result.error || '郵件發送失敗');
   }
 
+  // A separate receipt survives shared completed-set pruning until DB reconciliation.
+  // SMTP acceptance and Redis cannot be atomic; if Redis is unavailable, still
+  // attempt the DB write rather than forcing an avoidable immediate SMTP retry.
+  if (job.data.cohortFeedbackCohortId && emailLogId) {
+    try {
+      await getRawConnection().set(cohortFeedbackReceiptKey(emailLogId), 'accepted');
+    } catch (error) {
+      loggerService.warn('儲存回饋郵件寄送憑證失敗', { emailLogId, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   // 成功：更新 log 狀態
   if (emailLogId) {
     try {
       await updateEmailLogStatus(emailLogId, 'sent');
       if (job.data.cohortFeedbackCohortId) {
         await refreshCohortFeedbackDelivery(job.data.cohortFeedbackCohortId);
+        await getRawConnection().del(cohortFeedbackReceiptKey(emailLogId));
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
@@ -93,8 +109,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void | { cohortF
     to,
     messageId: result.messageId,
   });
-  // A durable completed-job receipt lets outbox recovery repair a failed DB
-  // status update without sending an already accepted SMTP message again.
+  // Keep the completed-job receipt as a compatibility fallback as well.
   if (job.data.cohortFeedbackCohortId) return { cohortFeedbackDelivered: true };
 }
 
