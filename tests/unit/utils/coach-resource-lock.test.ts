@@ -30,51 +30,51 @@ describe('pickCoachLockedRelationIds', () => {
   describe('同名同網址的教練資源放在不同天（daodao#355）', () => {
     const sheet = { name: '練習單', url: 'https://example.com/sheet' };
     const dayTemplate = [
-      { resource_id: 300, note: 'day:2', deleted_at: null, resources: sheet },
-      { resource_id: 301, note: 'day:3', deleted_at: null, resources: sheet }
+      { resource_id: 300, dayNumber: 2, deleted_at: null, resources: sheet },
+      { resource_id: 301, dayNumber: 3, deleted_at: null, resources: sheet }
     ];
-    const dayRelation = (id: number, resourceId: number, note: string | null) => ({ id, resource_id: resourceId, note, resources: sheet });
+    const dayRelation = (id: number, resourceId: number, dayNumber: number | null) => ({ id, resource_id: resourceId, dayNumber, resources: sheet });
 
     it('實踐資源列已重建（id 都對不上）→ 兩筆都鎖', () => {
-      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 900, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1, 2]));
+      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 900, 2), dayRelation(2, 901, 3)])).toEqual(new Set([1, 2]));
     });
 
     it('一筆 id 對得上、另一筆已重建 → 兩筆都鎖', () => {
-      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 300, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1, 2]));
+      expect(pickCoachLockedRelationIds(dayTemplate, [dayRelation(1, 300, 2), dayRelation(2, 901, 3)])).toEqual(new Set([1, 2]));
     });
 
     it('學員之後另存一份同內容 → 只鎖先建立的兩筆，學員那份不鎖；結果與查詢順序無關', () => {
       expect(pickCoachLockedRelationIds(dayTemplate, [
         dayRelation(3, 777, null),
-        dayRelation(1, 900, 'day:2'),
-        dayRelation(2, 901, 'day:3')
+        dayRelation(1, 900, 2),
+        dayRelation(2, 901, 3)
       ])).toEqual(new Set([1, 2]));
     });
 
     it('一筆 id 對得上（天數已漂移）＋兩筆重建 → id 對得上的必鎖，另補鎖一筆，總數不超過位置數＋id 對得上的筆數', () => {
-      const withHistory = [...dayTemplate, { resource_id: 500, note: 'day:5', deleted_at: new Date('2026-10-01'), resources: sheet }];
+      const withHistory = [...dayTemplate, { resource_id: 500, dayNumber: 5, deleted_at: new Date('2026-10-01'), resources: sheet }];
       expect(pickCoachLockedRelationIds(withHistory, [
-        dayRelation(1, 500, 'day:5'),
-        dayRelation(2, 900, 'day:2'),
-        dayRelation(3, 901, 'day:3')
+        dayRelation(1, 500, 5),
+        dayRelation(2, 900, 2),
+        dayRelation(3, 901, 3)
       ])).toEqual(new Set([1, 2]));
     });
 
     it('教練把模板資源從第 2 天移到第 3 天後，舊的重建列（第 2 天）仍鎖、學員之後另存的第 3 天那份不鎖', () => {
       const moved = [
-        { resource_id: 300, note: 'day:2', deleted_at: new Date('2026-10-01'), resources: sheet },
-        { resource_id: 302, note: 'day:3', deleted_at: null, resources: sheet }
+        { resource_id: 300, dayNumber: 2, deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 302, dayNumber: 3, deleted_at: null, resources: sheet }
       ];
-      expect(pickCoachLockedRelationIds(moved, [dayRelation(1, 900, 'day:2'), dayRelation(2, 777, 'day:3')])).toEqual(new Set([1]));
+      expect(pickCoachLockedRelationIds(moved, [dayRelation(1, 900, 2), dayRelation(2, 777, 3)])).toEqual(new Set([1]));
     });
 
     it('教練改過模板：舊關聯軟刪、新關聯現存 → 只依現存關聯計數，不因歷史多鎖', () => {
       const edited = [
-        { resource_id: 290, note: 'day:2', deleted_at: new Date('2026-10-01'), resources: sheet },
-        { resource_id: 291, note: 'day:3', deleted_at: new Date('2026-10-01'), resources: sheet },
-        { resource_id: 300, note: 'day:2', deleted_at: null, resources: sheet }
+        { resource_id: 290, dayNumber: 2, deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 291, dayNumber: 3, deleted_at: new Date('2026-10-01'), resources: sheet },
+        { resource_id: 300, dayNumber: 2, deleted_at: null, resources: sheet }
       ];
-      expect(pickCoachLockedRelationIds(edited, [dayRelation(1, 900, 'day:2'), dayRelation(2, 777, null)])).toEqual(new Set([1]));
+      expect(pickCoachLockedRelationIds(edited, [dayRelation(1, 900, 2), dayRelation(2, 777, null)])).toEqual(new Set([1]));
     });
 
     it('模板現存關聯是同天重複的舊 seed（天數相同）→ 視為一筆，學員自己的同名資源不鎖', () => {
@@ -89,7 +89,7 @@ describe('pickCoachLockedRelationIds', () => {
 
     it('教練已從模板拿掉（只剩軟刪關聯）→ 照舊以內容補鎖一筆', () => {
       const removed = dayTemplate.map(link => ({ ...link, deleted_at: new Date('2026-10-01') }));
-      expect(pickCoachLockedRelationIds(removed, [dayRelation(1, 900, 'day:2'), dayRelation(2, 901, 'day:3')])).toEqual(new Set([1]));
+      expect(pickCoachLockedRelationIds(removed, [dayRelation(1, 900, 2), dayRelation(2, 901, 3)])).toEqual(new Set([1]));
     });
   });
 });

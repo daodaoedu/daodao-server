@@ -30,8 +30,8 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { outOfPeriodResourceIndexes } from '../utils/resource-usage-date';
 import { inclusiveEndDate, taipeiToday } from '../utils/date-utils';
-import { encodeResourceDay, parseResourceDay } from '../utils/resource-day';
 import { sanitizePracticeTimePeriods } from '../utils/practice-time-periods';
 import { isCoachResourceLockActive, partitionIncomingResources, pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import {
@@ -579,6 +579,7 @@ async function createPracticeCore(
     // 計算結束日期（含首日：結束日 = 開始日 + 天數 − 1）
     const startDate = data.startDate ? new Date(data.startDate) : new Date();
     const durationDays = data.durationDays || 14;
+    assertResourcesWithinPeriod(data.resources ?? [], durationDays);
     const endDate = inclusiveEndDate(startDate, durationDays);
 
     // 草稿維持 draft；否則依開始日決定 active／not_started（daodao#212）
@@ -876,109 +877,142 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
     if (data.sessionDurationMinutes !== undefined) updateData.session_duration_minutes = data.sessionDurationMinutes;
     if (data.practiceTimePeriods !== undefined) updateData.practice_time_periods = data.practiceTimePeriods;
 
-    // 本次更新後的結束日：改開始日或天數時下方會重算，否則沿用原結束日
-    let nextEndDate: Date | null = existingPractice.end_date;
-
-    // 處理日期相關欄位（需要重新計算 end_date）
-    if (data.startDate !== undefined || data.durationDays !== undefined) {
-      const newStartDate = data.startDate
-        ? new Date(data.startDate)
-        : existingPractice.start_date;
-      // duration_days 為 null（> 91 天的共同挑戰，daodao#300 前建立）時沿用原起訖日天數，不退回 14 天（daodao#295）
-      const newDurationDays = data.durationDays ?? resolveProgressDurationDays(existingPractice, 14);
-
-      if (data.startDate !== undefined) {
-        updateData.start_date = newStartDate;
-      }
-      if (data.durationDays !== undefined) {
-        updateData.duration_days = newDurationDays;
-      }
-
-      // 重新計算 end_date
-      if (newStartDate) {
-        nextEndDate = inclusiveEndDate(newStartDate, newDurationDays);
-        updateData.end_date = nextEndDate;
-      }
-    }
-
-    // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依期間決定 active／not_started／completed
-    // （daodao#212 依開始日；daodao#304 結束日已過的草稿啟用後直接 completed，不能再打卡）
-    // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
-    const nextStartDate = data.startDate
-      ? new Date(data.startDate)
-      : existingPractice.start_date ?? new Date();
-    if (data.isDraft === true) {
-      updateData.status = 'draft';
-    } else if (
-      existingPractice.status === 'draft' &&
-      (data.isDraft === false || data.status === 'not_started')
-    ) {
-      // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
-      updateData.status = statusForPeriod(nextStartDate, nextEndDate);
-    } else if (data.status !== undefined) {
-      updateData.status = data.status;
-    } else if (
-      data.startDate !== undefined &&
-      (existingPractice.status === 'not_started' || existingPractice.status === 'active')
-    ) {
-      updateData.status = statusForPeriod(nextStartDate, nextEndDate);
-    }
-
     updateData.updated_at = new Date();
 
     const sharedScope = data.resources !== undefined && isCoachResourceLockActive(existingPractice) && await isLighthouseCohort(existingPractice.cohort_id);
-    const persist = async (db: Db) => {
+    const practice = await prismaClient.$transaction(async db => {
       let currentLocked = lockedResources;
       let nextResources = resourcesToCreate;
       if (sharedScope) {
-        // Every mutation in this save follows the same binding lock as admin PUT.
+        // Match admin resource updates: binding lock before locking an individual practice.
         await db.$queryRaw`SELECT id FROM cohort_templates WHERE cohort_id = ${existingPractice.cohort_id} AND template_id = ${existingPractice.template_id} FOR UPDATE`;
-        const freshPractice = await db.practices.findUnique({ where: { id } });
-        if (!freshPractice || freshPractice.deleted_at !== null || freshPractice.user_id !== userId) throw new NotFoundError('實踐不存在');
-        currentLocked = await getCoachLockedResources(freshPractice, db);
+      }
+      // Serialize competing date/resource edits so each validates the persisted effective state.
+      await db.$queryRaw`SELECT id FROM practices WHERE id = ${id} FOR UPDATE`;
+      const current = await db.practices.findUnique({ where: { id } });
+      if (!current || current.deleted_at !== null || current.user_id !== userId) throw new NotFoundError('實踐不存在');
+      if (sharedScope) {
+        currentLocked = await getCoachLockedResources(current, db);
         const checked = partitionIncomingResources(currentLocked, data.resources ?? []);
         if (checked.violated.length) throw new ForbiddenError('場次共用資源已更新或不可修改，請重新載入');
         nextResources = checked.rest;
+        // Omitted dates on identified personal resources retain their stored value.
+        // Validate that effective value, rather than treating omission as whole-period.
+        if (nextResources.some(resource => resource.id && resource.dayNumber === undefined)) {
+          const personal = await db.entity_resources.findMany({
+            where: { entity_type: 'practice', entity_id: id, cohort_template_resource_id: null, deleted_at: null },
+            include: { resources: { select: { external_id: true } } }
+          });
+          nextResources = nextResources.map(resource => {
+            if (!resource.id || resource.dayNumber !== undefined) return resource;
+            const old = personal.find(row => row.resources.external_id === resource.id);
+            return old ? { ...resource, dayNumber: old.dayNumber ?? null } : resource;
+          });
+        }
         if (nextResources.length > RESOURCES_MAX) throw new BadRequestError(`個人資源最多${RESOURCES_MAX}個`);
         const remainingIds = nextResources.flatMap(resource => resource.id ? [resource.id] : []);
         if (remainingIds.length) {
-          // A removed/foreign shared UUID cannot be reintroduced as a new personal resource.
           const staleSource = await db.cohort_template_resources.findFirst({
             where: { resources: { external_id: { in: remainingIds } } }, select: { id: true }
           });
           if (staleSource) throw new ForbiddenError('場次共用資源已更新，請重新載入');
         }
       }
+      // 未知期間只有在重算日期時套用原14天預設；純資源編輯維持既有天數相容性。
+      const durationDays = data.durationDays ?? resolveProgressDurationDays(current, data.startDate !== undefined ? 14 : 91);
+      if (data.resources !== undefined || data.durationDays !== undefined || data.startDate !== undefined) {
+        const resources = data.resources ?? await db.entity_resources.findMany({
+          where: { entity_type: 'practice', entity_id: id, deleted_at: null, resources: { deleted_at: null } },
+          select: { dayNumber: true }
+        });
+        assertResourcesWithinPeriod(resources, durationDays);
+        if (sharedScope) assertResourcesWithinPeriod(nextResources, durationDays);
+        // Older clients may omit the day of locked resources; their stored assignment still counts.
+        if (outOfPeriodResourceIndexes(currentLocked, durationDays).length > 0) {
+          throw new BadRequestError('教練資源日期已超出實踐期間，請調整實踐期間');
+        }
+      }
+      // 日期與狀態使用同一個鎖後版本，避免等待期間其他修改使狀態與結束日不一致。
+      // 本次更新後的結束日：改開始日或天數時下方會重算，否則沿用原結束日
+      let nextEndDate: Date | null = current.end_date;
+
+      // 處理日期相關欄位（需要重新計算 end_date）
+      if (data.startDate !== undefined || data.durationDays !== undefined) {
+        const newStartDate = data.startDate
+          ? new Date(data.startDate)
+          : current.start_date;
+        if (data.startDate !== undefined) {
+          updateData.start_date = newStartDate;
+        }
+        if (data.durationDays !== undefined) {
+          updateData.duration_days = durationDays;
+        }
+
+        // 重新計算 end_date
+        if (newStartDate) {
+          nextEndDate = inclusiveEndDate(newStartDate, durationDays);
+          updateData.end_date = nextEndDate;
+        }
+      }
+
+      // 處理 isDraft 欄位：優先於 status；發布草稿、或未打卡實踐改開始日時，依期間決定 active／not_started／completed
+      // （daodao#212 依開始日；daodao#304 結束日已過的草稿啟用後直接 completed，不能再打卡）
+      // startDate 在有打卡後已被 stripLockedFields 移除，所以改開始日只會發生在尚未打卡的實踐
+      const nextStartDate = data.startDate
+        ? new Date(data.startDate)
+        : current.start_date ?? new Date();
+      if (data.isDraft === true) {
+        updateData.status = 'draft';
+      } else if (
+        current.status === 'draft' &&
+        (data.isDraft === false || data.status === 'not_started')
+      ) {
+        // 發布草稿（isDraft=false 或 status='not_started' 兩種寫法，同 isPublishingDraft）
+        updateData.status = statusForPeriod(nextStartDate, nextEndDate);
+      } else if (data.status !== undefined) {
+        updateData.status = data.status;
+      } else if (
+        data.startDate !== undefined &&
+        (current.status === 'not_started' || current.status === 'active')
+      ) {
+        updateData.status = statusForPeriod(nextStartDate, nextEndDate);
+      }
+
       const practice = await db.practices.update({
-      where: { id },
-      data: updateData,
-      include: {
-        users: {
-          select: {
-            id: true,
-            external_id: true,
-            nickname: true,
-            custom_id: true,
-            contacts: {
-              select: {
-                photo_url: true
-              }
-            },
-            user_positions: {
-              select: {
-                position: {
-                  select: {
-                    name: true
+        where: { id },
+        data: updateData,
+        include: {
+          users: {
+            select: {
+              id: true,
+              external_id: true,
+              nickname: true,
+              custom_id: true,
+              contacts: {
+                select: {
+                  photo_url: true
+                }
+              },
+              user_positions: {
+                select: {
+                  position: {
+                    select: {
+                      name: true
+                    }
                   }
                 }
               }
             }
           }
         }
-      }
-    });
+      });
 
-      if (data.tags !== undefined) await updateTags(id, data.tags, db);
+      // 處理標籤更新（如果有提供）
+      if (data.tags !== undefined) {
+        await updateTags(id, data.tags, db);
+      }
+
+      // 處理資源更新（如果有提供）
       if (data.resources !== undefined) {
         await updateResources(id, nextResources, userId, currentLocked.map(resource => resource.relationId), sharedScope, db);
         const hasResources = sharedScope
@@ -986,9 +1020,9 @@ export async function update(id: number, data: UpdatePracticeRequest, userId: nu
           : data.resources.length > 0;
         await db.practices.update({ where: { id }, data: { has_resources: hasResources } });
       }
+
       return practice;
-    };
-    const practice = sharedScope ? await prismaClient.$transaction(persist) : await persist(prismaClient);
+    });
 
     // 取得統計數據、標籤和資源
     const [comments, updatedTags, checkInCounts, lastCheckInDates, resourcesMap, viewCount, reactionCounts] = await Promise.all([
@@ -1286,6 +1320,14 @@ async function linkTags(practiceId: number, tagNames: string[], db: Db = prismaC
   }
 }
 
+/** 在寫入前拒絕期間外資源，不能默默清除原本指定日。 */
+function assertResourcesWithinPeriod(resources: ReadonlyArray<{ dayNumber?: number | null }>, durationDays: number): void {
+  const indexes = outOfPeriodResourceIndexes(resources, durationDays);
+  if (indexes.length > 0) {
+    throw new BadRequestError('資源日期已超出實踐期間，請重新選擇', Object.fromEntries(indexes.map(index => [`resources.${index}.dayNumber`, '請重新選擇實踐期間內的日期'])));
+  }
+}
+
 /**
  * 連結資源
  * 創建資源記錄並建立 practice-resource 關聯
@@ -1301,53 +1343,43 @@ async function linkResources(
 
   const createdResources: PracticeResourceEntity[] = [];
 
-  try {
-    for (const resource of resources) {
-      try {
-        // 1. 創建資源記錄（純名稱資源沿用 url: '' 慣例，resources.url NOT NULL）
-        const createdResource = await db.resources.create({
-          data: {
-            name: resource.name,
-            url: resource.url || '',
-            description: '',
-            type: 'other',
-            cost: 'free',
-            created_by: userId
-          }
-        });
-
-        // 2. 建立 practice-resource 關聯（note 承載「第幾天使用」）
-        await db.entity_resources.create({
-          data: {
-            resource_id: createdResource.id,
-            entity_type: 'practice',
-            entity_id: practiceId,
-            created_by: userId,
-            note: encodeResourceDay(resource.dayNumber)
-          }
-        });
-
-        // 3. 收集建立的資源
-        createdResources.push({
-          id: createdResource.external_id || String(createdResource.id),
-          name: createdResource.name,
-          url: createdResource.url || undefined,
-          dayNumber: resource.dayNumber ?? null
-        });
-      } catch (error) {
-        loggerService.warn('Failed to create resource', { practiceId, resource, error });
-    if (db !== prismaClient) throw error;
+  for (const resource of resources) {
+    // 1. 創建資源記錄（純名稱資源沿用 url: '' 慣例，resources.url NOT NULL）
+    const createdResource = await db.resources.create({
+      data: {
+        name: resource.name,
+        url: resource.url || '',
+        description: '',
+        type: 'other',
+        cost: 'free',
+        created_by: userId
       }
-    }
-
-    loggerService.info('Resources linked to practice', {
-      practiceId,
-      resourceCount: createdResources.length
     });
-  } catch (error) {
-    loggerService.warn('Failed to link resources', { practiceId, resources, error });
-    if (db !== prismaClient) throw error;
+
+    // 2. 建立 practice-resource 關聯（使用正式 day_number 欄位）
+    await db.entity_resources.create({
+      data: {
+        resource_id: createdResource.id,
+        entity_type: 'practice',
+        entity_id: practiceId,
+        created_by: userId,
+        dayNumber: resource.dayNumber ?? null
+      }
+    });
+
+    // 3. 收集建立的資源
+    createdResources.push({
+      id: createdResource.external_id || String(createdResource.id),
+      name: createdResource.name,
+      url: createdResource.url || undefined,
+      dayNumber: resource.dayNumber ?? null
+    });
   }
+
+  loggerService.info('Resources linked to practice', {
+    practiceId,
+    resourceCount: createdResources.length
+  });
 
   return createdResources;
 }
@@ -1403,7 +1435,7 @@ async function updateResources(
           const old = personal.find(row => row.resources.external_id === candidate.id);
           if (!old) throw new BadRequestError('個人資源不屬於此實踐');
           if (old.resources.name === candidate.name && (old.resources.url || '') === (candidate.url || '')
-            && (candidate.dayNumber === undefined || parseResourceDay(old.note) === (candidate.dayNumber ?? null))) {
+            && (candidate.dayNumber === undefined || (old.dayNumber ?? null) === (candidate.dayNumber ?? null))) {
             retained.add(old.id);
             continue;
           }
@@ -1415,7 +1447,7 @@ async function updateResources(
           } });
           await db.entity_resources.update({ where: { id: old.id }, data: {
             resource_id: body.id,
-            note: candidate.dayNumber === undefined ? old.note : encodeResourceDay(candidate.dayNumber),
+            dayNumber: candidate.dayNumber === undefined ? old.dayNumber : candidate.dayNumber,
             updated_at: new Date()
           } });
           retained.add(old.id);
@@ -1661,7 +1693,7 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
         id: er.resources.external_id || String(er.resources.id),
         name: er.resources.name,
         url: er.resources.url || undefined,
-        dayNumber: parseResourceDay(er.note),
+        dayNumber: er.dayNumber ?? null,
         relevantDate: er.shared_resource?.resource_date?.toISOString().slice(0, 10) ?? null,
         isLocked: lockedRelationIds.has(er.id)
       });
@@ -1674,7 +1706,7 @@ async function getPracticeResources(practiceIds: number[]): Promise<Record<numbe
 }
 
 type CoachLockSubject = { cohort_resources_initialized_at?: Date | null; created_at?: Date | null; id: number; cohort_id: number | null; template_id: number | null; creation_source: string | null };
-type PracticeResourceRelation = { cohort_template_resource_id?: number | null; id: number; entity_id: number; resource_id: number; note: string | null; resources: { name: string; url: string | null } };
+type PracticeResourceRelation = { cohort_template_resource_id?: number | null; id: number; entity_id: number; resource_id: number; dayNumber: number | null; resources: { name: string; url: string | null } };
 
 /**
  * 找出教練加的實踐資源關聯 id（判定規則見 pickCoachLockedRelationIds）。
@@ -1698,7 +1730,7 @@ async function loadCoachLockedRelationIds(practices: CoachLockSubject[], relatio
       entity_type: 'practice_template',
       entity_id: { in: [...new Set(lockedPractices.map(practice => practice.template_id as number))] }
     },
-    select: { entity_id: true, resource_id: true, note: true, deleted_at: true, resources: { select: { name: true, url: true } } }
+    select: { entity_id: true, resource_id: true, dayNumber: true, deleted_at: true, resources: { select: { name: true, url: true } } }
   });
 
   const lockedIds = new Set<number>();
@@ -1728,7 +1760,7 @@ async function getCoachLockedResources(practice: CoachLockSubject, db: Db = pris
   const lockedRelationIds = await loadCoachLockedRelationIds([practice], relations, db);
   return relations
     .filter(er => lockedRelationIds.has(er.id))
-    .map(er => ({ id: er.resources.external_id ?? String(er.resource_id), relationId: er.id, name: er.resources.name, url: er.resources.url, dayNumber: parseResourceDay(er.note), relevantDate: er.shared_resource?.resource_date?.toISOString().slice(0, 10) ?? null }));
+    .map(er => ({ id: er.resources.external_id ?? String(er.resource_id), relationId: er.id, name: er.resources.name, url: er.resources.url, dayNumber: er.dayNumber ?? null, relevantDate: er.shared_resource?.resource_date?.toISOString().slice(0, 10) ?? null }));
 }
 
 /**

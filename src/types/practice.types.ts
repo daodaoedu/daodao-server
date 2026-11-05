@@ -164,6 +164,7 @@ export interface CreatePracticeRequest {
   resources?: Array<{
     name: string;
     url?: string;
+    dayNumber?: number | null;
   }>;
   isDraft?: boolean;
   privacyStatus?: 'private' | 'public' | 'delayed';
