@@ -2107,7 +2107,6 @@ model programs {
 
 /// 燈塔的期；status 僅表示 draft、published、archived 編輯狀態。
 model cohorts {
-  timezone              String                  @default("Asia/Taipei") @db.VarChar(64)
   id                    Int                     @id @default(autoincrement())
   program_id            Int
   slug                  String                  @db.VarChar(50)
@@ -2127,6 +2126,7 @@ model cohorts {
   tagline                        String?                 @db.VarChar(80)
   /// 互動方式多選：sync | async | physical；值域由 server 常量管控
   interaction_modes              String[]                @default([])
+  timezone                       String                  @default("Asia/Taipei") @db.VarChar(64)
   meeting_url                    String?
   location                       String?                 @db.VarChar(200)
   /// free | paid；paid 時 signup_method 必為 external
@@ -2419,13 +2419,13 @@ model space_block_events {
 
 /// 場次聚會時段（FR-BS-03）；僅 interaction_modes 含 sync/physical 時有列
 model cohort_sessions {
-  recurrence_group_id String? @db.Uuid
-  recurrence_rule     Json?   @db.JsonB
   id           Int      @id @default(autoincrement())
   cohort_id    Int
   session_date DateTime @db.Date
   start_time   DateTime? @db.Time(6)
   end_time     DateTime? @db.Time(6)
+  recurrence_group_id String? @db.Uuid
+  recurrence_rule     Json? @db.JsonB
   position     Int      @default(0)
   created_at   DateTime @default(now()) @db.Timestamptz(6)
   cohort       cohorts  @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_sessions_cohort")

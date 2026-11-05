@@ -44430,19 +44430,58 @@ paths:
                               startTime:
                                 type: string
                                 nullable: true
-                                pattern: ^\d{2}:\d{2}$
+                                pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                                 description: 開始時間（HH:MM），可為 null
                                 example: '14:00'
                               endTime:
                                 type: string
                                 nullable: true
-                                pattern: ^\d{2}:\d{2}$
+                                pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                                 description: 結束時間（HH:MM），可為 null
                                 example: '16:00'
                               id:
                                 type: integer
                                 description: 聚會時段 ID
                                 example: 1
+                              recurrenceGroupId:
+                                type: string
+                                nullable: true
+                                format: uuid
+                                description: 穩定規律群組 ID；非規律時段為 null
+                              recurrenceRule:
+                                type: object
+                                nullable: true
+                                properties:
+                                  startDate:
+                                    type: string
+                                    pattern: ^\d{4}-\d{2}-\d{2}$
+                                    description: 規律範圍起始日期
+                                    example: '2026-11-10'
+                                  weeks:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 52
+                                    description: 持續週數（1–52）
+                                    example: 4
+                                  weekdays:
+                                    type: array
+                                    items:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 7
+                                    minItems: 1
+                                    maxItems: 7
+                                    description: ISO 星期：週一1至週日7
+                                    example:
+                                      - 2
+                                      - 4
+                                required:
+                                  - startDate
+                                  - weeks
+                                  - weekdays
+                                additionalProperties: false
+                                title: CohortRecurrenceRule
+                                description: 群組原始規則；非規律時段為 null
                             required:
                               - sessionDate
                               - startTime
@@ -44514,6 +44553,12 @@ paths:
                           type: string
                           nullable: true
                           format: date-time
+                        timezone:
+                          type: string
+                          minLength: 1
+                          maxLength: 64
+                          description: 場次共用 IANA 時區
+                          example: Asia/Taipei
                       required:
                         - id
                         - programId
@@ -44528,6 +44573,7 @@ paths:
                         - capacity
                         - inviteMessage
                         - showInviteMessageOnSignup
+                        - timezone
                         - interactionModes
                         - meetingUrl
                         - location
@@ -44589,7 +44635,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -44614,8 +44672,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
     post:
       tags:
         - Lighthouse Cohorts
@@ -44717,15 +44777,54 @@ paths:
                       startTime:
                         type: string
                         nullable: true
-                        pattern: ^\d{2}:\d{2}$
+                        pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                         description: 開始時間（HH:MM），可為 null
                         example: '14:00'
                       endTime:
                         type: string
                         nullable: true
-                        pattern: ^\d{2}:\d{2}$
+                        pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                         description: 結束時間（HH:MM），可為 null
                         example: '16:00'
+                      recurrenceGroupId:
+                        type: string
+                        nullable: true
+                        format: uuid
+                        description: 穩定規律群組 ID；非規律時段為 null
+                      recurrenceRule:
+                        type: object
+                        nullable: true
+                        properties:
+                          startDate:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                            description: 規律範圍起始日期
+                            example: '2026-11-10'
+                          weeks:
+                            type: integer
+                            minimum: 1
+                            maximum: 52
+                            description: 持續週數（1–52）
+                            example: 4
+                          weekdays:
+                            type: array
+                            items:
+                              type: integer
+                              minimum: 1
+                              maximum: 7
+                            minItems: 1
+                            maxItems: 7
+                            description: ISO 星期：週一1至週日7
+                            example:
+                              - 2
+                              - 4
+                        required:
+                          - startDate
+                          - weeks
+                          - weekdays
+                        additionalProperties: false
+                        title: CohortRecurrenceRule
+                        description: 群組原始規則；非規律時段為 null
                     required:
                       - sessionDate
                       - startTime
@@ -44788,6 +44887,12 @@ paths:
                     - published
                     - archived
                   default: draft
+                timezone:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: 場次共用 IANA 時區
+                  example: Asia/Taipei
               required:
                 - slug
                 - displayName
@@ -44877,19 +44982,58 @@ paths:
                             startTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 開始時間（HH:MM），可為 null
                               example: '14:00'
                             endTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 結束時間（HH:MM），可為 null
                               example: '16:00'
                             id:
                               type: integer
                               description: 聚會時段 ID
                               example: 1
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
                             - sessionDate
                             - startTime
@@ -44961,6 +45105,12 @@ paths:
                         type: string
                         nullable: true
                         format: date-time
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - id
                       - programId
@@ -44975,6 +45125,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - showInviteMessageOnSignup
+                      - timezone
                       - interactionModes
                       - meetingUrl
                       - location
@@ -45036,7 +45187,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -45061,8 +45224,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}:
@@ -45173,19 +45338,58 @@ paths:
                             startTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 開始時間（HH:MM），可為 null
                               example: '14:00'
                             endTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 結束時間（HH:MM），可為 null
                               example: '16:00'
                             id:
                               type: integer
                               description: 聚會時段 ID
                               example: 1
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
                             - sessionDate
                             - startTime
@@ -45257,6 +45461,12 @@ paths:
                         type: string
                         nullable: true
                         format: date-time
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - id
                       - programId
@@ -45271,6 +45481,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - showInviteMessageOnSignup
+                      - timezone
                       - interactionModes
                       - meetingUrl
                       - location
@@ -45332,7 +45543,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -45357,8 +45580,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
     patch:
       tags:
         - Lighthouse Cohorts
@@ -45457,15 +45682,54 @@ paths:
                       startTime:
                         type: string
                         nullable: true
-                        pattern: ^\d{2}:\d{2}$
+                        pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                         description: 開始時間（HH:MM），可為 null
                         example: '14:00'
                       endTime:
                         type: string
                         nullable: true
-                        pattern: ^\d{2}:\d{2}$
+                        pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                         description: 結束時間（HH:MM），可為 null
                         example: '16:00'
+                      recurrenceGroupId:
+                        type: string
+                        nullable: true
+                        format: uuid
+                        description: 穩定規律群組 ID；非規律時段為 null
+                      recurrenceRule:
+                        type: object
+                        nullable: true
+                        properties:
+                          startDate:
+                            type: string
+                            pattern: ^\d{4}-\d{2}-\d{2}$
+                            description: 規律範圍起始日期
+                            example: '2026-11-10'
+                          weeks:
+                            type: integer
+                            minimum: 1
+                            maximum: 52
+                            description: 持續週數（1–52）
+                            example: 4
+                          weekdays:
+                            type: array
+                            items:
+                              type: integer
+                              minimum: 1
+                              maximum: 7
+                            minItems: 1
+                            maxItems: 7
+                            description: ISO 星期：週一1至週日7
+                            example:
+                              - 2
+                              - 4
+                        required:
+                          - startDate
+                          - weeks
+                          - weekdays
+                        additionalProperties: false
+                        title: CohortRecurrenceRule
+                        description: 群組原始規則；非規律時段為 null
                     required:
                       - sessionDate
                       - startTime
@@ -45515,6 +45779,12 @@ paths:
                     - draft
                     - published
                     - archived
+                timezone:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: 場次共用 IANA 時區
+                  example: Asia/Taipei
       responses:
         '200':
           description: 期已更新
@@ -45599,19 +45869,58 @@ paths:
                             startTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 開始時間（HH:MM），可為 null
                               example: '14:00'
                             endTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 結束時間（HH:MM），可為 null
                               example: '16:00'
                             id:
                               type: integer
                               description: 聚會時段 ID
                               example: 1
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
                             - sessionDate
                             - startTime
@@ -45687,6 +45996,12 @@ paths:
                         type: integer
                         minimum: 0
                         description: 切換隱私時影響的實踐數量
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - id
                       - programId
@@ -45701,6 +46016,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - showInviteMessageOnSignup
+                      - timezone
                       - interactionModes
                       - meetingUrl
                       - location
@@ -45762,7 +46078,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -45787,8 +46115,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
         '409':
           $ref: '#/components/responses/ConflictError'
     delete:
@@ -45817,8 +46147,10 @@ paths:
       responses:
         '204':
           description: 期已封存
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/invitations:
     post:
       tags:
@@ -47080,19 +47412,58 @@ paths:
                             startTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 開始時間（HH:MM），可為 null
                               example: '14:00'
                             endTime:
                               type: string
                               nullable: true
-                              pattern: ^\d{2}:\d{2}$
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                               description: 結束時間（HH:MM），可為 null
                               example: '16:00'
                             id:
                               type: integer
                               description: 聚會時段 ID
                               example: 1
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
                             - sessionDate
                             - startTime
@@ -47164,6 +47535,12 @@ paths:
                         type: string
                         nullable: true
                         format: date-time
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - id
                       - programId
@@ -47178,6 +47555,7 @@ paths:
                       - capacity
                       - inviteMessage
                       - showInviteMessageOnSignup
+                      - timezone
                       - interactionModes
                       - meetingUrl
                       - location
@@ -47239,7 +47617,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -47264,8 +47654,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
         '409':
           $ref: '#/components/responses/ConflictError'
   /api/v1/lighthouse/organizations/{organizationId}/cohorts:
@@ -47370,19 +47762,58 @@ paths:
                               startTime:
                                 type: string
                                 nullable: true
-                                pattern: ^\d{2}:\d{2}$
+                                pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                                 description: 開始時間（HH:MM），可為 null
                                 example: '14:00'
                               endTime:
                                 type: string
                                 nullable: true
-                                pattern: ^\d{2}:\d{2}$
+                                pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
                                 description: 結束時間（HH:MM），可為 null
                                 example: '16:00'
                               id:
                                 type: integer
                                 description: 聚會時段 ID
                                 example: 1
+                              recurrenceGroupId:
+                                type: string
+                                nullable: true
+                                format: uuid
+                                description: 穩定規律群組 ID；非規律時段為 null
+                              recurrenceRule:
+                                type: object
+                                nullable: true
+                                properties:
+                                  startDate:
+                                    type: string
+                                    pattern: ^\d{4}-\d{2}-\d{2}$
+                                    description: 規律範圍起始日期
+                                    example: '2026-11-10'
+                                  weeks:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 52
+                                    description: 持續週數（1–52）
+                                    example: 4
+                                  weekdays:
+                                    type: array
+                                    items:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 7
+                                    minItems: 1
+                                    maxItems: 7
+                                    description: ISO 星期：週一1至週日7
+                                    example:
+                                      - 2
+                                      - 4
+                                required:
+                                  - startDate
+                                  - weeks
+                                  - weekdays
+                                additionalProperties: false
+                                title: CohortRecurrenceRule
+                                description: 群組原始規則；非規律時段為 null
                             required:
                               - sessionDate
                               - startTime
@@ -47469,6 +47900,12 @@ paths:
                           type: integer
                           minimum: 0
                           description: 值得慶祝的時刻數
+                        timezone:
+                          type: string
+                          minLength: 1
+                          maxLength: 64
+                          description: 場次共用 IANA 時區
+                          example: Asia/Taipei
                       required:
                         - id
                         - programId
@@ -47483,6 +47920,7 @@ paths:
                         - capacity
                         - inviteMessage
                         - showInviteMessageOnSignup
+                        - timezone
                         - interactionModes
                         - meetingUrl
                         - location
@@ -47548,7 +47986,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -47573,8 +48023,10 @@ paths:
                     meta:
                       cacheHit: true
                       processingTime: 23.1
-        '401': *ref_113
-        '403': *ref_114
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /api/v1/lighthouse/organizations/{organizationId}/templates:
     get:
       tags:
@@ -55270,19 +55722,69 @@ paths:
                           properties:
                             id:
                               type: integer
+                              description: 聚會時段 ID
+                              example: 1
                             sessionDate:
                               type: string
+                              pattern: ^\d{4}-\d{2}-\d{2}$
+                              description: 聚會日期
+                              example: '2026-10-01'
                             startTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 開始時間（HH:MM），可為 null
+                              example: '14:00'
                             endTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 結束時間（HH:MM），可為 null
+                              example: '16:00'
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
-                            - id
                             - sessionDate
                             - startTime
                             - endTime
+                            - id
                           additionalProperties: false
                         description: 聚會時段
                       feeType:
@@ -55377,12 +55879,19 @@ paths:
                           - bio
                           - externalLink
                         additionalProperties: false
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - cohortId
                       - displayName
                       - startDate
                       - endDate
                       - tagline
+                      - timezone
                       - interactionModes
                       - location
                       - sessions
@@ -55445,7 +55954,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -55570,7 +56091,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -55668,19 +56201,69 @@ paths:
                           properties:
                             id:
                               type: integer
+                              description: 聚會時段 ID
+                              example: 1
                             sessionDate:
                               type: string
+                              pattern: ^\d{4}-\d{2}-\d{2}$
+                              description: 聚會日期
+                              example: '2026-10-01'
                             startTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 開始時間（HH:MM），可為 null
+                              example: '14:00'
                             endTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 結束時間（HH:MM），可為 null
+                              example: '16:00'
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
-                            - id
                             - sessionDate
                             - startTime
                             - endTime
+                            - id
                           additionalProperties: false
                         description: 聚會時段
                       feeType:
@@ -55782,12 +56365,19 @@ paths:
                             - lastCheckinAt
                             - themeColor
                           additionalProperties: false
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - cohortId
                       - displayName
                       - startDate
                       - endDate
                       - tagline
+                      - timezone
                       - interactionModes
                       - meetingUrl
                       - location
@@ -55842,7 +56432,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data
@@ -57809,19 +58411,71 @@ paths:
                           properties:
                             id:
                               type: integer
+                              description: 聚會時段 ID
+                              example: 1
                             sessionDate:
                               type: string
+                              pattern: ^\d{4}-\d{2}-\d{2}$
+                              description: 聚會日期
+                              example: '2026-10-01'
                             startTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 開始時間（HH:MM），可為 null
+                              example: '14:00'
                             endTime:
                               type: string
                               nullable: true
+                              pattern: ^(?:[01]\d|2[0-3]):[0-5]\d$
+                              description: 結束時間（HH:MM），可為 null
+                              example: '16:00'
+                            recurrenceGroupId:
+                              type: string
+                              nullable: true
+                              format: uuid
+                              description: 穩定規律群組 ID；非規律時段為 null
+                            recurrenceRule:
+                              type: object
+                              nullable: true
+                              properties:
+                                startDate:
+                                  type: string
+                                  pattern: ^\d{4}-\d{2}-\d{2}$
+                                  description: 規律範圍起始日期
+                                  example: '2026-11-10'
+                                weeks:
+                                  type: integer
+                                  minimum: 1
+                                  maximum: 52
+                                  description: 持續週數（1–52）
+                                  example: 4
+                                weekdays:
+                                  type: array
+                                  items:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 7
+                                  minItems: 1
+                                  maxItems: 7
+                                  description: ISO 星期：週一1至週日7
+                                  example:
+                                    - 2
+                                    - 4
+                              required:
+                                - startDate
+                                - weeks
+                                - weekdays
+                              additionalProperties: false
+                              title: CohortRecurrenceRule
+                              description: 群組原始規則；非規律時段為 null
                           required:
-                            - id
                             - sessionDate
                             - startTime
                             - endTime
+                            - id
+                          title: CohortSession
+                          description: 場次聚會時段
                         description: 聚會時段
                       externalSignupUrl:
                         type: string
@@ -57849,6 +58503,12 @@ paths:
                         type: string
                         nullable: true
                         description: 組織設定的邀請文案
+                      timezone:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: 場次共用 IANA 時區
+                        example: Asia/Taipei
                     required:
                       - id
                       - displayName
@@ -57873,6 +58533,7 @@ paths:
                       - unavailableReason
                       - isJoined
                       - joinToken
+                      - timezone
                       - sessions
                       - externalSignupUrl
                       - organization
@@ -57921,7 +58582,19 @@ paths:
                     additionalProperties:
                       nullable: true
                     description: Optional metadata about the response
-                    examples: *ref_0
+                    examples:
+                      - searchQuery: JavaScript教程
+                        searchTime: 45
+                        cacheHit: false
+                        processingTime: 123.5
+                        requestId: req-123e4567-e89b-12d3-a456-426614174000
+                      - categoryCounts:
+                          前端開發: 25
+                          後端開發: 18
+                          資料科學: 12
+                        filters:
+                          difficulty: intermediate
+                          language: zh-TW
                 required:
                   - success
                   - data

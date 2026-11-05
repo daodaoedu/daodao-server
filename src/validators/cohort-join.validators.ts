@@ -1,3 +1,4 @@
+import { cohortTimezoneSchema, cohortSessionSchema } from './cohort.validators';
 import { z } from 'zod';
 import { COHORT_INTERACTION_MODES, COHORT_FEE_TYPES, COHORT_SIGNUP_METHODS } from '../constants/cohort-setup';
 
@@ -6,12 +7,7 @@ const feeTypeSchema = z.enum(COHORT_FEE_TYPES);
 const signupMethodSchema = z.enum(COHORT_SIGNUP_METHODS);
 
 /** 聚會時段（回應用） */
-const sessionSchema = z.object({
-  id: z.number().int(),
-  sessionDate: z.string(),
-  startTime: z.string().nullable(),
-  endTime: z.string().nullable()
-});
+const sessionSchema = cohortSessionSchema;
 
 /** 隱私資訊 */
 const privacySchema = z.object({
@@ -25,6 +21,7 @@ export const joinCohortSchema = z.object({ consent: z.literal(true).openapi({ de
 export const cohortJoinInfoResponseSchema = z.object({
   cohortId: z.number().int(), displayName: z.string(), startDate: z.date(), endDate: z.date(),
   tagline: z.string().nullable().openapi({ description: '一句話簡介' }),
+  timezone: cohortTimezoneSchema,
   interactionModes: z.array(interactionModeSchema).openapi({ description: '互動方式' }),
   location: z.string().nullable().openapi({ description: '活動地點' }),
   sessions: z.array(sessionSchema).openapi({ description: '聚會時段' }),
@@ -48,6 +45,7 @@ export const myCohortsResponseSchema = z.array(z.object({
 export const cohortMemberHomeResponseSchema = z.object({
   cohortId: z.number().int(), displayName: z.string(), startDate: z.date(), endDate: z.date(),
   tagline: z.string().nullable().openapi({ description: '一句話簡介' }),
+  timezone: cohortTimezoneSchema,
   interactionModes: z.array(interactionModeSchema).openapi({ description: '互動方式' }),
   meetingUrl: z.string().nullable().openapi({ description: '會議連結（僅已加入成員可見）' }),
   location: z.string().nullable().openapi({ description: '活動地點' }),
