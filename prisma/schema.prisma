@@ -2107,6 +2107,7 @@ model programs {
 
 /// 燈塔的期；status 僅表示 draft、published、archived 編輯狀態。
 model cohorts {
+  timezone              String                  @default("Asia/Taipei") @db.VarChar(64)
   id                    Int                     @id @default(autoincrement())
   program_id            Int
   slug                  String                  @db.VarChar(50)
@@ -2418,6 +2419,8 @@ model space_block_events {
 
 /// 場次聚會時段（FR-BS-03）；僅 interaction_modes 含 sync/physical 時有列
 model cohort_sessions {
+  recurrence_group_id String? @db.Uuid
+  recurrence_rule     Json?   @db.JsonB
   id           Int      @id @default(autoincrement())
   cohort_id    Int
   session_date DateTime @db.Date
