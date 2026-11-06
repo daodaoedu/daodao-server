@@ -4,12 +4,12 @@
  */
 
 import express from 'express';
+import { registerHealthOpenApi } from './config/health-openapi';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 // Prisma 不需要手動引入模型，在服務層中直接使用
 // 引入 OpenAPI 配置（會自動載入所有 validators）
 import { generateOpenApiDocument } from './config/openapi-registry';
-import { registerHealthOpenApi } from './config/health-openapi';
 import './validators'; // 載入所有 validators，觸發 schema 註冊
 // 引入實際的資源路由
 import resourceRoutes from './routes/resource.routes';
@@ -155,7 +155,6 @@ export function setupTypescriptRoutes(app: express.Application) {
   ];
   console.log('✅ 路由模組已載入');
 
-  // 與獨立合約產生器共用健康檢查定義。
   registerHealthOpenApi();
 
   // 運行時生成 OpenAPI 文檔（官方推薦用法）

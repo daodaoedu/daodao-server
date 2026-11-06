@@ -102,6 +102,7 @@ export const surveyResponseSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   questions: z.array(questionResponseSchema),
+  cohort_feedback: z.object({ state: z.enum(['login_required', 'ineligible', 'ready', 'completed']), privacy_notice: z.string() }).optional(),
 }).openapi('SurveyResponse');
 
 export const surveyListItemSchema = z.object({

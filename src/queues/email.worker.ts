@@ -8,13 +8,15 @@
  */
 
 import { Worker, Job } from 'bullmq';
-import { getQueueConnection } from './connection';
+import { getQueueConnection, getRawConnection } from './connection';
 import { EMAIL_QUEUE_NAME } from './email.queue';
 import type { EmailJobData } from './email.queue';
 import { loggerService } from '../services/logging/logger.service';
 import { emailService } from '../services/email/email.service';
 import { updateEmailLogStatus } from '../services/email/email-log.service';
 import { retryFailedEmails } from './email.queue';
+import { cohortFeedbackReceiptKey, recoverPendingCohortFeedbackEmails, refreshCohortFeedbackDelivery } from '../services/cohort-feedback-delivery.service';
+import { prisma } from '../services/database/prisma.service';
 import { recoverPendingFutureLetterEmails } from '../services/email/future-letter-email.service';
 
 export interface EmailWorkerOptions {
@@ -28,15 +30,28 @@ const defaultOptions: EmailWorkerOptions = {
 /**
  * 處理單一郵件發送任務
  */
-async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
+async function processEmailJob(job: Job<EmailJobData>): Promise<void | { cohortFeedbackDelivered: true }> {
   const { to, subject, emailLogId, emailType } = job.data;
 
   // 排程掃描任務：補派未入列的未來信通知，並重試 failed set 中的郵件
   if (job.name === 'retry-scan') {
     const recoveredFutureLetterEmails = await recoverPendingFutureLetterEmails();
+    const recoveredCohortFeedbackEmails = await recoverPendingCohortFeedbackEmails();
     const result = await retryFailedEmails();
-    loggerService.info('Scheduled email retry scan done', { ...result, recoveredFutureLetterEmails });
+    loggerService.info('Scheduled email retry scan done', { ...result, recoveredFutureLetterEmails, recoveredCohortFeedbackEmails });
     return;
+  }
+
+  if (job.data.cohortFeedbackCohortId && emailLogId) {
+    const log = await prisma.email_logs.findUnique({ where: { id: emailLogId }, select: { status: true } });
+    const connection = getRawConnection();
+    const receiptKey = cohortFeedbackReceiptKey(emailLogId);
+    if (log?.status === 'sent' || await connection.get(receiptKey)) {
+      if (log?.status !== 'sent') await updateEmailLogStatus(emailLogId, 'sent');
+      await refreshCohortFeedbackDelivery(job.data.cohortFeedbackCohortId);
+      await connection.del(receiptKey);
+      return { cohortFeedbackDelivered: true };
+    }
   }
 
   loggerService.info('Processing email job', {
@@ -64,10 +79,25 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     throw new Error(result.error || '郵件發送失敗');
   }
 
+  // A separate receipt survives shared completed-set pruning until DB reconciliation.
+  // SMTP acceptance and Redis cannot be atomic; if Redis is unavailable, still
+  // attempt the DB write rather than forcing an avoidable immediate SMTP retry.
+  if (job.data.cohortFeedbackCohortId && emailLogId) {
+    try {
+      await getRawConnection().set(cohortFeedbackReceiptKey(emailLogId), 'accepted');
+    } catch (error) {
+      loggerService.warn('儲存回饋郵件寄送憑證失敗', { emailLogId, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
   // 成功：更新 log 狀態
   if (emailLogId) {
     try {
       await updateEmailLogStatus(emailLogId, 'sent');
+      if (job.data.cohortFeedbackCohortId) {
+        await refreshCohortFeedbackDelivery(job.data.cohortFeedbackCohortId);
+        await getRawConnection().del(cohortFeedbackReceiptKey(emailLogId));
+      }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       loggerService.error('更新郵件紀錄狀態失敗', { emailLogId, error: detail });
@@ -79,6 +109,8 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     to,
     messageId: result.messageId,
   });
+  // Keep the completed-job receipt as a compatibility fallback as well.
+  if (job.data.cohortFeedbackCohortId) return { cohortFeedbackDelivered: true };
 }
 
 /**
@@ -118,7 +150,10 @@ export function createEmailWorker(
         error: errorMessage,
       });
       if (job?.data.emailLogId) {
-        updateEmailLogStatus(job.data.emailLogId, 'failed').catch(() => {});
+        updateEmailLogStatus(job.data.emailLogId, 'failed')
+          .then(async () => {
+            if (job.data.cohortFeedbackCohortId) await refreshCohortFeedbackDelivery(job.data.cohortFeedbackCohortId);
+          }).catch(() => {});
       }
     } else {
       loggerService.warn('Email worker job failed, will retry', {

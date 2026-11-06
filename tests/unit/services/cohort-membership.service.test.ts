@@ -6,7 +6,11 @@ import { cohortMembershipService } from '@/services/cohort-membership.service';
 import { ConflictError } from '@/middleware/error.middleware';
 
 describe('cohortMembershipService.exit', () => {
-  beforeEach(() => setupTransactionMock());
+  beforeEach(() => {
+    setupTransactionMock();
+    prismaMock.practices.findMany.mockResolvedValue([]);
+    prismaMock.entity_resources.findMany.mockResolvedValue([]);
+  });
   it('atomically exits enrollment and detaches all cohort practices', async () => {
     prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, status: 'joined' } as never);
     prismaMock.practices.updateMany.mockResolvedValue({ count: 3 });

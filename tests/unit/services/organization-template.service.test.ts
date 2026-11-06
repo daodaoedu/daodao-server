@@ -9,7 +9,7 @@ const futureDay = new Date(Date.now() + 30 * 86_400_000);
 const pastDay = new Date(Date.now() - 30 * 86_400_000);
 
 describe('organizationTemplateService', () => {
-  beforeEach(() => { prismaMock.entity_tags.findMany.mockResolvedValue([] as never); });
+  beforeEach(() => { prismaMock.$transaction.mockImplementation(async (callback: unknown) => typeof callback === 'function' ? callback(prismaMock) : callback); prismaMock.entity_tags.findMany.mockResolvedValue([] as never); });
   it('creates a template scoped to the organization', async () => {
     allow(); prismaMock.practice_templates.create.mockResolvedValue(template as never); prismaMock.entity_resources.findMany.mockResolvedValue([] as never);
     const result = await organizationTemplateService.create(3, 42, { title: '每日反思', practiceAction: '寫一段反思', durationDays: 30, frequencyMinDays: 1, frequencyMaxDays: 7, sessionDurationMinutes: 30, practiceTimePeriods: ['evening'], status: 'ready' });
@@ -27,16 +27,16 @@ describe('organizationTemplateService', () => {
     // 第一次 findMany 是 replaceResources 的比對（新模板尚無資源），第二次才是讀回結果
     prismaMock.entity_resources.findMany
       .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([{ entity_id: 5, note: 'day:3', resources: { id: 77, external_id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } }] as never);
+      .mockResolvedValueOnce([{ entity_id: 5, dayNumber: 3, resources: { id: 77, external_id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } }] as never);
     const result = await organizationTemplateService.create(3, 42, { title: '每日反思', practiceTimePeriods: ['evening'], status: 'draft', resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }] });
-    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith({ data: { resource_id: 77, entity_type: 'practice_template', entity_id: 5, created_by: 42, note: 'day:3' } });
+    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith({ data: { resource_id: 77, entity_type: 'practice_template', entity_id: 5, created_by: 42, dayNumber: 3 } });
     expect(result.resources).toEqual([{ id: '223e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }]);
   });
   it('skips rewriting resources when the incoming set matches what is stored', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue(template as never);
     prismaMock.practice_templates.update.mockResolvedValue(template as never);
     prismaMock.entity_resources.findMany
-      .mockResolvedValueOnce([{ note: 'day:3', resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
+      .mockResolvedValueOnce([{ dayNumber: 3, resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
       .mockResolvedValueOnce([] as never);
     await organizationTemplateService.update(3, 5, 42, { title: '換個標題', resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 3 }] });
     expect(prismaMock.entity_resources.updateMany).not.toHaveBeenCalled();
@@ -50,10 +50,10 @@ describe('organizationTemplateService', () => {
     prismaMock.resources.create.mockResolvedValue({ id: 79, external_id: '423e4567-e89b-12d3-a456-426614174000', name: '反思提示卡', url: 'https://example.com/card' } as never);
     prismaMock.entity_resources.create.mockResolvedValue({ id: 3 } as never);
     prismaMock.entity_resources.findMany
-      .mockResolvedValueOnce([{ note: 'day:3', resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
+      .mockResolvedValueOnce([{ dayNumber: 3, resources: { name: '反思提示卡', url: 'https://example.com/card' } }] as never)
       .mockResolvedValueOnce([] as never);
     await organizationTemplateService.update(3, 5, 42, { resources: [{ name: '反思提示卡', url: 'https://example.com/card', dayNumber: 5 }] });
-    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ note: 'day:5' }) }));
+    expect(prismaMock.entity_resources.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ dayNumber: 5 }) }));
   });
 
   it('rewrites resources when the set actually differs', async () => {
@@ -71,13 +71,13 @@ describe('organizationTemplateService', () => {
   });
 
   it('binds only when template and cohort belong to the same organization', async () => {
-    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, status: 'draft', start_date: futureDay } as never); prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: null } as never);
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'draft', start_date: futureDay } as never); prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: null } as never);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, true)).resolves.toEqual({ templateId: 5, cohortId: 8, bound: true, startDate: null });
     expect(prismaMock.cohorts.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 8, deleted_at: null, program: expect.objectContaining({ organization_id: 3, archived_at: null, deleted_at: null }) }) }));
   });
 
   it('stores the start date supplied when the template is assigned to a cohort', async () => {
-    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, status: 'draft', start_date: futureDay } as never);
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'draft', start_date: futureDay } as never);
     prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: new Date('2026-08-03T00:00:00.000Z') } as never);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, true, { startDate: '2026-08-03' }))
       .resolves.toEqual({ templateId: 5, cohortId: 8, bound: true, startDate: new Date('2026-08-03T00:00:00.000Z') });
@@ -88,14 +88,14 @@ describe('organizationTemplateService', () => {
   });
 
   it('leaves an existing start date untouched when the caller omits it', async () => {
-    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, status: 'draft', start_date: futureDay } as never);
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'draft', start_date: futureDay } as never);
     prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: new Date('2026-08-03T00:00:00.000Z') } as never);
     await organizationTemplateService.bind(3, 5, 8, 42, true);
     const update = prismaMock.cohort_templates.upsert.mock.calls[0]?.[0]?.update as Record<string, unknown>;
     expect(update).not.toHaveProperty('start_date');
   });
   it('records unbound_at and rejects a missing active binding', async () => {
-    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, status: 'draft', start_date: futureDay } as never); prismaMock.cohort_templates.updateMany.mockResolvedValue({ count: 0 });
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never); prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'draft', start_date: futureDay } as never); prismaMock.cohort_templates.updateMany.mockResolvedValue({ count: 0 });
     await expect(organizationTemplateService.bind(3, 5, 8, 42, false)).rejects.toBeInstanceOf(NotFoundError);
   });
   it('refuses to delete a template that still has active bindings', async () => {
@@ -203,7 +203,7 @@ describe('organizationTemplateService', () => {
 
   it('locks bindings once the cohort has started', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never);
-    prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, status: 'published', start_date: pastDay } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'published', start_date: pastDay } as never);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, false)).rejects.toBeInstanceOf(ConflictError);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, true, { startDate: '2026-10-01' })).rejects.toBeInstanceOf(ConflictError);
     expect(prismaMock.cohort_templates.upsert).not.toHaveBeenCalled();
