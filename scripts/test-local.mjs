@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { createConnection } from 'node:net';
 import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,19 +11,20 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OWNER_LABEL = 'io.daodao.local-tests';
 const CONTAINER_ID = /^[a-f0-9]{12,64}$/;
-const HELP = `Usage: pnpm test:local [--integration] [--schema-repo PATH] [--ready-timeout-ms N] [-- JEST_ARGUMENTS]\n\nCreates its own PostgreSQL container, loads the CI-pinned schema, runs tests,\nand removes its own resources. An inherited DATABASE_URL is never used.\n`;
+const HELP = `Usage: pnpm test:local [--integration | --oauth] [--schema-repo PATH] [--ready-timeout-ms N] [-- JEST_ARGUMENTS]\n\nCreates its own PostgreSQL container, loads the CI-pinned schema, runs tests,\nand removes its own resources. --oauth also creates isolated Redis and Mailpit.\nAn inherited DATABASE_URL is never used.\n`;
 
 class CommandFailure extends Error {
   constructor(message, code = 1) { super(message); this.code = code; }
 }
 
 function parseArguments(argv) {
-  const options = { integration: false, schemaRepo: undefined, readyTimeout: 60_000, jestArgs: [], help: false };
+  const options = { integration: false, oauth: false, schemaRepo: undefined, readyTimeout: 60_000, jestArgs: [], help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--') { options.jestArgs = argv.slice(i + 1); break; }
     if (arg === '--help' || arg === '-h') options.help = true;
     else if (arg === '--integration') options.integration = true;
+    else if (arg === '--oauth') options.oauth = true;
     else if (arg === '--schema-repo') {
       const value = argv[++i];
       if (!value || value.startsWith('--')) throw new CommandFailure('--schema-repo requires a local Git path.');
@@ -35,6 +37,7 @@ function parseArguments(argv) {
       options.readyTimeout = Number(value);
     } else throw new CommandFailure(`Unknown runner option: ${arg}. Put Jest options after --.`);
   }
+  if (options.integration && options.oauth) throw new CommandFailure('--integration and --oauth are mutually exclusive.');
   return options;
 }
 
@@ -94,9 +97,17 @@ export async function runLocal(argv = process.argv.slice(2), { root = ROOT } = {
   const environment = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
   delete environment.DATABASE_URL;
   delete environment.POSTGRES_PASSWORD;
+  if (options.oauth) {
+    for (const key of Object.keys(environment)) {
+      if (/^(REDIS_|SMTP_|EMAIL_|GOOGLE_|OAUTH_TEST_)/.test(key) || ['OAUTH_INTEGRATION_TEST', 'JWT_SECRET', 'SESSION_SECRET', 'FRONTEND_URL'].includes(key)) delete environment[key];
+    }
+  }
   let work;
   let containerId;
+  const ownedIds = new Set();
+  const cidFiles = [];
   let createAttempted = false;
+  let uncertainCreate = false;
   let active;
   let activeKillTimer;
   let interruptTimer;
@@ -172,19 +183,80 @@ export async function runLocal(argv = process.argv.slice(2), { root = ROOT } = {
     });
   }
 
+  async function createOwnedContainer(name, args, env = environment) {
+    const cidFile = path.join(work, `${name}.cid`);
+    cidFiles.push(cidFile);
+    createAttempted = true;
+    let created;
+    try {
+      created = await command('docker', ['create', '--cidfile', cidFile, '--label', `${OWNER_LABEL}=${runId}`, ...args], { env, creating: true });
+    } catch (error) { uncertainCreate = true; throw error; }
+    const id = created.stdout.trim();
+    if (!CONTAINER_ID.test(id)) throw new CommandFailure('Docker did not return a valid container ID.');
+    ownedIds.add(id);
+    return id;
+  }
+
+  async function publishedPort(id, port) {
+    const endpoint = await command('docker', ['port', id, `${port}/tcp`]);
+    const match = endpoint.stdout.trim().match(/^127\.0\.0\.1:(\d+)$/);
+    if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new CommandFailure('Docker did not expose an isolated IPv4 loopback endpoint.');
+    return Number(match[1]);
+  }
+
+  async function waitForService(name, ready) {
+    const deadline = Date.now() + options.readyTimeout;
+    const timedOut = () => new CommandFailure(`${name} did not become ready within the configured timeout.`);
+    while (Date.now() < deadline) {
+      try {
+        if (await ready(Math.max(1, deadline - Date.now()))) return;
+      } catch (error) {
+        if (Date.now() >= deadline && !abort.signal.aborted) throw timedOut();
+        throw error;
+      }
+      if (Date.now() >= deadline) break;
+      try { await sleep(Math.min(200, deadline - Date.now()), undefined, { signal: abort.signal }); }
+      catch { throw new CommandFailure('Interrupted.', signalCode); }
+    }
+    throw timedOut();
+  }
+
+  async function smtpReady(port, remaining) {
+    return await new Promise(resolve => {
+      const socket = createConnection({ host: '127.0.0.1', port });
+      let banner = '';
+      let settled = false;
+      const finish = ready => {
+        if (settled) return;
+        settled = true;
+        abort.signal.removeEventListener('abort', interrupted);
+        socket.destroy();
+        resolve(ready);
+      };
+      const interrupted = () => finish(false);
+      abort.signal.addEventListener('abort', interrupted, { once: true });
+      socket.setTimeout(Math.min(1_000, remaining));
+      socket.on('data', chunk => { banner += chunk.toString(); if (banner.includes('\n')) finish(/^220[ -]/.test(banner)); });
+      socket.once('error', () => finish(false));
+      socket.once('timeout', () => finish(false));
+      socket.once('end', () => finish(false));
+      if (abort.signal.aborted) finish(false);
+    });
+  }
+
   async function cleanupContainers() {
     if (!createAttempted) return;
-    const ids = new Set(containerId ? [containerId] : []);
+    const ids = new Set(ownedIds);
     const errors = [];
-    if (work) {
+    for (const cidFile of cidFiles) {
       try {
-        const cid = (await readFile(path.join(work, 'container.cid'), 'utf8')).trim();
+        const cid = (await readFile(cidFile, 'utf8')).trim();
         if (CONTAINER_ID.test(cid)) ids.add(cid);
       } catch (error) { if (error.code !== 'ENOENT') errors.push(error.message); }
     }
     // A create client may stop before the daemon commits the resource. Re-query only
     // our unique label for a bounded grace period after interruption.
-    const attempts = signalCode ? 10 : 1;
+    const attempts = signalCode || uncertainCreate ? 10 : 1;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
         const matches = await command('docker', ['ps', '-aq', '--filter', `label=${OWNER_LABEL}=${runId}`], { cleanup: true, timeout: 15_000 });
@@ -193,7 +265,7 @@ export async function runLocal(argv = process.argv.slice(2), { root = ROOT } = {
           ids.add(id);
         }
       } catch (error) { errors.push(error.message); }
-      if (ids.size || attempt === attempts - 1) break;
+      if (ids.size >= cidFiles.length || attempt === attempts - 1) break;
       await sleep(200);
     }
     for (const id of ids) {
@@ -240,32 +312,51 @@ export async function runLocal(argv = process.argv.slice(2), { root = ROOT } = {
     await command('tar', ['-xf', archive, '-C', work]);
 
     stage('Creating a disposable PostgreSQL container on a dynamic loopback port.');
-    createAttempted = true;
-    const created = await command('docker', ['create', '--cidfile', path.join(work, 'container.cid'), '--label', `${OWNER_LABEL}=${runId}`, '--publish', '127.0.0.1::5432', '--env', 'POSTGRES_USER=test', '--env', 'POSTGRES_DB=daodao_test', '--env', 'POSTGRES_PASSWORD', config.postgresImage], { env: { ...environment, POSTGRES_PASSWORD: password }, creating: true });
-    containerId = created.stdout.trim();
-    if (!CONTAINER_ID.test(containerId)) throw new CommandFailure('Docker did not return a valid container ID.');
+    containerId = await createOwnedContainer('container', ['--publish', '127.0.0.1::5432', '--env', 'POSTGRES_USER=test', '--env', 'POSTGRES_DB=daodao_test', '--env', 'POSTGRES_PASSWORD', config.postgresImage], { ...environment, POSTGRES_PASSWORD: password });
     await command('docker', ['start', containerId]);
-    const endpoint = await command('docker', ['port', containerId, '5432/tcp']);
-    const portMatch = endpoint.stdout.trim().match(/^127\.0\.0\.1:(\d+)$/);
-    if (!portMatch || Number(portMatch[1]) < 1 || Number(portMatch[1]) > 65535) throw new CommandFailure('Docker did not expose an isolated IPv4 loopback endpoint.');
-    const databaseUrl = `postgresql://test:${password}@127.0.0.1:${portMatch[1]}/daodao_test`;
+    const databasePort = await publishedPort(containerId, 5432);
+    const databaseUrl = `postgresql://test:${password}@127.0.0.1:${databasePort}/daodao_test`;
     secrets.push(databaseUrl);
     const testEnvironment = { ...environment, NODE_ENV: 'test', DATABASE_URL: databaseUrl };
-    const deadline = Date.now() + options.readyTimeout;
     stage('Waiting for PostgreSQL TCP readiness.');
-    while (true) {
-      const ready = await command('docker', ['exec', containerId, 'pg_isready', '-h', '127.0.0.1', '-U', 'test', '-d', 'daodao_test'], { allowFailure: true, timeout: Math.max(1, deadline - Date.now()) });
-      if (ready.code === 0) break;
-      if (Date.now() >= deadline) throw new CommandFailure('PostgreSQL did not become ready within the configured timeout.');
-      try { await sleep(Math.min(200, Math.max(1, deadline - Date.now())), undefined, { signal: abort.signal }); }
-      catch { throw new CommandFailure('Interrupted.', signalCode); }
+    await waitForService('PostgreSQL', async remaining => {
+      const ready = await command('docker', ['exec', containerId, 'pg_isready', '-h', '127.0.0.1', '-U', 'test', '-d', 'daodao_test'], { allowFailure: true, timeout: remaining });
+      return ready.code === 0;
+    });
+    if (options.oauth) {
+      stage('Creating isolated Redis and Mailpit on dynamic loopback ports.');
+      const redisId = await createOwnedContainer('redis', ['--publish', '127.0.0.1::6379', 'redis:7-alpine']);
+      await command('docker', ['start', redisId]);
+      const redisPort = await publishedPort(redisId, 6379);
+      await waitForService('Redis', async remaining => {
+        const ping = await command('docker', ['exec', redisId, 'redis-cli', '--raw', 'ping'], { allowFailure: true, timeout: remaining });
+        return ping.code === 0 && ping.stdout.trim() === 'PONG';
+      });
+      const mailpitId = await createOwnedContainer('mailpit', ['--publish', '127.0.0.1::1025', '--publish', '127.0.0.1::8025', 'axllent/mailpit:v1.29.0']);
+      await command('docker', ['start', mailpitId]);
+      const smtpPort = await publishedPort(mailpitId, 1025);
+      const mailpitPort = await publishedPort(mailpitId, 8025);
+      await waitForService('Mailpit SMTP', remaining => smtpReady(smtpPort, remaining));
+      Object.assign(testEnvironment, {
+        OAUTH_INTEGRATION_TEST: '1',
+        OAUTH_TEST_RUN_ID: runId,
+        OAUTH_TEST_POSTGRES_CONTAINER_ID: containerId,
+        OAUTH_TEST_REDIS_CONTAINER_ID: redisId,
+        OAUTH_TEST_MAILPIT_CONTAINER_ID: mailpitId,
+        OAUTH_TEST_DATABASE_URL: databaseUrl,
+        OAUTH_TEST_REDIS_URL: `redis://127.0.0.1:${redisPort}/0`,
+        OAUTH_TEST_SMTP_PORT: String(smtpPort),
+        OAUTH_TEST_MAILPIT_URL: `http://127.0.0.1:${mailpitPort}`,
+      });
     }
     stage('Initializing the empty test database using the CI bootstrap.');
     await command('bash', [path.join(root, '.github/scripts/init-test-database.sh'), containerId, path.join(work, config.schemaDirectory)]);
     stage('Generating Prisma types from this checkout.');
     await command('pnpm', ['run', 'types:generate'], { env: testEnvironment, quiet: false, timeout: 300_000 });
-    const testArguments = ['test', ...(options.integration ? ['tests/integration'] : []), ...options.jestArgs];
-    stage(options.integration ? 'Running integration tests.' : 'Running the complete test suite.');
+    const testArguments = options.oauth
+      ? ['run', 'test:oauth:integration', ...options.jestArgs]
+      : ['test', ...(options.integration ? ['tests/integration'] : []), ...options.jestArgs];
+    stage(options.oauth ? 'Running OAuth integration tests.' : options.integration ? 'Running integration tests.' : 'Running the complete test suite.');
     await command('pnpm', testArguments, { env: testEnvironment, quiet: false, timeout: 1_800_000 });
   } catch (error) {
     result = signalCode ?? error.code ?? 1;
