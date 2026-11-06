@@ -40,6 +40,7 @@ export const cohortJoinInfoResponseSchema = z.object({
 export const cohortJoinResultResponseSchema = z.object({ enrollmentId: z.number().int(), cohortId: z.number().int(), status: z.literal('joined') });
 export const myCohortsResponseSchema = z.array(z.object({
   cohortId: z.number().int(), displayName: z.string(), startDate: z.date(), endDate: z.date(),
+  timezone: cohortTimezoneSchema,
   status: z.string(), joinedAt: z.date().nullable(), programName: z.string(), organizationName: z.string(),
 }));
 export const cohortMemberHomeResponseSchema = z.object({
