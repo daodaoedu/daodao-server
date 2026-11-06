@@ -133,6 +133,8 @@ export const updateCohortSchema = z.object({
 // Note: update 的 D3/D4/D5 正規化在 service 層的 normalizeCohortSetup 以合併結果驗證
 
 export const cohortResponseSchema = z.object({
+  organizationId: z.number().int().positive().openapi({ description: '場次所屬組織 ID，依系列實際歸屬回傳', example: 2 }),
+  organizationName: z.string().openapi({ description: '場次所屬組織名稱', example: '島島學習社群' }),
   id: z.number().int(), programId: z.number().int(), slug: z.string(), displayName: z.string(),
   tagline: z.string().nullable().openapi({ description: '一句話簡介' }),
   startDate: z.date(), endDate: z.date(), joinToken: z.string().uuid().nullable(),

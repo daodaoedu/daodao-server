@@ -58,10 +58,11 @@ const get = async (
       { program: { organization: { organization_members: { some: { user_id: actorId } } } } },
       { cohort_enrollments: { some: { user_id: actorId, status: 'joined' } } }
     ] },
-    select: { program: { select: { organization: { select: { organization_members: { where: { user_id: actorId }, select: { id: true } } } } } } }
+    select: { program: { select: { organization: { select: { status: true, organization_members: { where: { user_id: actorId }, select: { id: true } } } } } } }
   });
   if (!access) throw new ForbiddenError('無權限查看本期動態');
   const perspective = access.program.organization.organization_members.length > 0 ? 'coach' as const : 'learner' as const;
+  if (perspective === 'coach' && access.program.organization.status !== 'active') throw new ForbiddenError('此組織目前已停權');
   const where = { practices: { cohort_id: cohortId, deleted_at: null }, created_at: { not: null } } as const;
   const [rows, total, pendingRows] = await Promise.all([
     prisma.practice_checkins.findMany({

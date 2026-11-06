@@ -12,7 +12,7 @@ import { cohortOutcomeService } from '@/services/cohort-outcome.service';
 import { ConflictError, NotFoundError, TooManyRequestsError } from '@/middleware/error.middleware';
 
 const now = new Date('2026-09-11T12:00:00.000Z');
-const cohort = { id: 8, display_name: '夏季團', start_date: new Date('2026-07-01T00:00:00.000Z'), end_date: new Date('2026-08-31T00:00:00.000Z'), program: { name: '自主學習', organization_id: 1, organization: { timezone: 'Asia/Taipei', organization_members: [{ id: 1 }] } } };
+const cohort = { id: 8, display_name: '夏季團', start_date: new Date('2026-07-01T00:00:00.000Z'), end_date: new Date('2026-08-31T00:00:00.000Z'), program: { name: '自主學習', organization_id: 1, organization: { status: 'active', timezone: 'Asia/Taipei', organization_members: [{ id: 1 }] } } };
 const allow = (override: Partial<typeof cohort> = {}) => prismaMock.cohorts.findFirst.mockResolvedValue({ ...cohort, ...override } as never);
 const summaryRow = (version: number, source = 'manual') => ({ id: version, version, source, content: `v${version}`, provider: null, model_name: null, generated_at: null, is_current: true, created_at: now, creator: { id: 42, nickname: '帶領人' } });
 

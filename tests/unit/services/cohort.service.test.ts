@@ -4,7 +4,7 @@ import { cohortService } from '@/services/cohort.service';
 import { ConflictError, ForbiddenError } from '@/middleware/error.middleware';
 
 const now = new Date('2026-07-22T00:00:00.000Z');
-const row = { id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', visibility: 'private', created_at: now, updated_at: null, interaction_modes: [], cohort_sessions: [], fee_type: 'free', signup_method: 'island_form' };
+const row = { program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } }, id: 8, program_id: 2, slug: 'summer', display_name: '夏季期', start_date: now, end_date: new Date('2026-08-22T00:00:00.000Z'), join_token: '123e4567-e89b-12d3-a456-426614174000', join_paused: false, join_deadline: null, capacity: null, invite_message: null, status: 'draft', visibility: 'private', created_at: now, updated_at: null, interaction_modes: [], cohort_sessions: [], fee_type: 'free', signup_method: 'island_form' };
 
 describe('cohortService', () => {
   beforeEach(() => {
@@ -31,24 +31,32 @@ describe('cohortService', () => {
     await expect(cohortService.get(2, 999, 42)).rejects.toBeInstanceOf(ForbiddenError);
   });
 
+  it('returns the cohort actual organization even when another membership sorts first', async () => {
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { organization_id: 9, name: 'B系列', organization: { name: 'B組織', status: 'active' } } } as never);
+    await expect(cohortService.get(2, 8, 42)).resolves.toEqual(expect.objectContaining({ organizationId: 9, organizationName: 'B組織' }));
+    expect(prismaMock.cohorts.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 8, program_id: 2, program: expect.objectContaining({ organization: { organization_members: { some: { user_id: 42 } } } }) })
+    }));
+  });
+
   it('archives with archived_at / archived_by / previous status and refuses a second archive', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohorts.updateMany.mockResolvedValue({ count: 1 });
     await cohortService.archive(2, 8, 42);
     expect(prismaMock.cohorts.updateMany).toHaveBeenCalledWith({ where: { id: 8, status: { not: 'archived' }, deleted_at: null }, data: { status: 'archived', archived_at: expect.any(Date), archived_by: 42, archived_from_status: 'published', archived_reason: 'manual', updated_at: expect.any(Date) } });
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'archived', program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'archived', program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     await expect(cohortService.archive(2, 8, 42)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('returns 409 and writes no audit when a concurrent archive already won the race', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohorts.updateMany.mockResolvedValue({ count: 0 });
     await expect(cohortService.archive(2, 8, 42)).rejects.toBeInstanceOf(ConflictError);
     expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
   });
 
   it('rotates, pauses and resumes join links with audit records', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohorts.update.mockResolvedValue(row as never);
     const rotated = await cohortService.setJoinToken(2, 8, 42, 'rotate');
     expect(rotated.joinToken).toMatch(/^[0-9a-f-]{36}$/);
@@ -57,7 +65,7 @@ describe('cohortService', () => {
     const paused = await cohortService.setJoinToken(2, 8, 42, 'pause');
     expect(paused).toEqual({ cohortId: 8, joinToken: row.join_token, joinPaused: true });
     expect(prismaMock.cohorts.update).toHaveBeenLastCalledWith({ where: { id: 8 }, data: { join_token: row.join_token, join_paused: true, updated_at: expect.any(Date) } });
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, join_paused: true, program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, join_paused: true, program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     const resumed = await cohortService.setJoinToken(2, 8, 42, 'resume');
     expect(resumed).toEqual({ cohortId: 8, joinToken: row.join_token, joinPaused: false });
     expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(3);
@@ -73,7 +81,7 @@ describe('cohortService', () => {
   });
 
   it('re-issues a token when resuming a legacy cohort whose token was nulled by the old pause', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, join_token: null, join_paused: true, program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, join_token: null, join_paused: true, program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohorts.update.mockResolvedValue(row as never);
     const resumed = await cohortService.setJoinToken(2, 8, 42, 'resume');
     expect(resumed.joinToken).toMatch(/^[0-9a-f-]{36}$/);
@@ -81,7 +89,7 @@ describe('cohortService', () => {
   });
 
   it('duplicates a cohort as a draft with a -copy slug and carries active template bindings', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, status: 'published', program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohort_templates.findMany.mockResolvedValue([{ template_id: 5, start_date: null }] as never);
     prismaMock.cohorts.create.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
     prismaMock.cohorts.findUniqueOrThrow.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
@@ -94,7 +102,7 @@ describe('cohortService', () => {
   });
 
   it('retries the copy slug on a unique conflict', async () => {
-    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { organization: { status: 'active' } } } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ ...row, program: { name: '系列', organization_id: 3, organization: { name: 'A組織', status: 'active' } } } as never);
     prismaMock.cohort_templates.findMany.mockResolvedValue([] as never);
     prismaMock.cohorts.create.mockRejectedValueOnce(mockPrismaError('P2002')).mockResolvedValue({ ...row, id: 10, slug: 'summer-copy-2', status: 'draft' } as never);
     prismaMock.cohorts.findUniqueOrThrow.mockResolvedValue({ ...row, id: 10, slug: 'summer-copy-2', status: 'draft' } as never);
@@ -105,7 +113,7 @@ describe('cohortService', () => {
 
   it('lists every cohort under an organization with program names and joined counts', async () => {
     prismaMock.organization.findFirst.mockResolvedValue({ status: 'active' } as never);
-    prismaMock.cohorts.findMany.mockResolvedValue([{ ...row, program: { name: '自主學習' } }, { ...row, id: 9, slug: 'autumn', status: 'archived', program: { name: '自主學習' } }] as never);
+    prismaMock.cohorts.findMany.mockResolvedValue([{ ...row, program: { ...row.program, name: '自主學習' } }, { ...row, id: 9, slug: 'autumn', status: 'archived', program: { ...row.program, name: '自主學習' } }] as never);
     prismaMock.cohort_enrollments.groupBy.mockResolvedValue([{ cohort_id: 8, _count: { id: 3 } }] as never);
     const cohorts = await cohortService.listByOrganization(1, 42);
     expect(cohorts).toEqual([

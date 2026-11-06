@@ -898,6 +898,8 @@ model users {
   notification_preferences             notification_preferences[]
   notifications_as_actor               notifications[]            @relation("notifications_actor")
   notifications_as_recipient           notifications[]            @relation("notifications_recipient")
+  last_lighthouse_organization_id       Int?
+  last_lighthouse_organization          organization? @relation("users_last_lighthouse_organization", fields: [last_lighthouse_organization_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_users_last_lighthouse_organization")
   organization                         organization[]
   organization_members                 organization_members[]
   archived_programs                    programs[]                    @relation("programs_archived_by")
@@ -950,6 +952,7 @@ model users {
 
   @@index([education_stage], map: "idx_users_education_stage")
   @@index([location_id], map: "idx_users_location_id")
+  @@index([last_lighthouse_organization_id], map: "idx_users_last_lighthouse_organization")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -1995,6 +1998,7 @@ model organization {
   updated_at           DateTime?              @db.Timestamptz(6)
   /// 島島阿學官方組織（共同挑戰所屬組織）；partial unique index 保證最多一筆 true（daodao#179）
   is_official          Boolean                @default(false)
+  last_selected_by_users users[] @relation("users_last_lighthouse_organization")
   cohort_message_templates cohort_message_templates[]
   organization_members organization_members[]
   practice_templates   practice_templates[]
