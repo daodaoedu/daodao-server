@@ -18,6 +18,15 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      storage_ref:
+        description: 'Optional paired storage commit (full 40-character SHA; empty uses dev)'
+        type: string
+        default: ''
+      frontend_ref:
+        description: 'Optional paired frontend commit; runs full isolated journeys with storage_ref'
+        type: string
+        default: ''
 
 env:
   NODE_VERSION: 20
@@ -33,6 +42,16 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Validate immutable paired revisions
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          STORAGE_REF: ${{ inputs.storage_ref }}
+          FRONTEND_REF: ${{ inputs.frontend_ref }}
+        run: |
+          [[ -z "$STORAGE_REF" || "$STORAGE_REF" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ -z "$FRONTEND_REF" || "$FRONTEND_REF" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ -z "$FRONTEND_REF" || -n "$STORAGE_REF" ]] || exit 1
+
       # Requires a PAT with read access to daodao-storage.
       # Create a fine-grained PAT at https://github.com/settings/tokens
       # and store it as the STORAGE_REPO_PAT repository secret.
@@ -41,8 +60,14 @@ jobs:
         with:
           repository: daodaoedu/daodao-storage
           path: _storage
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.storage_ref || 'dev' }}
           token: ${{ secrets.GIT_HUB_ACCESS_TOKEN }}
           fetch-depth: 1
+
+      - name: Record checked revisions
+        run: |
+          printf 'server=%s\n' "$(git rev-parse HEAD)"
+          printf 'storage=%s\n' "$(git -C _storage rev-parse HEAD)"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -57,7 +82,7 @@ jobs:
 
       - name: Get pnpm store directory
         shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
       - name: Setup pnpm cache
         uses: actions/cache@v4
@@ -91,3 +116,19 @@ jobs:
               \"timestamp\": \"$CURRENT_TIME\"
             }]
           }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  journeys:
+    if: github.event_name == 'workflow_dispatch' && inputs.storage_ref != '' && inputs.frontend_ref != ''
+    needs: check
+    permissions:
+      contents: read
+    uses: daodaoedu/daodao/.github/workflows/journeys-reusable.yml@317c88c3fe3eea4163f018d9954bd39c17662b5d
+    with:
+      infra_ref: 82da8c3e8f99f0c08453776af6c20f37e8f89e8b
+      caller_repository: daodao-server
+      caller_sha: ${{ github.sha }}
+      mode: local
+      full: true
+      revisions: ${{ format('{{"daodao-storage":"{0}","daodao-f2e":"{1}"}}', inputs.storage_ref, inputs.frontend_ref) }}
+    secrets:
+      CROSS_REPO_TOKEN: ${{ secrets.JOURNEY_CROSS_REPO_TOKEN }}

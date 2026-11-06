@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/services/database/prisma.service';
+import { PUBLIC_RESOURCE_WHERE } from '../constants/resource-visibility';
 import { AppError, BadRequestError, InternalServerError, NotFoundError } from '@/middleware/error.middleware';
 import { loggerService } from '@/services/logging/logger.service';
 
@@ -532,11 +533,11 @@ export async function getTargetEntity(
       }
 
       case 'resource': {
-        const resource = await prisma.resources.findUnique({
-          where: { external_id: targetId },
+        const resource = await prisma.resources.findFirst({
+          where: { external_id: targetId, ...PUBLIC_RESOURCE_WHERE, deleted_at: null },
           select: { id: true, created_by: true }
         });
-        if (resource) {
+        if (resource && resource.created_by !== null) {
           entity = { id: resource.id, user_id: resource.created_by };
         }
         break;

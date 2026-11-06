@@ -53,6 +53,30 @@ jest.mock('@/services/email/welcome-email.service', () => ({
 import { jwtService } from '@/services/jwt.service';
 import { authService } from '@/services/auth/auth.service';
 
+describe('verified provider Email account lookup', () => {
+  it('returns the unique matching formal account', async () => {
+    const user = { id: 42, contacts: { id: 9, email: 'Owner@example.com' } };
+    prismaMock.users.findMany.mockResolvedValue([user] as never);
+    await expect(authService.findUserByGoogleIdentity('google-42', 'owner@example.com')).resolves.toEqual(expect.objectContaining({ data: { contact: user.contacts, user } }));
+    expect(prismaMock.users.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { contacts: { google_id: 'google-42' } } }));
+  });
+  it('rejects multiple accounts rather than silently choosing an owner', async () => {
+    prismaMock.users.findMany.mockResolvedValue([{ id: 42 }, { id: 43 }] as never);
+    await expect(authService.findUserByGoogleIdentity('google-42', 'owner@example.com')).rejects.toThrow('多個帳號');
+  });
+  it('does not link a different Google subject based on mutable contact Email', async () => {
+    prismaMock.users.findMany.mockResolvedValue([]);
+    prismaMock.users.findFirst.mockResolvedValue({ id: 99 } as never);
+    await expect(authService.findUserByGoogleIdentity('different-google', 'owner@example.com')).rejects.toThrow('確認登入身分');
+    expect(prismaMock.users.update).not.toHaveBeenCalled();
+  });
+  it('returns no account when only orphan contacts match', async () => {
+    prismaMock.users.findFirst.mockResolvedValue(null);
+    prismaMock.users.findMany.mockResolvedValue([]);
+    await expect(authService.findUserByGoogleIdentity('google-42', 'owner@example.com')).resolves.toEqual(expect.objectContaining({ data: null }));
+  });
+});
+
 describe('Auth Service', () => {
   const mockJwtService = jwtService as jest.Mocked<typeof jwtService>;
   const mockBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
@@ -85,6 +109,7 @@ describe('Auth Service', () => {
 
   const createTestTempUser = (overrides = {}) => ({
     id: 1,
+    verified_login_email: null,
     google_id: 'google-123',
     apple_id: null,
     email: 'temp@example.com',

@@ -1,3 +1,4 @@
+import { PUBLIC_RESOURCE_WHERE } from '../constants/resource-visibility';
 /**
  * 資源心得評價服務 - Prisma 架構
  * 處理資源心得評價相關的業務邏輯
@@ -84,6 +85,7 @@ export async function getReviewById(
   const review = await tx.resource_review.findFirst({
     where: { 
       id,
+      resources: PUBLIC_RESOURCE_WHERE,
       deleted_at: null
     },
     include: {
@@ -171,7 +173,8 @@ export async function getReviews(
   // 構建查詢條件
   const where: Prisma.resource_reviewWhereInput = {
     deleted_at: null,
-    status: filters.status || 'published'
+    status: filters.status || 'published',
+    resources: PUBLIC_RESOURCE_WHERE
   };
 
   // 添加篩選條件
@@ -202,6 +205,7 @@ export async function getReviews(
     const resource = await prisma.resources.findFirst({
       where: { 
         external_id: filters.resourceId,
+        ...PUBLIC_RESOURCE_WHERE,
         deleted_at: null 
       },
       select: { id: true }
@@ -267,6 +271,7 @@ export async function getReviews(
 
   // 調試：查詢所有評價（包括已刪除）
   const testQuery = await prisma.resource_review.findMany({
+    where: { resources: PUBLIC_RESOURCE_WHERE },
     select: { id: true, resource_id: true, status: true, user_id: true, deleted_at: true },
     take: 10,
     orderBy: { id: 'desc' }
@@ -410,7 +415,7 @@ export async function createReview(
   return await prisma.$transaction(async (tx) => {
     // 檢查資源是否存在（使用 external_id）
     const resource = await tx.resources.findUnique({
-      where: { external_id: resourceExternalId }
+      where: { external_id: resourceExternalId, ...PUBLIC_RESOURCE_WHERE, deleted_at: null }
     });
     if (!resource) {
       throw new NotFoundError(`找不到 ID 為 ${resourceExternalId} 的資源`);
@@ -421,6 +426,7 @@ export async function createReview(
       where: {
         user_id: userId,
         resource_id: resource.id,
+        resources: PUBLIC_RESOURCE_WHERE,
         deleted_at: null
       }
     });
@@ -463,6 +469,7 @@ export async function createReview(
     const fullReview = await tx.resource_review.findFirst({
       where: { 
         id: review.id,
+        resources: PUBLIC_RESOURCE_WHERE,
         deleted_at: null 
       },
       include: {
@@ -539,6 +546,7 @@ export async function updateReview(
     const review = await tx.resource_review.findUnique({
       where: { 
         id,
+        resources: PUBLIC_RESOURCE_WHERE,
         deleted_at: null
       }
     });
@@ -604,6 +612,7 @@ export async function updateReviewStatus(
   const review = await prisma.resource_review.findUnique({
     where: { 
       id,
+      resources: PUBLIC_RESOURCE_WHERE,
       deleted_at: null
     }
   });
@@ -641,6 +650,7 @@ export async function deleteReview(
     const review = await tx.resource_review.findUnique({
       where: { 
         id,
+        resources: PUBLIC_RESOURCE_WHERE,
         deleted_at: null
       }
     });
@@ -680,6 +690,7 @@ export async function toggleLikeReview(
   const review = await prisma.resource_review.findUnique({
     where: { 
       id,
+      resources: PUBLIC_RESOURCE_WHERE,
       deleted_at: null
     }
   });

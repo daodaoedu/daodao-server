@@ -118,12 +118,16 @@ model entity_resources {
   entity_id   Int
   created_by  Int
   note        String?
+  dayNumber   Int?      @map("day_number")
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
   updated_at  DateTime? @db.Timestamptz(6)
   deleted_at  DateTime? @db.Timestamptz(6)
   users       users     @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
   resources   resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  cohort_template_resource_id Int?
+  snapshot_sources cohort_template_resources[] @relation("cohort_template_resources_source_template_relation_idToentity_resources")
+  shared_resource cohort_template_resources? @relation("entity_resources_cohort_template_resource_idTocohort_template_resources", fields: [cohort_template_resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_entity_resources_cohort_source")
   @@unique([resource_id, entity_type, entity_id])
 }
 
@@ -427,6 +431,7 @@ model future_letters {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model practices {
+  cohort_resources_initialized_at DateTime? @db.Timestamptz(6)
   id                       Int                       @id @default(autoincrement())
   external_id              String?                   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                  Int
@@ -613,7 +618,7 @@ model resource_review {
 model resources {
   id                                                 Int                @id @default(autoincrement())
   external_id                                        String?            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_by                                         Int
+  created_by                                         Int?
   major_category_id                                  Int?
   sub_category_id                                    Int?
   name                                               String             @db.VarChar(255)
@@ -630,10 +635,11 @@ model resources {
   deleted_at                                         DateTime?          @db.Timestamptz(6)
   entity_resources                                   entity_resources[]
   resource_review                                    resource_review[]
-  users                                              users              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                                              users?              @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
   categories_resources_major_category_idTocategories categories?        @relation("resources_major_category_idTocategories", fields: [major_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   categories_resources_sub_category_idTocategories   categories?        @relation("resources_sub_category_idTocategories", fields: [sub_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  cohort_template_resources cohort_template_resources?
   @@index([created_at], map: "idx_resource_created_at")
   @@index([created_by], map: "idx_resource_created_by")
   @@index([type, cost, level], map: "idx_resource_type_cost_level")
@@ -729,6 +735,7 @@ model task {
 }
 
 model temp_users {
+  verified_login_email String? @db.VarChar(255)
   id           Int      @id @default(autoincrement())
   google_id    String?  @unique @db.VarChar(255)
   email        String   @unique @db.VarChar(255)
@@ -828,6 +835,7 @@ model user_subscription {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
+  verified_login_email String? @db.VarChar(255)
   id                                   Int                        @id @default(autoincrement())
   external_id                          String?                    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   mongo_id                             String                     @unique
@@ -899,6 +907,7 @@ model users {
   archived_practice_templates          practice_templates[]          @relation("practice_templates_archived_by")
   organization_ai_credentials_updates  organization_ai_credentials[]
   cohort_outcome_summaries             cohort_outcome_summaries[]
+  feedback_completions                cohort_feedback_completions[]
   post                                 post[]
   practice_buddy_requests_as_receiver  practice_buddy_requests[]  @relation("practice_buddy_requests_receiver_idTousers")
   practice_buddy_requests_as_requester practice_buddy_requests[]  @relation("practice_buddy_requests_requester_idTousers")
@@ -1889,6 +1898,7 @@ model surveys {
   questions           questions[]
   responses           survey_responses[]
   partial_submissions survey_partial_submissions[]
+  cohort_feedback     cohort_feedback_surveys?
 
   @@index([created_by], map: "idx_surveys_created_by")
   @@index([status], map: "idx_surveys_status")
@@ -1909,6 +1919,9 @@ model questions {
   options question_options[]
   answers survey_answers[]
 
+  feedback_answers cohort_feedback_answers[]
+
+  @@unique([survey_id, id], map: "uq_questions_survey_id_id")
   @@index([survey_id], map: "idx_questions_survey_id")
 }
 
@@ -2125,6 +2138,7 @@ model cohorts {
   tagline                        String?                 @db.VarChar(80)
   /// 互動方式多選：sync | async | physical；值域由 server 常量管控
   interaction_modes              String[]                @default([])
+  timezone                       String                  @default("Asia/Taipei") @db.VarChar(64)
   meeting_url                    String?
   location                       String?                 @db.VarChar(200)
   /// free | paid；paid 時 signup_method 必為 external
@@ -2159,6 +2173,7 @@ model cohorts {
   deleted_at            DateTime?  @db.Timestamptz(6)
   archiver              users?     @relation("cohorts_archived_by", fields: [archived_by], references: [id], onUpdate: NoAction, map: "fk_cohorts_archived_by")
   outcome_summaries     cohort_outcome_summaries[]
+  feedback_survey      cohort_feedback_surveys?
 
   @@unique([program_id, slug], map: "uq_cohorts_program_slug")
   @@index([program_id], map: "idx_cohorts_program_id")
@@ -2258,6 +2273,8 @@ model cohort_templates {
   cohort            cohorts            @relation(fields: [cohort_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_cohort")
   practice_template practice_templates @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cohort_templates_template")
 
+  resources_initialized_at DateTime?                   @db.Timestamptz(6)
+  cohort_template_resources cohort_template_resources[]
   @@unique([cohort_id, template_id], map: "uq_cohort_templates_cohort_template")
 }
 
@@ -2420,6 +2437,8 @@ model cohort_sessions {
   session_date DateTime @db.Date
   start_time   DateTime? @db.Time(6)
   end_time     DateTime? @db.Time(6)
+  recurrence_group_id String? @db.Uuid
+  recurrence_rule     Json? @db.JsonB
   position     Int      @default(0)
   created_at   DateTime @default(now()) @db.Timestamptz(6)
   cohort       cohorts  @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cohort_sessions_cohort")
@@ -2494,4 +2513,89 @@ model chat_room_reads {
 
   @@unique([room_id, user_id], map: "uq_chat_room_reads_room_user")
   @@index([user_id], map: "idx_chat_room_reads_user")
+}
+
+/// 期末問卷版本及全場次寄送狀態；不含填答者資訊。
+model cohort_feedback_surveys {
+  cohort_id Int @id
+  survey_id Int @unique
+  format_version Int @default(1)
+  delivery_state String @default("pending") @db.VarChar(20)
+  delivery_started_at DateTime? @db.Timestamptz(6)
+  delivered_at DateTime? @db.Timestamptz(6)
+  cohort cohorts @relation(fields: [cohort_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  survey surveys @relation(fields: [survey_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  completions cohort_feedback_completions[]
+  answers cohort_feedback_answers[]
+}
+
+/// 只記錄完成身分，不連結答案或記錄提交時間。
+model cohort_feedback_completions {
+  cohort_id Int
+  user_id Int
+  feedback cohort_feedback_surveys @relation(fields: [cohort_id], references: [cohort_id], onDelete: Cascade, onUpdate: NoAction)
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([cohort_id, user_id])
+}
+
+/// 按題獨立儲存匿名答案；無填答者、提交批次、時間或遞增序號。
+model cohort_feedback_answers {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  survey_id Int
+  question_id Int
+  rating_value Int?
+  answer_text String?
+  feedback cohort_feedback_surveys @relation(fields: [survey_id], references: [survey_id], onDelete: Cascade, onUpdate: NoAction)
+  question questions @relation(fields: [survey_id, question_id], references: [survey_id, id], onDelete: Cascade, onUpdate: NoAction, map: "fk_feedback_answer_question")
+  @@index([survey_id, question_id], map: "idx_feedback_answers_survey_question")
+}
+
+model organization_invitations {
+ id Int @id @default(autoincrement())
+ organization_id Int
+ email String @db.VarChar(255)
+ token_nonce String @unique @db.VarChar(64)
+ token_hash String @unique @db.VarChar(64)
+ expires_at DateTime @db.Timestamptz(6)
+ created_at DateTime @default(now()) @db.Timestamptz(6)
+ created_by Int?
+ accepted_at DateTime? @db.Timestamptz(6)
+ accepted_user_id Int?
+ revoked_at DateTime? @db.Timestamptz(6)
+ @@index([organization_id, created_at], map: "idx_organization_invitations_org")
+}
+model organization_invitation_requests {
+ id Int @id @default(autoincrement())
+ invitation_id Int
+ user_id Int
+ created_at DateTime @default(now()) @db.Timestamptz(6)
+ approved_at DateTime? @db.Timestamptz(6)
+ approved_by Int?
+ @@unique([invitation_id, user_id], map: "uq_organization_invitation_request")
+}
+model organization_invitation_dispatches {
+ invitation_id Int @id
+ status String @default("pending") @db.VarChar(20)
+ attempts Int @default(0)
+ next_attempt_at DateTime @default(now()) @db.Timestamptz(6)
+ lease_until DateTime? @db.Timestamptz(6)
+ sent_at DateTime? @db.Timestamptz(6)
+ message_id String? @db.VarChar(255)
+ last_error String? @db.VarChar(255)
+}
+
+model cohort_template_resources {
+  id                          Int @id @default(autoincrement())
+  cohort_template_id          Int
+  resource_id                 Int @unique
+  source_template_relation_id Int?
+  resource_date               DateTime? @db.Date
+  sort_order                  Int
+  created_at                  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime? @db.Timestamptz(6)
+  deleted_at                  DateTime? @db.Timestamptz(6)
+  cohort_templates            cohort_templates @relation(fields: [cohort_template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  resources                   resources @relation(fields: [resource_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  source_template_relation    entity_resources? @relation("cohort_template_resources_source_template_relation_idToentity_resources", fields: [source_template_relation_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  practice_relations          entity_resources[] @relation("entity_resources_cohort_template_resource_idTocohort_template_resources")
 }

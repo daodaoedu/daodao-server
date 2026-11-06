@@ -1,7 +1,13 @@
+import { getCohortFeedbackController } from '../controllers/cohort-feedback.controller';
+import { cohortFeedbackQuerySchema, cohortFeedbackResponseSchema } from '../validators/cohort-feedback.validators';
+import { cohortTemplateResourcesController } from '../controllers/cohort-template-resources.controller';
+import { cohortResourceBindingListSchema, cohortTemplateResourcesResponseSchema, updateCohortTemplateResourcesSchema } from '../validators/cohort-template-resources.validators';
 import { Router, type RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
 import { lighthousePreferenceController } from '../controllers/lighthouse-preference.controller';
 import { lighthousePreferenceResponseSchema, updateLighthousePreferenceSchema } from '../validators/lighthouse-preference.validators';
+import { organizationInvitationController } from '../controllers/organization-invitation.controller';
+import { acceptOrganizationInvitationSchema, acceptOrganizationInvitationResponseSchema, createOrganizationInvitationSchema, organizationInvitationResponseSchema, organizationInvitationParamsSchema, organizationInvitationRequestParamsSchema } from '../validators/organization-invitation.validators';
 import { organizationController } from '../controllers/organization.controller';
 import { programController } from '../controllers/program.controller';
 import { cohortController } from '../controllers/cohort.controller';
@@ -54,7 +60,7 @@ import {
   submitCohortEncouragementSchema
 } from '../validators/cohort-encouragement.validators';
 import { enforceCohortContentLifecycle } from '../middleware/cohort-content-lifecycle.middleware';
-import { requireCohortCoach } from '../middleware/cohort-role.middleware';
+import { requireCohortCoach, requireCohortRole } from '../middleware/cohort-role.middleware';
 import { requireCohortCheckinAccess } from '../middleware/cohort-object-access.middleware';
 
 const router = Router();
@@ -129,6 +135,7 @@ registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{prog
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates', tags: ['Lighthouse Focus'], summary: '取得組織的訊息範本', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, query: cohortMessageTemplateListQuerySchema }, responses: { 200: { description: '範本列表', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortMessageTemplateListResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates', tags: ['Lighthouse Focus'], summary: '存成訊息範本', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, body: { content: { 'application/json': { schema: createCohortMessageTemplateSchema } } } }, responses: { 201: { description: '範本已建立', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortMessageTemplateResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'delete', path: '/api/v1/lighthouse/organizations/{organizationId}/message-templates/{templateId}', tags: ['Lighthouse Focus'], summary: '刪除訊息範本（軟刪）', security: [{ bearerAuth: [] }], request: { params: cohortMessageTemplateParamsSchema }, responses: { 204: { description: '範本已刪除' }, 404: { $ref: '#/components/responses/NotFoundError' }, ...authErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/feedback', tags: ['Lighthouse Outcomes'], summary: '場次 owner 查看學員回饋及完成進度', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, query: cohortFeedbackQuerySchema }, responses: { 200: { description: '填答進度與匿名回饋', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortFeedbackResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome', tags: ['Lighthouse Outcomes'], summary: '場次成果（概況、實踐成果、參與者進度、AI 摘要版本、AI 模式可用性）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema }, responses: { 200: { description: '成果報告', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortOutcomeResponseSchema) } } }, 404: { $ref: '#/components/responses/NotFoundError' }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome/summary', tags: ['Lighthouse Outcome'], summary: '產生／重新產生 AI 成果摘要（新版本；平台 AI 每場次每日 5 次）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, body: { content: { 'application/json': { schema: generateOutcomeSummarySchema } } } }, responses: { 201: { description: '新版本摘要', content: { 'application/json': { schema: apiSuccessResponseSchema(outcomeSummaryVersionSchema) } } }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors } });
 registry.registerPath({ method: 'put', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/outcome/summary', tags: ['Lighthouse Outcome'], summary: '人工編輯摘要（新版本 source=manual，不可空白）', security: [{ bearerAuth: [] }], request: { params: cohortParamsSchema, body: { content: { 'application/json': { schema: editOutcomeSummarySchema } } } }, responses: { 200: { description: '新版本摘要', content: { 'application/json': { schema: apiSuccessResponseSchema(outcomeSummaryVersionSchema) } } }, ...authErrors } });
@@ -138,7 +145,7 @@ registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/programs/{progr
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement-draft', tags: ['Lighthouse Feed'], summary: '產生可編輯的鼓勵文字草稿', security: [{ bearerAuth: [] }], request: { params: cohortCheckinParamsSchema }, responses: { 200: { description: '鼓勵草稿', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortEncouragementDraftResponseSchema) } } }, 410: { description: '本期內容已超過保留期限' }, ...authErrors } });
 registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/programs/{programId}/cohorts/{cohortId}/checkins/{checkinId}/encouragement', tags: ['Lighthouse Feed'], summary: '確認並送出編輯後的鼓勵留言', security: [{ bearerAuth: [] }], request: { params: cohortCheckinParamsSchema, body: { content: { 'application/json': { schema: submitCohortEncouragementSchema } } } }, responses: { 201: { description: '鼓勵留言已送出', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortEncouragementResponseSchema) } } }, 410: { description: '本期內容已超過保留期限' }, ...authErrors } });
 registry.registerPath({
-  method: 'post', path: '/api/v1/lighthouse/organizations', tags: ['Lighthouse Organizations'],
+  method: 'post', path: '/api/v1/lighthouse/admin/organizations', tags: ['Lighthouse Organizations'],
   summary: 'Admin 建立並開通組織', security: [{ bearerAuth: [] }],
   request: { body: { content: { 'application/json': { schema: createOrganizationSchema } } } },
   responses: { 201: { description: '組織已建立', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationResponseSchema) } } }, ...authErrors }
@@ -177,6 +184,15 @@ registry.registerPath({ method: 'patch', path: '/api/v1/lighthouse/preferences',
 router.use(authenticateAny as RequestHandler);
 router.get('/preferences', lighthousePreferenceController.get as RequestHandler);
 router.patch('/preferences', validate(updateLighthousePreferenceSchema), lighthousePreferenceController.update as RequestHandler);
+
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/my-cohort-resource-bindings', tags: ['Lighthouse Templates'], summary: '取得目前帶領的場次資源入口（不要求組織成員）', security: [{ bearerAuth: [] }], responses: { 200: { description: '負責場次', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortResourceBindingListSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources', tags: ['Lighthouse Templates'], summary: '取得場次獨立共用資源', security: [{ bearerAuth: [] }], request: { params: organizationTemplateBindingParamsSchema }, responses: { 200: { description: '場次資源', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortTemplateResourcesResponseSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'put', path: '/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources', tags: ['Lighthouse Templates'], summary: '更新場次獨立共用資源並同步學員', security: [{ bearerAuth: [] }], request: { params: organizationTemplateBindingParamsSchema, body: { content: { 'application/json': { schema: updateCohortTemplateResourcesSchema } } } }, responses: { 200: { description: '儲存後場次資源', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortTemplateResourcesResponseSchema) } } }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors } });
+// These routes authorize the exact binding themselves, including leaders without membership.
+router.get('/my-cohort-resource-bindings', cohortTemplateResourcesController.myBindings as RequestHandler);
+router.get('/organizations/:organizationId/templates/:templateId/cohorts/:cohortId/resources', validate(organizationTemplateBindingParamsSchema, 'params'), cohortTemplateResourcesController.list as RequestHandler);
+router.put('/organizations/:organizationId/templates/:templateId/cohorts/:cohortId/resources', validate(organizationTemplateBindingParamsSchema, 'params'), validate(updateCohortTemplateResourcesSchema), cohortTemplateResourcesController.update as RequestHandler);
+
 router.post('/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.post('/admin/organizations', requireAdmin as RequestHandler, validate(createOrganizationSchema), organizationController.createOrganization as RequestHandler);
 router.get('/admin/organizations', requireAdmin as RequestHandler, organizationController.listAllOrganizations as RequestHandler);
@@ -185,6 +201,18 @@ router.delete('/admin/organizations/:organizationId', requireAdmin as RequestHan
 router.get('/admin/organizations/:organizationId/members', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), organizationController.adminListMembers as RequestHandler);
 router.post('/admin/organizations/:organizationId/members', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), validate(addOrganizationMemberSchema), organizationController.adminAddMember as RequestHandler);
 router.delete('/admin/organizations/:organizationId/members/:userId', requireAdmin as RequestHandler, validate(organizationMemberParamsSchema, 'params'), organizationController.adminRemoveMember as RequestHandler);
+
+registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/organization-invitations/accept', tags: ['Lighthouse Organizations'], summary: '接受組織 owner 邀請', security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: acceptOrganizationInvitationSchema } } } }, responses: { 200: { description: '邀請結果', content: { 'application/json': { schema: apiSuccessResponseSchema(acceptOrganizationInvitationResponseSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/invitations', tags: ['Lighthouse Organizations'], summary: '後台組織邀請列表', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema }, responses: { 200: { description: '邀請列表', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationInvitationResponseSchema.array()) } } }, ...authErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/invitations', tags: ['Lighthouse Organizations'], summary: '以 Email 指派組織 owner', security: [{ bearerAuth: [] }], request: { params: organizationIdParamsSchema, body: { content: { 'application/json': { schema: createOrganizationInvitationSchema } } } }, responses: { 201: { description: '已加入或待加入', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationInvitationResponseSchema) } } }, ...authErrors } });
+for (const action of ['resend', 'revoke'] as const) registry.registerPath({ method: 'post', path: `/api/v1/lighthouse/admin/organizations/{organizationId}/invitations/{invitationId}/${action}`, tags: ['Lighthouse Organizations'], summary: action === 'resend' ? '重寄邀請並撤銷舊連結' : '撤銷邀請', security: [{ bearerAuth: [] }], request: { params: organizationInvitationParamsSchema }, responses: { 200: { description: '已更新邀請', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationInvitationResponseSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'post', path: '/api/v1/lighthouse/admin/organizations/{organizationId}/invitations/{invitationId}/requests/{requestId}/approve', tags: ['Lighthouse Organizations'], summary: '確認 Email 不符的申請帳號', security: [{ bearerAuth: [] }], request: { params: organizationInvitationRequestParamsSchema }, responses: { 200: { description: '已加入組織', content: { 'application/json': { schema: apiSuccessResponseSchema(organizationInvitationResponseSchema) } } }, ...authErrors } });
+router.post('/organization-invitations/accept', validate(acceptOrganizationInvitationSchema), organizationInvitationController.accept as RequestHandler);
+router.get('/admin/organizations/:organizationId/invitations', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), organizationInvitationController.list as RequestHandler);
+router.post('/admin/organizations/:organizationId/invitations', requireAdmin as RequestHandler, validate(organizationIdParamsSchema, 'params'), validate(createOrganizationInvitationSchema), organizationInvitationController.create as RequestHandler);
+router.post('/admin/organizations/:organizationId/invitations/:invitationId/revoke', requireAdmin as RequestHandler, validate(organizationInvitationParamsSchema, 'params'), organizationInvitationController.revoke as RequestHandler);
+router.post('/admin/organizations/:organizationId/invitations/:invitationId/resend', requireAdmin as RequestHandler, validate(organizationInvitationParamsSchema, 'params'), organizationInvitationController.resend as RequestHandler);
+router.post('/admin/organizations/:organizationId/invitations/:invitationId/requests/:requestId/approve', requireAdmin as RequestHandler, validate(organizationInvitationRequestParamsSchema, 'params'), organizationInvitationController.approve as RequestHandler);
 router.use(requireOrganizationMember);
 router.get('/organizations', organizationController.listOrganizations as RequestHandler);
 router.get('/organizations/:organizationId', validate(organizationIdParamsSchema, 'params'), organizationController.getOrganization as RequestHandler);
@@ -200,6 +228,7 @@ router.delete('/programs/:programId', validate(programIdParamsSchema, 'params'),
 router.post('/programs/:programId/duplicate', validate(programIdParamsSchema, 'params'), programController.duplicate as RequestHandler);
 router.get('/programs/:programId/cohorts', validate(cohortProgramParamsSchema, 'params'), cohortController.list as RequestHandler);
 router.post('/programs/:programId/cohorts', validate(cohortProgramParamsSchema, 'params'), validate(createCohortSchema), cohortController.create as RequestHandler);
+router.get('/programs/:programId/cohorts/:cohortId/feedback', validate(cohortParamsSchema, 'params'), requireCohortRole('owner'), validate(cohortFeedbackQuerySchema, 'query'), getCohortFeedbackController as RequestHandler);
 router.use('/programs/:programId/cohorts/:cohortId', requireCohortCoach);
 router.get('/programs/:programId/cohorts/:cohortId', validate(cohortParamsSchema, 'params'), cohortController.get as RequestHandler);
 router.patch('/programs/:programId/cohorts/:cohortId', validate(cohortParamsSchema, 'params'), validate(updateCohortSchema), cohortController.update as RequestHandler);

@@ -1,9 +1,23 @@
+import '../config/openapi-registry';
 import { z } from 'zod';
 import { COHORT_VISIBILITIES } from '../constants/cohort-visibility';
 import { COHORT_INTERACTION_MODES, COHORT_FEE_TYPES, COHORT_SIGNUP_METHODS } from '../constants/cohort-setup';
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD');
-const timeSchema = z.string().regex(/^\d{2}:\d{2}$/, '時間格式必須為 HH:MM').nullable();
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必須為 YYYY-MM-DD').refine(value => {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}, '日期不存在');
+const timeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, '時間格式必須為 HH:MM').nullable();
+/** IANA timezone used to interpret the cohort's unchanged local date/time values. */
+export const cohortTimezoneSchema = z.string().min(1).max(64).refine(value => {
+  if (/^[+-]/.test(value)) return false;
+  try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; }
+}, '請選擇有效的 IANA 時區').openapi({ description: '場次共用 IANA 時區', example: 'Asia/Taipei' });
+export const cohortRecurrenceRuleSchema = z.object({
+  startDate: dateSchema.openapi({ description: '規律範圍起始日期', example: '2026-11-10' }),
+  weeks: z.number().int().min(1).max(52).openapi({ description: '持續週數（1–52）', example: 4 }),
+  weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7).refine(values => new Set(values).size === values.length, '星期不可重複').openapi({ description: 'ISO 星期：週一1至週日7', example: [2, 4] })
+}).strict().openapi({ title: 'CohortRecurrenceRule', description: '規律聚會的原始規則；逐場修改仍保留此群組規則' });
 const cohortStatusSchema = z.enum(['draft', 'published', 'archived']);
 const interactionModeSchema = z.enum(COHORT_INTERACTION_MODES).openapi({ description: '互動方式：sync（線上同步）、async（非同步）、physical（實體）' });
 const feeTypeSchema = z.enum(COHORT_FEE_TYPES).openapi({ description: '收費類型：free（免費）、paid（付費）', example: 'free' });
@@ -21,8 +35,29 @@ export const cohortVisibilitySchema = z.enum(COHORT_VISIBILITIES).openapi({ desc
 export const cohortSessionInputSchema = z.object({
   sessionDate: dateSchema.openapi({ description: '聚會日期', example: '2026-10-01' }),
   startTime: timeSchema.openapi({ description: '開始時間（HH:MM），可為 null', example: '14:00' }),
-  endTime: timeSchema.openapi({ description: '結束時間（HH:MM），可為 null', example: '16:00' })
+  endTime: timeSchema.openapi({ description: '結束時間（HH:MM），可為 null', example: '16:00' }),
+  recurrenceGroupId: z.string().uuid().nullable().optional().openapi({ description: '穩定規律群組 ID；非規律時段為 null' }),
+  recurrenceRule: cohortRecurrenceRuleSchema.nullable().optional().openapi({ description: '群組原始規則；非規律時段為 null' })
 }).openapi({ title: 'CohortSessionInput', description: '場次聚會時段（輸入）' });
+
+/** Validate explicit group identity without inferring recurrence from occurrence dates. */
+const cohortSessionsInputSchema = z.array(cohortSessionInputSchema).max(50).superRefine((sessions, context) => {
+  const groupRules = new Map<string, string>();
+  sessions.forEach((session, index) => {
+    const groupId = session.recurrenceGroupId;
+    const rule = session.recurrenceRule;
+    if (Boolean(groupId) !== Boolean(rule)) {
+      context.addIssue({ code: 'custom', path: [index, 'recurrenceRule'], message: '規律群組與規則必須同時提供或同時為空' });
+      return;
+    }
+    if (!groupId || !rule) return;
+    const canonical = JSON.stringify({ ...rule, weekdays: [...rule.weekdays].sort((a, b) => a - b) });
+    if (groupRules.has(groupId) && groupRules.get(groupId) !== canonical) {
+      context.addIssue({ code: 'custom', path: [index, 'recurrenceRule'], message: '同一規律群組的規則必須一致' });
+    }
+    groupRules.set(groupId, canonical);
+  });
+});
 
 /** 場次聚會時段回應（含 id） */
 export const cohortSessionSchema = cohortSessionInputSchema.extend({
@@ -39,10 +74,11 @@ export const createCohortSchema = z.object({
   capacity: z.number().int().positive().nullable().optional().openapi({ description: '人數上限；null 表示不限' }),
   inviteMessage: z.string().trim().max(2000).nullable().optional(),
   showInviteMessageOnSignup: z.boolean().optional().default(false).openapi({ description: '在報名頁面顯示邀請訊息' }),
+  timezone: cohortTimezoneSchema.optional(),
   interactionModes: z.array(interactionModeSchema).min(1).max(3).optional().openapi({ description: '互動方式（至少選一）', example: ['sync'] }),
   meetingUrl: z.string().url().nullable().optional().openapi({ description: '會議連結' }),
   location: z.string().trim().min(1).max(200).nullable().optional().openapi({ description: '活動地點' }),
-  sessions: z.array(cohortSessionInputSchema).max(50).optional().openapi({ description: '聚會時段（上限 50 筆）' }),
+  sessions: cohortSessionsInputSchema.optional().openapi({ description: '聚會時段（上限 50 筆）' }),
   feeType: feeTypeSchema.optional().default('free'),
   feeAmount: z.number().int().positive().nullable().optional().openapi({ description: '費用金額（NT$）；free 時清為 null' }),
   signupMethod: signupMethodSchema.optional().default('island_form'),
@@ -79,10 +115,11 @@ export const updateCohortSchema = z.object({
   capacity: z.number().int().positive().nullable().optional(),
   inviteMessage: z.string().trim().max(2000).nullable().optional(),
   showInviteMessageOnSignup: z.boolean().optional(),
+  timezone: cohortTimezoneSchema.optional(),
   interactionModes: z.array(interactionModeSchema).min(1).max(3).optional(),
   meetingUrl: z.string().url().nullable().optional(),
   location: z.string().trim().min(1).max(200).nullable().optional(),
-  sessions: z.array(cohortSessionInputSchema).max(50).optional(),
+  sessions: cohortSessionsInputSchema.optional(),
   feeType: feeTypeSchema.optional(),
   feeAmount: z.number().int().positive().nullable().optional(),
   signupMethod: signupMethodSchema.optional(),
@@ -105,6 +142,7 @@ export const cohortResponseSchema = z.object({
   joinDeadline: z.date().nullable(), capacity: z.number().int().nullable(),
   inviteMessage: z.string().nullable(),
   showInviteMessageOnSignup: z.boolean(),
+  timezone: cohortTimezoneSchema,
   interactionModes: z.array(interactionModeSchema).openapi({ description: '互動方式' }),
   meetingUrl: z.string().nullable().openapi({ description: '會議連結' }),
   location: z.string().nullable().openapi({ description: '活動地點' }),

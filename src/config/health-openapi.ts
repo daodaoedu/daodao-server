@@ -1,8 +1,8 @@
-import { z } from 'zod';
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { z } from 'zod';
 import { registry } from './openapi-registry';
 
-/** Share the app's health contract with standalone OpenAPI generation. */
+/** Register the same liveness contract in runtime and offline OpenAPI generation. */
 export const registerHealthOpenApi = (target: OpenAPIRegistry = registry): void => {
   target.registerPath({
     method: 'get',
@@ -15,8 +15,13 @@ export const registerHealthOpenApi = (target: OpenAPIRegistry = registry): void 
         description: '服務正常運行',
         content: {
           'application/json': {
-            schema: z.object({ status: z.string(), uptime: z.number(), timestamp: z.string() })
-              .openapi({ description: '健康檢查響應' })
+            schema: z.object({
+              status: z.string(),
+              uptime: z.number(),
+              timestamp: z.string()
+            }).openapi({
+              description: '健康檢查響應'
+            })
           }
         }
       }
