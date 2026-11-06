@@ -25,7 +25,7 @@ describe('cohortFeedService', () => {
 
   it('returns a cohort-scoped coach feed without selecting or serializing email', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue({
-      program: { organization: { organization_members: [{ id: 9 }] } }
+      program: { organization: { status: 'active', organization_members: [{ id: 9 }] } }
     } as never);
     prismaMock.practice_checkins.findMany.mockResolvedValue([checkin] as never);
     prismaMock.practice_checkins.count.mockResolvedValue(1);
@@ -70,7 +70,7 @@ describe('cohortFeedService', () => {
 
   it('allows a joined learner and marks the learner perspective', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue({
-      program: { organization: { organization_members: [] } }
+      program: { organization: { status: 'active', organization_members: [] } }
     } as never);
     prismaMock.practice_checkins.findMany.mockResolvedValue([]);
     prismaMock.practice_checkins.count.mockResolvedValue(0);

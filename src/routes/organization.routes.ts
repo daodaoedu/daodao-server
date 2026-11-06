@@ -4,6 +4,8 @@ import { cohortTemplateResourcesController } from '../controllers/cohort-templat
 import { cohortResourceBindingListSchema, cohortTemplateResourcesResponseSchema, updateCohortTemplateResourcesSchema } from '../validators/cohort-template-resources.validators';
 import { Router, type RequestHandler } from 'express';
 import { registry } from '../config/openapi-registry';
+import { lighthousePreferenceController } from '../controllers/lighthouse-preference.controller';
+import { lighthousePreferenceResponseSchema, updateLighthousePreferenceSchema } from '../validators/lighthouse-preference.validators';
 import { organizationInvitationController } from '../controllers/organization-invitation.controller';
 import { acceptOrganizationInvitationSchema, acceptOrganizationInvitationResponseSchema, createOrganizationInvitationSchema, organizationInvitationResponseSchema, organizationInvitationParamsSchema, organizationInvitationRequestParamsSchema } from '../validators/organization-invitation.validators';
 import { organizationController } from '../controllers/organization.controller';
@@ -176,11 +178,16 @@ registry.registerPath({
   responses: { 204: { description: '成員已移除' }, 404: { $ref: '#/components/responses/NotFoundError' }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors }
 });
 
+registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/preferences', tags: ['Lighthouse Organizations'], summary: '讀取本人上次使用的燈塔組織', security: [{ bearerAuth: [] }], responses: { 200: { description: '帳號偏好', content: { 'application/json': { schema: apiSuccessResponseSchema(lighthousePreferenceResponseSchema) } } }, ...authErrors } });
+registry.registerPath({ method: 'patch', path: '/api/v1/lighthouse/preferences', tags: ['Lighthouse Organizations'], summary: '保存本人目前使用的燈塔組織', security: [{ bearerAuth: [] }], request: { body: { content: { 'application/json': { schema: updateLighthousePreferenceSchema } } } }, responses: { 200: { description: '帳號偏好已保存', content: { 'application/json': { schema: apiSuccessResponseSchema(lighthousePreferenceResponseSchema) } } }, ...authErrors } });
+
+router.use(authenticateAny as RequestHandler);
+router.get('/preferences', lighthousePreferenceController.get as RequestHandler);
+router.patch('/preferences', validate(updateLighthousePreferenceSchema), lighthousePreferenceController.update as RequestHandler);
 
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/my-cohort-resource-bindings', tags: ['Lighthouse Templates'], summary: '取得目前帶領的場次資源入口（不要求組織成員）', security: [{ bearerAuth: [] }], responses: { 200: { description: '負責場次', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortResourceBindingListSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'get', path: '/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources', tags: ['Lighthouse Templates'], summary: '取得場次獨立共用資源', security: [{ bearerAuth: [] }], request: { params: organizationTemplateBindingParamsSchema }, responses: { 200: { description: '場次資源', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortTemplateResourcesResponseSchema) } } }, ...authErrors } });
 registry.registerPath({ method: 'put', path: '/api/v1/lighthouse/organizations/{organizationId}/templates/{templateId}/cohorts/{cohortId}/resources', tags: ['Lighthouse Templates'], summary: '更新場次獨立共用資源並同步學員', security: [{ bearerAuth: [] }], request: { params: organizationTemplateBindingParamsSchema, body: { content: { 'application/json': { schema: updateCohortTemplateResourcesSchema } } } }, responses: { 200: { description: '儲存後場次資源', content: { 'application/json': { schema: apiSuccessResponseSchema(cohortTemplateResourcesResponseSchema) } } }, 409: { $ref: '#/components/responses/ConflictError' }, ...authErrors } });
-router.use(authenticateAny as RequestHandler);
 // These routes authorize the exact binding themselves, including leaders without membership.
 router.get('/my-cohort-resource-bindings', cohortTemplateResourcesController.myBindings as RequestHandler);
 router.get('/organizations/:organizationId/templates/:templateId/cohorts/:cohortId/resources', validate(organizationTemplateBindingParamsSchema, 'params'), cohortTemplateResourcesController.list as RequestHandler);

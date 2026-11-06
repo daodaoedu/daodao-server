@@ -25,7 +25,7 @@ type Scope = { cohortId: number; practiceTitle: string | null; range: Range };
 
 const assertCoach = async (programId: number, cohortId: number, actorId: number) => {
   const cohort = await prisma.cohorts.findFirst({
-    where: { id: cohortId, program_id: programId, program: { organization: { organization_members: { some: { user_id: actorId } } } } },
+    where: { id: cohortId, program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } },
     select: { id: true, start_date: true, end_date: true }
   });
   if (!cohort) throw new ForbiddenError('無權限查看此場次儀表板');

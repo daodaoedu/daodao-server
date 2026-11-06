@@ -23,7 +23,7 @@ const SUMMARY_PROMPT_VERSION = 'cohort-summary-v1';
 
 type CohortRow = {
   id: number; display_name: string; start_date: Date; end_date: Date;
-  program: { name: string; organization_id: number; organization: { timezone: string; organization_members: Array<{ id: number }> } };
+  program: { name: string; organization_id: number; organization: { status: string; timezone: string; organization_members: Array<{ id: number }> } };
 };
 
 const assertCoach = async (programId: number, cohortId: number, actorId: number): Promise<CohortRow> => {
@@ -31,11 +31,12 @@ const assertCoach = async (programId: number, cohortId: number, actorId: number)
     where: { id: cohortId, program_id: programId, deleted_at: null },
     select: {
       id: true, display_name: true, start_date: true, end_date: true,
-      program: { select: { name: true, organization_id: true, organization: { select: { timezone: true, organization_members: { where: { user_id: actorId }, select: { id: true } } } } } }
+      program: { select: { name: true, organization_id: true, organization: { select: { status: true, timezone: true, organization_members: { where: { user_id: actorId }, select: { id: true } } } } } }
     }
   });
   if (!cohort) throw new NotFoundError('找不到場次');
   if (cohort.program.organization.organization_members.length === 0) throw new ForbiddenError('無權限查看此場次成果');
+  if (cohort.program.organization.status !== 'active') throw new ForbiddenError('此組織目前已停權');
   return cohort;
 };
 
