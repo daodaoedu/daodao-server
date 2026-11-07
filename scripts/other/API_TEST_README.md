@@ -75,6 +75,20 @@
 
 ## 測試腳本使用方式
 
+腳本會建立或更新資料，只對可重設的測試環境與測試帳號執行。
+所有使用者測試腳本都必須從環境變數取得 `AUTH_TOKEN`；缺少或只有空白時，
+會在任何 API 呼叫前停止，不會回退到文件內的 token。
+在 Bash 互動輸入，避免把 token 寫進命令歷史或版控：
+
+```bash
+read -rs -p "測試帳號 token: " AUTH_TOKEN
+printf '\n'
+export AUTH_TOKEN
+```
+
+顯示回應時會遮罩 token、認證 header 與已知認證值，原始回應只供程式內部解析及 token 更新。
+Bash 腳本除 `curl`、`jq` 外也需要 Node.js 來執行共用輸出遮罩工具。
+
 ### 方式 1: Bash 腳本 (推薦用於快速測試)
 
 ```bash
@@ -85,7 +99,7 @@ chmod +x scripts/test-user-api.sh
 ./scripts/test-user-api.sh
 
 # 自訂 API URL
-API_BASE_URL=https://api.daodao.com ./scripts/test-user-api.sh
+API_BASE_URL=http://localhost:4000 ./scripts/test-user-api.sh
 ```
 
 **注意:** 需要安裝 `jq` 工具
@@ -104,13 +118,10 @@ sudo apt-get install jq
 npm install axios
 
 # 方式 A: 使用已有的 token (推薦)
-AUTH_TOKEN=your_token_here node scripts/test-user-api-simple.js
-
-# 方式 B: 測試創建新用戶流程 (需要先有臨時用戶)
 node scripts/test-user-api-simple.js
 
 # 自訂 API URL
-API_BASE_URL=https://api.daodao.com AUTH_TOKEN=your_token node scripts/test-user-api-simple.js
+API_BASE_URL=http://localhost:4000 node scripts/test-user-api-simple.js
 ```
 
 ---

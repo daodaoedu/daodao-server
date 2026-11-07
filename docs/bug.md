@@ -1,12 +1,17 @@
+# 合成登入回應範例
+
+以下資料全部為合成範例，不對應真實帳號或請求。
+
+```json
 {
     "success": true,
     "data": {
         "user": {
-            "id": "dea36093-3114-4b08-b331-3fdbddf92ef9",
-            "nickname": "島島阿學Dao Dao",
-            "email": "contact@daodao.so",
-            "name": "島島阿學Dao Dao",
-            "photo_url": "https://lh3.googleusercontent.com/a/ACg8ocJ-mxuUG8yi2tdPDklC_AhIuAyGGqDHSCARkNrfUE_8IIa7AjKe=s96-c",
+            "id": "00000000-0000-4000-8000-000000000001",
+            "nickname": "範例使用者",
+            "email": "test.user@example.com",
+            "name": "範例使用者",
+            "photo_url": "https://example.com/avatar.png",
             "is_active": true,
             "email_verified": false,
             "email_verified_at": null,
@@ -17,12 +22,14 @@
         },
         "isTemporary": false
     },
-    "timestamp": "2026-02-06T02:40:54.971Z",
+    "timestamp": "2026-01-01T00:00:00.000Z",
     "meta": {
-        "requestId": "req_1770345654965_wo8kzrhrq",
+        "requestId": "req_example",
         "processingTime": 6
     }
 }
+```
 
+登入導向範例：
 
 <http://localhost:3001/en/auth/verify-email?status=success&message=already_verified>
