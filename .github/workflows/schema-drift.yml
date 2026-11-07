@@ -31,6 +31,10 @@ on:
 env:
   NODE_VERSION: 20
 
+# Quality checks never need a write-capable repository token.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Compare SQL ↔ Prisma schemas
@@ -40,6 +44,7 @@ jobs:
       - name: Checkout daodao-server
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Select affected CI work
@@ -71,6 +76,7 @@ jobs:
         if: steps.select.outputs.schema == 'true'
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           repository: daodaoedu/daodao-storage
           path: _storage
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.storage_ref || 'dev' }}
