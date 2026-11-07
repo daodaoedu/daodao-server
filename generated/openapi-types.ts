@@ -15343,8 +15343,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 取得系統監控資訊
-         * @description 取得系統資源使用情況，包括 CPU、記憶體、磁碟和 PostgreSQL 狀態
+         * 取得系統健康統計
+         * @description 僅管理員可讀取 CPU 負載、記憶體、磁碟用量及 PostgreSQL 連線統計，不包含主機或資料庫識別資訊。
          */
         get: {
             parameters: {
@@ -15355,7 +15355,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 成功獲取系統監控資訊 */
+                /** @description 系統健康統計；資料庫不可用時保留其他健康資訊 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -15363,47 +15363,30 @@ export interface paths {
                     content: {
                         "application/json": {
                             system: {
-                                hostname: string;
-                                platform: string;
-                                arch: string;
                                 uptime: number;
                                 loadAverage: number[];
                                 totalMemory: number;
                                 freeMemory: number;
-                                release: string;
-                                type: string;
-                                userInfo?: unknown;
-                                cpus: unknown[];
-                                networkInterfaces?: unknown;
-                                processMemory?: unknown;
-                                processId: number;
-                                processTitle: string;
+                                processMemory: {
+                                    rss: number;
+                                    heapTotal: number;
+                                    heapUsed: number;
+                                    external: number;
+                                    arrayBuffers: number;
+                                };
                             };
                             postgres: {
-                                version?: string;
-                                current_connections?: number;
-                                max_connections?: number;
-                                database_size?: string;
-                                start_time?: string;
-                                config?: {
-                                    [key: string]: string;
-                                };
-                                tables?: {
-                                    table_name: string;
-                                    size: string;
-                                    row_count: number;
-                                }[];
-                                error?: string;
-                                details?: string;
+                                current_connections: number;
+                                max_connections: number;
+                            } | {
+                                /** @enum {string} */
+                                error: "PostgreSQL 連線不可用";
                             };
                             disk: {
-                                filesystem: string;
-                                type: string;
                                 size: number;
                                 used: number;
                                 available: number;
                                 use: number;
-                                mount: string;
                             }[];
                         };
                     };

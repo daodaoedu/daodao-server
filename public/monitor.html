@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>系統監控 Dashboard</title>
   <!-- 引入 Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
@@ -61,9 +63,9 @@
       opacity: 0.9;
     }
     .chart-container {
-      width: 350px;
-      height: 350px;
-      margin: 20px;
+      width: min(350px, 100%);
+      height: auto;
+      margin: 20px 0;
       display: inline-block;
       vertical-align: top;
       text-align: center;
@@ -71,6 +73,10 @@
       border-radius: 10px;
       padding: 20px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .metric-card .status-good, .metric-card .status-error {
+      display: inline-block; color: white; background: #153b56;
+      padding: 4px 8px; border-radius: 6px;
     }
     .status-good { color: #27ae60; font-weight: bold; }
     .status-error { color: #e74c3c; font-weight: bold; }
@@ -107,6 +113,12 @@
       font-size: 1.2em;
       color: #7f8c8d;
     }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      .container { padding: 16px; }
+      h1 { font-size: 1.75em; }
+      .metrics-grid { grid-template-columns: minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -142,9 +154,7 @@
         <div id="database-status">
           <!-- 資料庫狀態 -->
         </div>
-        <div id="postgres-tables">
-          <!-- PostgreSQL 表格資訊 -->
-        </div>
+
       </section>
 
       <section id="system-info">
@@ -175,7 +185,10 @@
 
     // 從 /api/v1/monitor API 取得監控資料
     fetch('/api/v1/monitor')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error('無法讀取監控資料，請確認管理員登入狀態');
+        return response.json();
+      })
       .then(data => {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('content').style.display = 'block';
@@ -188,8 +201,8 @@
         
         metricsGrid.innerHTML = `
           <div class="metric-card">
-            <div class="metric-value">${sysInfo.hostname}</div>
-            <div class="metric-label">主機名稱</div>
+            <div class="metric-value">${sysInfo.loadAverage[0].toFixed(2)}</div>
+            <div class="metric-label">CPU 負載（1 分鐘）</div>
           </div>
           <div class="metric-card">
             <div class="metric-value">${formatUptime(sysInfo.uptime)}</div>
@@ -200,8 +213,8 @@
             <div class="metric-label">記憶體使用率</div>
           </div>
           <div class="metric-card">
-            <div class="metric-value">${sysInfo.cpus.length}</div>
-            <div class="metric-label">CPU 核心數</div>
+            <div class="metric-value">${formatBytes(sysInfo.processMemory.rss)}</div>
+            <div class="metric-label">程序記憶體用量</div>
           </div>
         `;
 
@@ -261,7 +274,7 @@
                 plugins: {
                   title: {
                     display: true,
-                    text: `${disk.mount} (${formatBytes(disk.size)})`
+                    text: `磁碟 ${index + 1} (${formatBytes(disk.size)})`
                   },
                   legend: {
                     position: 'bottom'
@@ -276,9 +289,6 @@
 
         // 資料庫狀態
         const dbStatus = document.getElementById('database-status');
-        const mongoStatus = data.mongo.error ? 
-          '<span class="status-error">❌ 連線失敗</span>' : 
-          '<span class="status-good">✅ 連線正常</span>';
         const pgStatus = data.postgres.error ? 
           '<span class="status-error">❌ 連線失敗</span>' : 
           '<span class="status-good">✅ 連線正常</span>';
@@ -286,51 +296,25 @@
         dbStatus.innerHTML = `
           <div class="metrics-grid">
             <div class="metric-card">
-              <div class="metric-value">MongoDB</div>
-              <div class="metric-label">${mongoStatus}</div>
-            </div>
-            <div class="metric-card">
               <div class="metric-value">PostgreSQL</div>
               <div class="metric-label">${pgStatus}</div>
             </div>
           </div>
         `;
 
-        // PostgreSQL 表格資訊
-        if (data.postgres.tables && data.postgres.tables.length > 0) {
-          const tablesDiv = document.getElementById('postgres-tables');
-          tablesDiv.innerHTML = '<h3>📊 PostgreSQL 表格資訊</h3><div class="table-info" id="table-cards"></div>';
-          const tableCards = document.getElementById('table-cards');
-          
-          data.postgres.tables.forEach(table => {
-            const card = document.createElement('div');
-            card.className = 'table-card';
-            card.innerHTML = `
-              <h4>${table.table_name}</h4>
-              <p><strong>大小:</strong> ${table.size}</p>
-              <p><strong>資料筆數:</strong> ${table.row_count.toLocaleString()}</p>
-            `;
-            tableCards.appendChild(card);
-          });
-        }
-
-        // 系統詳細資訊
         const systemDetails = document.getElementById('system-details');
         systemDetails.innerHTML = `
           <div class="metrics-grid">
-            <div><strong>平台:</strong> ${sysInfo.platform} ${sysInfo.arch}</div>
-            <div><strong>OS 版本:</strong> ${sysInfo.release}</div>
-            <div><strong>Process ID:</strong> ${sysInfo.processId}</div>
-            <div><strong>Load Average:</strong> ${sysInfo.loadAverage.map(l => l.toFixed(2)).join(', ')}</div>
+            <div><strong>CPU 負載（1 / 5 / 15 分鐘）:</strong> ${sysInfo.loadAverage.map(l => l.toFixed(2)).join(', ')}</div>
+            <div><strong>PostgreSQL 連線:</strong> ${data.postgres.error ? '暫不可用' : `${data.postgres.current_connections} / ${data.postgres.max_connections}`}</div>
           </div>
-          <h4>詳細資料庫資訊</h4>
-          <pre>${JSON.stringify({mongo: data.mongo, postgres: data.postgres}, null, 2)}</pre>
         `;
       })
-      .catch(error => {
-        console.error('取得監控資料失敗:', error);
+      .catch(() => {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('content').style.display = 'none';
         document.getElementById('loading').innerHTML = 
-          '<div class="status-error">❌ 載入監控資料失敗: ' + error.message + '</div>';
+          '<div class="status-error">❌ 無法讀取監控資料，請確認管理員登入狀態</div>';
       });
       
     // 每30秒自動刷新

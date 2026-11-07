@@ -72,8 +72,8 @@ describe('monitor diagnostic access', () => {
     try {
       const response = await request(app).get('/api/v1/monitor').auth(tokenFor(id), { type: 'bearer' });
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('system.processId', process.pid);
-      expect(response.body).toHaveProperty('postgres.tables', []);
+      expect(Object.keys(response.body.system).sort()).toEqual(['freeMemory', 'loadAverage', 'processMemory', 'totalMemory', 'uptime']);
+      expect(Object.keys(response.body.postgres).sort()).toEqual(['current_connections', 'max_connections']);
       expect(response.body).toHaveProperty('disk');
       expect(response.body.system).not.toHaveProperty('processArgs');
       expect(JSON.stringify(response.body)).not.toContain(sentinel);
@@ -88,4 +88,43 @@ describe('monitor diagnostic access', () => {
     expect(response.status).toBe(200);
     expect(response.body.system).not.toHaveProperty('processArgs');
   });
+});
+
+
+describe('aggregate-only monitor contract', () => {
+  it('keeps useful aggregate database metrics without returning fingerprints', async () => {
+    query.mockResolvedValue([{ current_connections: 7, max_connections: 100, version: 'PRIVATE_DB_VERSION', table_name: 'PRIVATE_TABLE' }]);
+    const response = await request(app).get('/api/v1/monitor').auth(tokenFor(2), { type: 'bearer' });
+    expect(response.status).toBe(200);
+    expect(response.body.postgres).toEqual({ current_connections: 7, max_connections: 100 });
+    expect(response.body.system.loadAverage).toEqual(expect.any(Array));
+    expect(response.body.system.totalMemory).toEqual(expect.any(Number));
+    expect(response.body.system.processMemory.rss).toEqual(expect.any(Number));
+    expect(Object.keys(response.body).sort()).toEqual(['disk', 'postgres', 'system']);
+    expect(response.body.disk).toEqual([{ size: 0, used: 0, available: 0, use: 0 }]);
+    expect(JSON.stringify(response.body)).not.toContain('PRIVATE_');
+  });
+
+  it('keeps available health aggregates and returns only a generic database failure', async () => {
+    query.mockRejectedValue(new Error('PRIVATE_DB_PASSWORD_AND_HOST'));
+    const response = await request(app).get('/api/v1/monitor').auth(tokenFor(2), { type: 'bearer' });
+    expect(response.status).toBe(200);
+    expect(response.body.postgres).toEqual({ error: 'PostgreSQL 連線不可用' });
+    expect(response.body.system.totalMemory).toEqual(expect.any(Number));
+    expect(JSON.stringify(response.body)).not.toContain('PRIVATE_DB_PASSWORD_AND_HOST');
+  });
+});
+
+it.each(['test', 'dev', 'production'])('never reflects unexpected system failures in %s', async (environment) => {
+  const previous = process.env.NODE_ENV;
+  process.env.NODE_ENV = environment;
+  try {
+  const os = await import('os');
+  jest.spyOn(os.default, 'totalmem').mockImplementation(() => { throw new Error('PRIVATE_OS_FAILURE'); });
+  const response = await request(app).get('/api/v1/monitor').auth(tokenFor(2), { type: 'bearer' });
+  expect(response.status).toBe(500);
+  expect(response.body).toMatchObject({ success: false, data: null, error: { code: 'INTERNAL_SERVER_ERROR', message: '系統監控暫不可用' } });
+  expect(JSON.stringify(response.body)).not.toContain('PRIVATE_OS_FAILURE');
+  expect(response.body).not.toHaveProperty('debug');
+  } finally { process.env.NODE_ENV = previous; }
 });
