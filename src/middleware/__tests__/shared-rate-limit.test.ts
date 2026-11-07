@@ -220,6 +220,36 @@ describe('shared Redis rate limits through HTTP', () => {
     await request(server).post('/report').expect(429);
   });
 
+  it('aggregates repeated fail-open log events within thirty seconds while every request still passes', async () => {
+    await stopRedis();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const server = app('outage-log-burst', { max: 1 });
+    try {
+      for (let i = 0; i < 6; i += 1) {
+        await request(server).post('/report').expect(200);
+      }
+      const bypassEvents = (): unknown[][] => jest.mocked(loggerService.error).mock.calls
+        .filter(([, metadata]) => metadata?.event === 'rate_limit_fail_open');
+      expect(bypassEvents()).toHaveLength(1);
+      clock.mockReturnValue(1_030_000);
+      await request(server).post('/report').expect(200);
+      expect(bypassEvents()).toEqual([
+        ['Rate limit bypassed because Redis is unavailable', {
+          event: 'rate_limit_fail_open', limiter: 'outage-log-burst', policy: 'fail_open', dependency: 'redis',
+        }],
+        ['Rate limit bypassed because Redis is unavailable', {
+          event: 'rate_limit_fail_open', limiter: 'outage-log-burst', policy: 'fail_open', dependency: 'redis', suppressedFailures: 5,
+        }],
+      ]);
+      await request(server).post('/report').expect(200);
+      expect(bypassEvents()).toHaveLength(2);
+    } finally {
+      clock.mockRestore();
+      await startRedis();
+    }
+  });
+
   it('does not repeat an increment when Redis executed it but its response was lost', async () => {
     const server = app('lost-response', { max: 2 });
     await request(server).post('/report').expect(200);

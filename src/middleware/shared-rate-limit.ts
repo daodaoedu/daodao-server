@@ -54,6 +54,8 @@ export function createSharedRateLimiter(
 ): RateLimitRequestHandler {
   let delegate: RedisStore | undefined;
   let configuration: Options;
+  let lastFailureLoggedAt: number | undefined;
+  let suppressedFailures = 0;
   const prefix = `rate-limit:${process.env.APP_ENV ?? process.env.NODE_ENV ?? 'development'}:${name}:`;
 
   /** Delay script loading until a request can use Redis; rejected loads remain recoverable. */
@@ -99,9 +101,17 @@ export function createSharedRateLimiter(
         return await (await getStore()).increment(key);
       } catch {
         // Do not attach Redis commands, counter keys, identities or raw errors.
-        loggerService.error('Rate limit bypassed because Redis is unavailable', {
-          event: 'rate_limit_fail_open', limiter: name, policy: 'fail_open', dependency: 'redis',
-        });
+        const now = Date.now();
+        if (lastFailureLoggedAt === undefined || now - lastFailureLoggedAt >= 30_000) {
+          loggerService.error('Rate limit bypassed because Redis is unavailable', {
+            event: 'rate_limit_fail_open', limiter: name, policy: 'fail_open', dependency: 'redis',
+            ...(suppressedFailures > 0 ? { suppressedFailures } : {}),
+          });
+          lastFailureLoggedAt = now;
+          suppressedFailures = 0;
+        } else {
+          suppressedFailures += 1;
+        }
         // express-rate-limit logs the thrown error too; sanitize that output.
         throw new Error('Rate-limit Redis is unavailable');
       }
