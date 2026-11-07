@@ -87,7 +87,7 @@ getStats(): EmailServiceStats
 
 ```bash
 # Gmail SMTP 設定（必要）
-EMAIL_ADDRESS=your-email@gmail.com
+EMAIL_ADDRESS=test.user@example.com
 EMAIL_PASSWORD=your-app-password          # Gmail 應用程式密碼
 
 # URL 設定（必要）

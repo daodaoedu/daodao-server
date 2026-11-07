@@ -11,11 +11,30 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:4000}"
-AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiX2lkIjoiNThiOTE1YWYtYzM2MS00OTAwLWE2YWYtNTNiMDgyYTdmNjJjIiwidXNlcm5hbWUiOiIiLCJpc1RlbXAiOmZhbHNlLCJyb2xlcyI6WyJNZW50b3IiLCJjaXRpemVuIiwiZXhwZXJpbWVudGFsLWVkdWNhdG9yIiwib3RoZXIiXSwicGVybWlzc2lvbnMiOltdLCJpYXQiOjE3NjEzMDg3NjUsImV4cCI6MTc2MTkxMzU2NX0.TO-ycsFiD5YYK16bRyjzXDaUETN1eRRp0tI_45a8U3g"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
+if [ -z "${AUTH_TOKEN//[[:space:]]/}" ]; then
+    echo "請先以環境變數 AUTH_TOKEN 提供測試帳號的有效 token" >&2
+    exit 1
+fi
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# Display only redacted copies; API_RESPONSE remains private to this process.
+if ! command -v node > /dev/null; then
+    echo "需要 Node.js 才能安全顯示測試回應" >&2
+    exit 1
+fi
+INITIAL_AUTH_TOKEN="$AUTH_TOKEN"
+TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/test-output.cjs"
+if [ ! -f "$TEST_OUTPUT_REDACTOR" ]; then
+    TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/test-output.cjs"
+fi
+redact_output() {
+    REDACTION_CONTEXT="${response:-${API_RESPONSE:-}}" INITIAL_AUTH_TOKEN="$INITIAL_AUTH_TOKEN" AUTH_TOKEN="$AUTH_TOKEN" NEW_AUTH_TOKEN="${NEW_AUTH_TOKEN:-}" node "$TEST_OUTPUT_REDACTOR"
+}
+API_RESPONSE=""
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1" | redact_output; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" | redact_output; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" | redact_output; }
 
 echo ""
 log_info "=========================================="
@@ -31,7 +50,7 @@ response=$(curl -s -X GET \
   -H "Content-Type: application/json" \
   "$API_BASE_URL/api/v1/users/me")
 
-echo "$response" | jq '.'
+echo "$response" | jq '.' | redact_output
 user_id=$(echo "$response" | jq -r '.data.id // empty')
 current_name=$(echo "$response" | jq -r '.data.name // empty')
 current_photo=$(echo "$response" | jq -r '.data.photoURL // empty')
@@ -57,7 +76,7 @@ response=$(curl -s -X PUT \
   -d "$update_data" \
   "$API_BASE_URL/api/v1/users/me")
 
-echo "$response" | jq '.'
+echo "$response" | jq '.' | redact_output
 
 if echo "$response" | jq -e '.success == false' > /dev/null; then
   log_success "✓ 正確拒絕空名稱"
@@ -85,7 +104,7 @@ response=$(curl -s -X PUT \
   -d "$update_data" \
   "$API_BASE_URL/api/v1/users/me")
 
-echo "$response" | jq '.'
+echo "$response" | jq '.' | redact_output
 
 if echo "$response" | jq -e '.success == true' > /dev/null; then
   new_name=$(echo "$response" | jq -r '.data.name // empty')
@@ -129,7 +148,7 @@ response=$(curl -s -X GET \
   -H "Content-Type: application/json" \
   "$API_BASE_URL/api/v1/users/me")
 
-echo "$response" | jq '.'
+echo "$response" | jq '.' | redact_output
 
 verify_name=$(echo "$response" | jq -r '.data.name // empty')
 verify_photo=$(echo "$response" | jq -r '.data.photoURL // empty')

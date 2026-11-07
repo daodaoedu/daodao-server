@@ -9,8 +9,8 @@
 ### 認證 Token
 獲取有效的 JWT token：
 ```bash
-# 使用有效的認證 token
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiX2lkIjoiNThiOTE1YWYtYzM2MS00OTAwLWE2YWYtNTNiMDgyYTdmNjJjIiwidXNlcm5hbWUiOiIiLCJpc1RlbXAiOmZhbHNlLCJyb2xlcyI6WyJNZW50b3IiLCJjaXRpemVuIiwiZXhwZXJpbWVudGFsLWVkdWNhdG9yIiwib3RoZXIiXSwicGVybWlzc2lvbnMiOltdLCJpYXQiOjE3NTgzNzI3MTYsImV4cCI6MTc1ODk3NzUxNn0.4cgoBS7exQAePoXbiOPFgJRrjzNtTLTfsL6OfuRKIqI"
+# 僅使用測試帳號；先在目前 shell 設定 TOKEN，不要把值寫進文件或版控。
+TOKEN="${TOKEN:?請先以環境變數 TOKEN 提供測試帳號的有效 token}"
 ```
 
 ### 測試資源準備

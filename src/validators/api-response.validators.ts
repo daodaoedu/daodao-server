@@ -781,7 +781,7 @@ export const authLoginResponseExample = z.object({
         createdDate: "2024-01-15T10:30:00.000Z",
         updatedDate: "2024-01-15T10:30:00.000Z"
       },
-      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiX2lkIjoiNThiOTE1YWYtYzM2MS00OTAwLWE2YWYtNTNiMDgyYTdmNjJjIiwidXNlcm5hbWUiOiIiLCJpc1RlbXAiOmZhbHNlLCJyb2xlcyI6WyJNZW50b3IiLCJjaXRpemVuIiwiZXhwZXJpbWVudGFsLWVkdWNhdG9yIiwib3RoZXIiXSwicGVybWlzc2lvbnMiOltdLCJpYXQiOjE3NTc1MTg5MDIsImV4cCI6MTc1ODEyMzcwMn0.xaAFg2IYtlnLPxx3QpDqkW1RVmWsuWsZpW8wonefYJw"
+      token: "synthetic-example-only-not-a-valid-jwt"
     },
     timestamp: "2024-01-15T10:30:00.000Z"
   }]

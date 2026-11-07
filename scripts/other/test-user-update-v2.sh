@@ -8,11 +8,30 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:4000}"
-AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiX2lkIjoiNThiOTE1YWYtYzM2MS00OTAwLWE2YWYtNTNiMDgyYTdmNjJjIiwidXNlcm5hbWUiOiIiLCJpc1RlbXAiOmZhbHNlLCJyb2xlcyI6WyJNZW50b3IiLCJjaXRpemVuIiwiZXhwZXJpbWVudGFsLWVkdWNhdG9yIiwib3RoZXIiXSwicGVybWlzc2lvbnMiOltdLCJpYXQiOjE3NjEzMDg3NjUsImV4cCI6MTc2MTkxMzU2NX0.TO-ycsFiD5YYK16bRyjzXDaUETN1eRRp0tI_45a8U3g"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
+if [ -z "${AUTH_TOKEN//[[:space:]]/}" ]; then
+    echo "請先以環境變數 AUTH_TOKEN 提供測試帳號的有效 token" >&2
+    exit 1
+fi
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# Display only redacted copies; API_RESPONSE remains private to this process.
+if ! command -v node > /dev/null; then
+    echo "需要 Node.js 才能安全顯示測試回應" >&2
+    exit 1
+fi
+INITIAL_AUTH_TOKEN="$AUTH_TOKEN"
+TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/test-output.cjs"
+if [ ! -f "$TEST_OUTPUT_REDACTOR" ]; then
+    TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/test-output.cjs"
+fi
+redact_output() {
+    REDACTION_CONTEXT="${response:-${API_RESPONSE:-}}" INITIAL_AUTH_TOKEN="$INITIAL_AUTH_TOKEN" AUTH_TOKEN="$AUTH_TOKEN" NEW_AUTH_TOKEN="${NEW_AUTH_TOKEN:-}" node "$TEST_OUTPUT_REDACTOR"
+}
+API_RESPONSE=""
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1" | redact_output; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" | redact_output; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" | redact_output; }
 
 echo ""
 log_info "=========================================="
@@ -32,7 +51,7 @@ if echo "$response" | jq -e '.success == false and (.error.details[0].message | 
   log_success "✓ 正確拒絕空名稱"
 else
   log_error "✗ 空名稱驗證失敗"
-  echo "$response" | jq '.'
+  echo "$response" | jq '.' | redact_output
 fi
 
 sleep 1
@@ -51,7 +70,7 @@ if [ "$new_name" = "測試用戶(姓名已更新)" ]; then
   log_success "✓ 姓名更新成功: $new_name"
 else
   log_error "✗ 姓名更新失敗"
-  echo "$response" | jq '.'
+  echo "$response" | jq '.' | redact_output
 fi
 
 sleep 1
@@ -74,7 +93,7 @@ if [ "$new_photo" = "https://example.com/test-avatar-new.jpg" ]; then
   log_info "  contactList.photoURL: $contact_photo"
 else
   log_error "✗ 大頭貼更新失敗"
-  echo "$response" | jq '.'
+  echo "$response" | jq '.' | redact_output
 fi
 
 sleep 1
@@ -93,7 +112,7 @@ if echo "$response" | jq -e '.success == true' > /dev/null; then
   log_success "✓ 地區更新成功: $new_location"
 else
   log_error "✗ 地區更新失敗 (中文名稱)"
-  echo "$response" | jq '.error'
+  echo "$response" | jq '.error' | redact_output
 fi
 
 sleep 1
@@ -112,7 +131,7 @@ if echo "$response" | jq -e '.success == true' > /dev/null; then
   log_success "✓ 地區更新成功: $new_location"
 else
   log_error "✗ 地區更新失敗 (英文枚舉)"
-  echo "$response" | jq '.error'
+  echo "$response" | jq '.error' | redact_output
 fi
 
 sleep 1
@@ -146,7 +165,7 @@ if echo "$response" | jq -e '.success == true' > /dev/null; then
   log_info "  自我介紹: ${verify_intro:0:30}..."
 else
   log_error "✗ 多欄位更新失敗"
-  echo "$response" | jq '.'
+  echo "$response" | jq '.' | redact_output
 fi
 
 sleep 1
