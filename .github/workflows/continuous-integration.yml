@@ -47,6 +47,10 @@ env:
   NODE_VERSION: 20
   DOCKER_BUILDKIT: 1
 
+# Quality checks never need a write-capable repository token.
+permissions:
+  contents: read
+
 jobs:
   workflow-tests:
     runs-on: ubuntu-latest
@@ -143,6 +147,7 @@ jobs:
       - name: Checkout code (shallow)
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       - name: Read shared test database configuration
@@ -343,6 +348,8 @@ jobs:
       artifact-name: ${{ needs.backend.outputs.artifact-name }}
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
     - name: Validate selected CI results
       env:
         NEEDS_JSON: ${{ toJSON(needs) }}
