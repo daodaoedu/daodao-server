@@ -16,11 +16,11 @@ WORKFLOW = ROOT / ".github/workflows/continuous-integration.yml"
 class QualityGateTests(unittest.TestCase):
     def test_quality_checks_propagate_failures_and_wait_for_every_check(self):
         workflow = yaml.safe_load(WORKFLOW.read_text())
-        steps = workflow["jobs"]["test"]["steps"]
+        steps = workflow["jobs"]["backend"]["steps"]
         check = next(step for step in steps if step.get("name") == "Run checks in parallel")
         self.assertNotIn("if", check)
         self.assertFalse(check.get("continue-on-error", False))
-        self.assertFalse(workflow["jobs"]["test"].get("continue-on-error", False))
+        self.assertFalse(workflow["jobs"]["backend"].get("continue-on-error", False))
 
         for failed_check in ("", "typecheck", "lint", "test"):
             with self.subTest(failed_check=failed_check or "all pass"):

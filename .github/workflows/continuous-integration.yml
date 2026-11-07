@@ -35,6 +35,9 @@ on:
         value: ${{ jobs.test.outputs.artifact-name }}
   # 手動觸發 CI 檢查
   workflow_dispatch:
+  # Nightly full regression on the default branch; this workflow never deploys.
+  schedule:
+    - cron: '15 1 * * *'
 
 # ===== 全域環境變數 =====
 # NODE_VERSION: 指定 Node.js 版本，確保開發和生產環境一致
@@ -48,15 +51,37 @@ jobs:
   workflow-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      backend: ${{ steps.select.outputs.backend }}
+      oauth: ${{ steps.select.outputs.oauth }}
+      schema: ${{ steps.select.outputs.schema }}
+      workflows: ${{ steps.select.outputs.workflows }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install workflow test dependency
-        run: python -m pip install PyYAML==6.0.2
-      - name: Test quality gate failure propagation
-        run: python -m unittest discover -s .github/scripts/__tests__ -p 'test_*.py' -v
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Select affected CI work
+      id: select
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: python3 .github/scripts/ci-selection.py --event "$EVENT_NAME" --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+    - name: Validate CI selection
+      env:
+        PLAN_JSON: ${{ toJSON(steps.select.outputs) }}
+      run: python3 .github/scripts/check-ci-result.py plan
+    - uses: actions/setup-python@v5
+      if: steps.select.outputs.workflows == 'true'
+      with:
+        python-version: '3.11'
+    - name: Install workflow test dependency
+      if: steps.select.outputs.workflows == 'true'
+      run: python -m pip install PyYAML==6.0.2
+    - name: Test quality gate failure propagation
+      if: steps.select.outputs.workflows == 'true'
+      run: python -m unittest discover -s .github/scripts/__tests__ -p 'test_*.py' -v
 
   # ===== 主要測試與品質檢查階段 =====
   # 目的：執行完整的程式碼品質檢查流程
@@ -68,8 +93,9 @@ jobs:
   # 輸出：generated-files artifact 供 CD workflow 使用
   # 運行環境：ubuntu-latest（穩定且快速）
   # =====================================
-  test:
+  backend:
     needs: workflow-tests
+    if: needs.workflow-tests.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -98,7 +124,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       mailpit:
-        image: axllent/mailpit:v1.29.0
+        image: ${{ needs.workflow-tests.outputs.oauth == 'true' && 'axllent/mailpit:v1.29.0' || '' }}
         options: >-
           --label io.daodao.local-tests=${{ github.run_id }}-${{ github.run_attempt }}-oauth
         ports:
@@ -247,6 +273,7 @@ jobs:
            exit "$check_result"
 
       - name: Run OAuth integration tests
+        if: needs.workflow-tests.outputs.oauth == 'true'
         env:
           OAUTH_INTEGRATION_TEST: '1'
           OAUTH_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -303,6 +330,23 @@ jobs:
               \"timestamp\": \"$CURRENT_TIME\"
             }]
           }" ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  # Stable required gate: planned skips pass; missing plans and failed workers do not.
+  test:
+    needs:
+    - workflow-tests
+    - backend
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      artifact-name: ${{ needs.backend.outputs.artifact-name }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Validate selected CI results
+      env:
+        NEEDS_JSON: ${{ toJSON(needs) }}
+      run: python3 .github/scripts/check-ci-result.py test
 
   # ===== CI 失敗通知階段 =====
   # 目的：向團隊 Discord 頻道發送 CI 檢查失敗警告
