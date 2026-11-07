@@ -32722,7 +32722,7 @@ export interface paths {
         };
         /**
          * 更新便利貼
-         * @description 更新指定便利貼的資料
+         * @description 僅便利貼擁有者可更新指定便利貼的資料
          */
         put: {
             parameters: {
@@ -32869,6 +32869,7 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 404: components["responses"]["NotFoundError"];
                 500: components["responses"]["InternalServerError"];
             };
@@ -32876,7 +32877,7 @@ export interface paths {
         post?: never;
         /**
          * 刪除便利貼
-         * @description 刪除指定的便利貼
+         * @description 僅便利貼擁有者可刪除指定的便利貼
          */
         delete: {
             parameters: {
@@ -32954,6 +32955,7 @@ export interface paths {
                     };
                 };
                 401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 404: components["responses"]["NotFoundError"];
                 500: components["responses"]["InternalServerError"];
             };
