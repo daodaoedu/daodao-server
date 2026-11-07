@@ -22,6 +22,15 @@ const AUTH_CODE_EXPIRY_SECONDS = 300; // 5 分鐘
 /** Auth Code Redis key 前綴 */
 const AUTH_CODE_PREFIX = 'auth_code:';
 
+// A single server-side consume operation also supports the declared Redis 6.0 floor.
+const CONSUME_AUTH_CODE_SCRIPT = `
+local value = redis.call('GET', KEYS[1])
+if value then
+  redis.call('DEL', KEYS[1])
+end
+return value
+`;
+
 /**
  * 生成 authorization code
  * @returns 隨機的 authorization code
@@ -67,7 +76,10 @@ export const exchangeAuthCode = async (
   code: string
 ): Promise<{ token: string; state: string; isNewUser: boolean } | null> => {
   const key = `${AUTH_CODE_PREFIX}${code}`;
-  const dataStr = await redis.get(key);
+  const dataStr = await redis.eval(CONSUME_AUTH_CODE_SCRIPT, 1, key);
+  if (dataStr !== null && typeof dataStr !== 'string') {
+    throw new Error('Unexpected authorization code store response');
+  }
 
   if (!dataStr) {
     return null;
@@ -78,14 +90,9 @@ export const exchangeAuthCode = async (
 
     // 檢查是否已使用（防止重放攻擊）
     if (data.used) {
-      // 如果已使用，刪除並返回 null（可能是攻擊）
-      await redis.del(key);
-      console.warn('Auth code replay attempt detected:', code.substring(0, 8) + '...');
+      console.warn('Auth code replay attempt detected');
       return null;
     }
-
-    // 標記為已使用並立即刪除
-    await redis.del(key);
 
     return {
       token: data.token,
@@ -94,7 +101,6 @@ export const exchangeAuthCode = async (
     };
   } catch (error) {
     console.error('Failed to parse auth code data:', error);
-    await redis.del(key);
     return null;
   }
 };
