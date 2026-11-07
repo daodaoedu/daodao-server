@@ -88,6 +88,30 @@ export const authLimiter = createSharedRateLimiter('auth', {
   }
 });
 
+/** Keep App OAuth exchanges independent from the stricter credential-authentication budget. */
+export const tokenExchangeLimiter = createSharedRateLimiter('auth-token-exchange', {
+  windowMs: 60 * 1000,
+  max: 60,
+  message: {
+    success: false,
+    message: '授權碼交換過於頻繁，請 1 分鐘後再試',
+    error: 'AUTH_RATE_LIMIT_EXCEEDED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request): string => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  },
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: '授權碼交換過於頻繁，請 1 分鐘後再試',
+      error: 'AUTH_RATE_LIMIT_EXCEEDED',
+      retryAfter: 60
+    });
+  }
+});
+
 /**
  * API 創建操作速率限制器
  * 用於限制資源創建操作

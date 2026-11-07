@@ -73,7 +73,8 @@ jest.mock('../middleware/auth', () => ({
 }));
 jest.mock('../middleware/rate-limit.middleware', () => ({
   strictLimiter: (_req: Request, _res: Response, next: NextFunction): void => next(),
-  authLimiter: (_req: Request, _res: Response, next: NextFunction): void => next()
+  authLimiter: (_req: Request, _res: Response, next: NextFunction): void => next(),
+  tokenExchangeLimiter: (_req: Request, _res: Response, next: NextFunction): void => next()
 }));
 jest.mock('../utils/cookie-config', () => ({
   setAuthCookie: jest.fn(),
