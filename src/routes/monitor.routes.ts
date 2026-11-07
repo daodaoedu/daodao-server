@@ -1,9 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import os from 'os';
 import { prismaService } from '../services/database/prisma.service';
 import { authenticateAny } from '../middleware/auth';
+import { UnauthorizedError, ForbiddenError } from '../middleware/error.middleware';
 import { createErrorResponse } from '../utils/response-helper';
 import { requireAdmin } from '../middleware/permission.middleware';
 
@@ -84,6 +85,19 @@ router.get('/', authenticateAny, requireAdmin, async (_req: Request, res: Respon
   } catch {
     res.status(500).json(createErrorResponse('INTERNAL_SERVER_ERROR', '系統監控暫不可用'));
   }
+});
+
+// Keep authorization failures inside this privacy boundary; the shared dev handler adds stacks.
+router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (error instanceof UnauthorizedError) {
+    res.status(401).json(createErrorResponse('UNAUTHORIZED', '請先登入'));
+    return;
+  }
+  if (error instanceof ForbiddenError) {
+    res.status(403).json(createErrorResponse('FORBIDDEN', '需要管理員權限'));
+    return;
+  }
+  res.status(500).json(createErrorResponse('INTERNAL_SERVER_ERROR', '系統監控暫不可用'));
 });
 
 export default router;

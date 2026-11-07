@@ -128,3 +128,31 @@ it.each(['test', 'dev', 'production'])('never reflects unexpected system failure
   expect(response.body).not.toHaveProperty('debug');
   } finally { process.env.NODE_ENV = previous; }
 });
+
+describe.each(['test', 'dev', 'production'])('private monitor auth errors in %s', (environment) => {
+  it.each([
+    ['anonymous', 401, 'UNAUTHORIZED', '請先登入'],
+    ['invalid', 401, 'UNAUTHORIZED', '請先登入'],
+    ['forged-member', 403, 'FORBIDDEN', '需要管理員權限'],
+    ['temporary-admin', 403, 'FORBIDDEN', '需要管理員權限'],
+  ] as const)('%s returns only the generic authorization envelope', async (identity, status, code, message) => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = environment;
+    try {
+      const call = request(app).get('/api/v1/monitor');
+      if (identity === 'invalid') call.set('Authorization', 'Bearer invalid');
+      if (identity === 'forged-member') call.auth(tokenFor(1), { type: 'bearer' });
+      if (identity === 'temporary-admin') call.auth(tokenFor(2, true), { type: 'bearer' });
+      const response = await call;
+      expect(response.status).toBe(status);
+      expect(response.body).not.toHaveProperty('debug');
+      expect(response.body).toMatchObject({ success: false, data: null, error: { code, message } });
+      expect(Object.keys(response.body).sort()).toEqual(['data', 'error', 'success', 'timestamp']);
+      expect(Object.keys(response.body.error).sort()).toEqual(['code', 'message']);
+      expect(getClient).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+});
