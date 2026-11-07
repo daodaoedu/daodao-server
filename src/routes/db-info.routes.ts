@@ -1,10 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { authenticateAny } from '../middleware/auth';
+import { requireAdmin } from '../middleware/permission.middleware';
 import { registry } from '../config/openapi-registry';
 import { prismaService } from '../services/database/prisma.service';
 import { redis as redisClient } from '../services/database/redis.service';
 
 const router = Router();
+
+router.use(authenticateAny, requireAdmin);
 
 interface DatabaseColumn {
   column_name: string;
@@ -71,7 +75,8 @@ registry.registerPath({
   path: '/api/v1/db-info',
   tags: ['Database Info'],
   summary: '取得資料庫資訊',
-  description: '取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等',
+  description: '僅管理員可取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等',
+  security: [{ bearerAuth: [] }],
   responses: {
     200: {
       description: '成功獲取資料庫資訊',
@@ -98,6 +103,8 @@ registry.registerPath({
         }
       }
     },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
