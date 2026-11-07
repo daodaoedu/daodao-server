@@ -12868,7 +12868,7 @@ export interface paths {
         post?: never;
         /**
          * 刪除圖片
-         * @description 從雲端儲存中刪除指定的圖片檔案。需要身份驗證。
+         * @description 刪除登入使用者自己上傳的圖片。僅允許擁有者紀錄可驗證的圖片；未記錄擁有者的舊圖片保留且回傳 403。
          */
         delete: {
             parameters: {
@@ -12893,6 +12893,7 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 404: components["responses"]["NotFoundError"];
                 /** @description 請求過於頻繁 */
                 429: {
@@ -12961,6 +12962,7 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 /** @description 檔案過大 */
                 413: {
                     headers: {
@@ -13042,6 +13044,7 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 /** @description 檔案過大或總數過多 */
                 413: {
                     headers: {
