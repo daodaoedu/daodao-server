@@ -15,7 +15,7 @@ import {
   authenticateGoogleCallback
 } from '../services/auth/oauth.service';
 import { validate } from '../middleware/validation.middleware';
-import { strictLimiter, authLimiter } from '../middleware/rate-limit.middleware';
+import { strictLimiter, authLimiter, tokenExchangeLimiter } from '../middleware/rate-limit.middleware';
 import {
   loginValidator,
   registerValidator,
@@ -700,6 +700,22 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    429: {
+      description: '同一 IP 的授權碼交換超過 60 次／1 分鐘（獨立於登入、註冊及 Apple 登入額度）',
+      headers: {
+        'Retry-After': { description: '重試前需等待的秒數', schema: { type: 'integer' } }
+      },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.literal(false),
+            message: z.string(),
+            error: z.literal('AUTH_RATE_LIMIT_EXCEEDED'),
+            retryAfter: z.literal(60)
+          })
+        }
+      }
+    },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -710,6 +726,7 @@ registry.registerPath({
  * 請求體：{ code: string }
  */
 router.post('/token',
+  tokenExchangeLimiter,
   authController.exchangeToken
 );
 
