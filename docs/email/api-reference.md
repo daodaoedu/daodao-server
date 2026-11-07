@@ -56,7 +56,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```
@@ -89,7 +89,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```
@@ -132,7 +132,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```
@@ -165,7 +165,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```
@@ -202,7 +202,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```
@@ -249,7 +249,7 @@ Email API 提供郵件發送、驗證、預覽和管理功能。所有端點均�
 {
   "success": true,
   "data": {
-    "messageId": "<redacted@example.com>"
+    "messageId": "<test.user@example.com>"
   }
 }
 ```

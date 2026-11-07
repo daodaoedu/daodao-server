@@ -9,8 +9,8 @@
 ### 認證 Token
 獲取有效的 JWT token：
 ```bash
-# 使用有效的認證 token
-TOKEN="PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED"
+# 僅使用測試帳號；先在目前 shell 設定 TOKEN，不要把值寫進文件或版控。
+TOKEN="${TOKEN:?請先以環境變數 TOKEN 提供測試帳號的有效 token}"
 ```
 
 ### 環境檢查

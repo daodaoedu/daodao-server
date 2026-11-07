@@ -9,8 +9,8 @@
 ### 認證 Token
 獲取有效的 JWT token：
 ```bash
-# 使用有效的認證 token
-TOKEN="PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED"
+# 僅使用測試帳號；先在目前 shell 設定 TOKEN，不要把值寫進文件或版控。
+TOKEN="${TOKEN:?請先以環境變數 TOKEN 提供測試帳號的有效 token}"
 ```
 
 ### 環境檢查
@@ -62,9 +62,9 @@ curl -X POST http://localhost:4000/api/v1/ideas \
     ],
     "status": "active",
     "user": {
-      "id": "2",
-      "name": "小許",
-      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJ3YjTVznTRc8401zw3ta7c3QaZYb5lDy3497cbCmZYM79s3LoZ=s96-c"
+      "id": "900001",
+      "name": "範例使用者",
+      "photoUrl": "https://example.com/avatar.png"
     },
     "hasResources": true,
     "resourceCount": 1,

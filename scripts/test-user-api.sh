@@ -15,24 +15,43 @@ NC='\033[0m' # No Color
 # 配置
 API_BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 TEMP_USER_ID=""
-AUTH_TOKEN="PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
+if [ -z "${AUTH_TOKEN//[[:space:]]/}" ]; then
+    echo "請先以環境變數 AUTH_TOKEN 提供測試帳號的有效 token" >&2
+    exit 1
+fi
+
+# Display only redacted copies; API_RESPONSE remains private to this process.
+if ! command -v node > /dev/null; then
+    echo "需要 Node.js 才能安全顯示測試回應" >&2
+    exit 1
+fi
+INITIAL_AUTH_TOKEN="$AUTH_TOKEN"
+TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/test-output.cjs"
+if [ ! -f "$TEST_OUTPUT_REDACTOR" ]; then
+    TEST_OUTPUT_REDACTOR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/test-output.cjs"
+fi
+redact_output() {
+    REDACTION_CONTEXT="${response:-${API_RESPONSE:-}}" INITIAL_AUTH_TOKEN="$INITIAL_AUTH_TOKEN" AUTH_TOKEN="$AUTH_TOKEN" NEW_AUTH_TOKEN="${NEW_AUTH_TOKEN:-}" node "$TEST_OUTPUT_REDACTOR"
+}
+API_RESPONSE=""
 CREATED_USER_ID=""
 
 # 日誌函數
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" | redact_output
 }
 
 log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[SUCCESS]${NC} $1" | redact_output
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" | redact_output
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1" | redact_output
 }
 
 # API 測試函數
@@ -49,7 +68,7 @@ test_api() {
 
     if [ -n "$data" ]; then
         log_info "Request Body:"
-        echo "$data" | jq '.' 2>/dev/null || echo "$data"
+        printf '%s\n' "$data" | redact_output
     fi
 
     local curl_cmd="curl -s -X $method"
@@ -67,19 +86,18 @@ test_api() {
     curl_cmd="$curl_cmd '$API_BASE_URL$endpoint'"
 
     local response=$(eval $curl_cmd)
+    API_RESPONSE="$response"
     local http_code=$(echo "$response" | jq -r '.success // "error"' 2>/dev/null)
 
     echo ""
     log_info "Response:"
-    echo "$response" | jq '.' 2>/dev/null || echo "$response"
+    printf '%s\n' "$response" | redact_output
 
     if [ "$http_code" = "true" ]; then
         log_success "✓ Test passed"
-        echo "$response"
         return 0
     else
         log_error "✗ Test failed"
-        echo "$response"
         return 1
     fi
 }
@@ -95,8 +113,7 @@ test_create_temp_user() {
     log_warning "請先通過 Google OAuth 創建臨時用戶並獲取 token"
     log_warning "可以通過前端登入流程或使用 Postman 測試 /api/auth/google 端點"
 
-    read -p "請輸入臨時用戶 ID (temp_users.id): " TEMP_USER_ID
-    read -p "請輸入臨時用戶 token: " AUTH_TOKEN
+    # AUTH_TOKEN 已在啟動時從環境變數驗證，避免提示覆寫。
 }
 
 # ==============================================
@@ -150,11 +167,12 @@ test_create_user() {
 EOF
 )
 
-    local response=$(test_api "POST" \
+    test_api "POST" \
         "/api/users" \
         "$user_data" \
         "創建完整用戶資料" \
-        "-H 'Authorization: Bearer $AUTH_TOKEN'")
+        "-H 'Authorization: Bearer $AUTH_TOKEN'"
+    local response="$API_RESPONSE"
 
     # 提取新創建的用戶 ID 和 token
     CREATED_USER_ID=$(echo "$response" | jq -r '.data.user.id // empty')

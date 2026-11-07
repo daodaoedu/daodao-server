@@ -7,11 +7,16 @@
  * 2. node scripts/test-user-api-simple.js
  */
 
-const axios = require('axios');
 
 // 配置
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
-let AUTH_TOKEN = "PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED";
+let AUTH_TOKEN = (process.env.AUTH_TOKEN || '').trim();
+if (!AUTH_TOKEN) {
+  console.error('請先以環境變數 AUTH_TOKEN 提供測試帳號的有效 token');
+  process.exit(1);
+}
+const axios = require('axios');
+const { redactText, redactValue } = require('./lib/test-output.cjs');
 let CREATED_USER_ID = '';
 let CUSTOM_ID = '';
 
@@ -26,10 +31,10 @@ const colors = {
 };
 
 const log = {
-  info: (msg) => console.log(`${colors.blue}[INFO]${colors.reset} ${msg}`),
-  success: (msg) => console.log(`${colors.green}[SUCCESS]${colors.reset} ${msg}`),
-  error: (msg) => console.log(`${colors.red}[ERROR]${colors.reset} ${msg}`),
-  warning: (msg) => console.log(`${colors.yellow}[WARNING]${colors.reset} ${msg}`),
+  info: (msg) => console.log(`${colors.blue}[INFO]${colors.reset} ${redactText(msg, [process.env.AUTH_TOKEN, AUTH_TOKEN])}`),
+  success: (msg) => console.log(`${colors.green}[SUCCESS]${colors.reset} ${redactText(msg, [process.env.AUTH_TOKEN, AUTH_TOKEN])}`),
+  error: (msg) => console.log(`${colors.red}[ERROR]${colors.reset} ${redactText(msg, [process.env.AUTH_TOKEN, AUTH_TOKEN])}`),
+  warning: (msg) => console.log(`${colors.yellow}[WARNING]${colors.reset} ${redactText(msg, [process.env.AUTH_TOKEN, AUTH_TOKEN])}`),
 };
 
 // API 請求輔助函數
@@ -40,7 +45,7 @@ async function apiRequest(method, endpoint, data = null, description = '') {
 
   if (data) {
     log.info('請求資料:');
-    console.log(JSON.stringify(data, null, 2));
+    console.log(JSON.stringify(redactValue(data, [process.env.AUTH_TOKEN, AUTH_TOKEN]), null, 2));
   }
 
   try {
@@ -63,7 +68,7 @@ async function apiRequest(method, endpoint, data = null, description = '') {
     const response = await axios(config);
 
     log.info('回應:');
-    console.log(JSON.stringify(response.data, null, 2));
+    console.log(JSON.stringify(redactValue(response.data, [process.env.AUTH_TOKEN, AUTH_TOKEN]), null, 2));
 
     if (response.data.success) {
       log.success('✓ 測試通過');
@@ -73,9 +78,9 @@ async function apiRequest(method, endpoint, data = null, description = '') {
   } catch (error) {
     log.error('✗ 測試失敗');
     if (error.response) {
-      console.log(JSON.stringify(error.response.data, null, 2));
+      console.log(JSON.stringify(redactValue(error.response.data, [process.env.AUTH_TOKEN, AUTH_TOKEN]), null, 2));
     } else {
-      console.error(error.message);
+      console.error(redactText(error.message, [process.env.AUTH_TOKEN, AUTH_TOKEN]));
     }
     return null;
   }
@@ -422,7 +427,7 @@ async function main() {
     log.warning('可以設置環境變數 AUTH_TOKEN=<你的token> 來跳過創建步驟。\n');
 
     if (process.env.AUTH_TOKEN) {
-      AUTH_TOKEN = process.env.AUTH_TOKEN;
+      AUTH_TOKEN = process.env.AUTH_TOKEN.trim();
       log.success('已從環境變數讀取 AUTH_TOKEN');
     }
 
@@ -475,7 +480,7 @@ async function main() {
     console.log('='.repeat(60) + '\n');
   } catch (error) {
     log.error('測試執行過程中發生錯誤:');
-    console.error(error);
+    console.error(redactText(error instanceof Error ? error.message : '測試失敗', [process.env.AUTH_TOKEN, AUTH_TOKEN]));
     process.exit(1);
   }
 }

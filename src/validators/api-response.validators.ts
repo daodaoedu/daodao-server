@@ -781,7 +781,7 @@ export const authLoginResponseExample = z.object({
         createdDate: "2024-01-15T10:30:00.000Z",
         updatedDate: "2024-01-15T10:30:00.000Z"
       },
-      token: "PRIVATE_RUNTIME_AUTH_TOKEN_REQUIRED"
+      token: "synthetic-example-only-not-a-valid-jwt"
     },
     timestamp: "2024-01-15T10:30:00.000Z"
   }]

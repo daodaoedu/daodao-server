@@ -22,7 +22,7 @@
       "if": "github.event.pull_request.draft != true",
       "uses": "daodaoedu/daodao/.github/workflows/journeys-reusable.yml@317c88c3fe3eea4163f018d9954bd39c17662b5d",
       "with": {
-        "infra_ref": "82da8c3e8f99f0c08453776af6c20f37e8f89e8b",
+        "infra_ref": "f5b30b954fc8f4f8a1b51036b1cbfeba68bb0af7",
         "caller_repository": "daodao-server",
         "caller_sha": "${{ github.event.pull_request.head.sha }}",
         "base_sha": "${{ github.event.pull_request.base.sha }}",

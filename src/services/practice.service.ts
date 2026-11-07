@@ -126,6 +126,7 @@ async function notifyPracticeCreatedAudience(params: {
  * 取得實踐列表（支援篩選、分頁、搜尋）
  */
 export async function findAll(params: PracticeQueryParams): Promise<PaginatedApiResponse<PracticeEntity>> {
+  const searchStartedAt = process.hrtime.bigint();
   try {
     const {
       page = 1,
@@ -333,7 +334,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
       {
         searchQuery: search,
         filters: { contentType, status, userId },
-        searchTime: Date.now() - Date.now()
+        searchTime: Number(process.hrtime.bigint() - searchStartedAt) / 1_000_000
       }
     );
 
