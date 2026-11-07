@@ -62,9 +62,9 @@ curl -X POST http://localhost:4000/api/v1/ideas \
     ],
     "status": "active",
     "user": {
-      "id": "2",
-      "name": "小許",
-      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJ3YjTVznTRc8401zw3ta7c3QaZYb5lDy3497cbCmZYM79s3LoZ=s96-c"
+      "id": "900001",
+      "name": "範例使用者",
+      "photoUrl": "https://example.com/avatar.png"
     },
     "hasResources": true,
     "resourceCount": 1,

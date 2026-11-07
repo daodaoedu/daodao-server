@@ -304,9 +304,9 @@ curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/notes \
     "videoUrls": ["https://example.com/video1.mp4"],
     "visibility": "public",
     "user": {
-      "id": 2,
+      "id": 900001,
       "name": "",
-      "_id": "58b915af-c361-4900-a6af-53b082a7f62c"
+      "_id": "00000000-0000-4000-8000-000000000001"
     }
   },
   "timestamp": "2025-09-21T10:00:00.000Z"
@@ -404,9 +404,9 @@ curl -X POST http://localhost:4000/api/v1/projects/$PROJECT_ID/outcomes \
     "visibility": "public",
     "createdAt": "2025-09-21T10:00:00.000Z",
     "user": {
-      "id": 2,
+      "id": 900001,
       "name": "",
-      "_id": "58b915af-c361-4900-a6af-53b082a7f62c"
+      "_id": "00000000-0000-4000-8000-000000000001"
     }
   },
   "timestamp": "2025-09-21T10:00:00.000Z"

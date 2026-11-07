@@ -107,9 +107,9 @@ curl -X POST http://localhost:4000/api/v1/resources/$RESOURCE_ID/reviews \
     },
     "status": "published",
     "user": {
-      "id": 2,
+      "id": 900001,
       "name": "",
-      "_id": "58b915af-c361-4900-a6af-53b082a7f62c",
+      "_id": "00000000-0000-4000-8000-000000000001",
       "roleList": [],
       "photoURL": null,
       "educationStage": null,

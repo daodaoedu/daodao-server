@@ -44,3 +44,39 @@ test('display removes incoming and returned credential reflections from object k
   const renamedSensitiveKey = redactValue({ token: returned }, ['token']);
   assert.equal(renamedSensitiveKey['[REDACTED]'], '[REDACTED]');
 });
+
+test('authorization credentials are removed from separate reflections and raw input is preserved', () => {
+  for (const scheme of ['Bearer', 'Basic']) {
+    const credential = `synthetic-${scheme.toLowerCase()}-credential`;
+    const raw = {
+      headers: { Authorization: [`${scheme} ${credential}`] },
+      details: { [credential]: `Rejected ${credential}` },
+      status: 401,
+    };
+    const original = JSON.stringify(raw);
+    const display = redactValue(raw);
+    assert.ok(!JSON.stringify(display).includes(credential));
+    assert.equal(display.status, 401);
+    assert.equal(JSON.stringify(raw), original);
+  }
+});
+
+test('cookie credentials are removed from separate reflections without redacting attribute values', () => {
+  const raw = {
+    headers: {
+      Cookie: 'session=synthetic-session-value; csrf=synthetic-csrf-value; quoted="synthetic-quoted-value"',
+      'Set-Cookie': ['refresh=synthetic-refresh-value; Path=/; SameSite=Lax; Max-Age=3600; HttpOnly'],
+    },
+    message: 'synthetic-session-value synthetic-csrf-value synthetic-refresh-value synthetic-quoted-value',
+    path: '/',
+    retryAfter: '3600',
+  };
+  const original = JSON.stringify(raw);
+  const display = redactValue(raw);
+  for (const secret of ['synthetic-session-value', 'synthetic-csrf-value', 'synthetic-refresh-value', 'synthetic-quoted-value']) {
+    assert.ok(!JSON.stringify(display).includes(secret));
+  }
+  assert.equal(display.path, '/');
+  assert.equal(display.retryAfter, '3600');
+  assert.equal(JSON.stringify(raw), original);
+});

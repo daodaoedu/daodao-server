@@ -13,11 +13,28 @@ function redactText(value, secrets = []) {
 function redactValue(value, secrets = []) {
   const known = [...secrets];
   const sensitive = /token|authorization|cookie|password|secret|api.?key/i;
-  function gather(item, credential = false) {
-    if (typeof item === 'string' && credential) known.push(item);
-    if (Array.isArray(item)) item.forEach((row) => gather(row, credential));
+  function gather(item, credential = false, field = '') {
+    if (typeof item === 'string' && credential) {
+      known.push(item);
+      // A header and its separately reflected credential are different strings.
+      if (/authorization/i.test(field)) {
+        const authorization = item.match(/^\s*(?:Bearer|Basic)\s+(\S+)\s*$/i);
+        if (authorization) known.push(authorization[1]);
+      }
+      if (/cookie/i.test(field)) {
+        const parts = /set[-_]?cookie/i.test(field) ? item.split(';', 1) : item.split(';');
+        for (const part of parts) {
+          const pair = part.match(/^\s*[^=\s]+\s*=\s*(.*?)\s*$/);
+          if (pair && pair[1]) {
+            known.push(pair[1]);
+            if (pair[1].startsWith('"') && pair[1].endsWith('"')) known.push(pair[1].slice(1, -1));
+          }
+        }
+      }
+    }
+    if (Array.isArray(item)) item.forEach((row) => gather(row, credential, field));
     else if (item && typeof item === 'object') {
-      for (const [key, row] of Object.entries(item)) gather(row, credential || sensitive.test(key));
+      for (const [key, row] of Object.entries(item)) gather(row, credential || sensitive.test(key), key);
     }
   }
   function copy(item) {

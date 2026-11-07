@@ -427,7 +427,7 @@ async function main() {
     log.warning('可以設置環境變數 AUTH_TOKEN=<你的token> 來跳過創建步驟。\n');
 
     if (process.env.AUTH_TOKEN) {
-      AUTH_TOKEN = process.env.AUTH_TOKEN;
+      AUTH_TOKEN = process.env.AUTH_TOKEN.trim();
       log.success('已從環境變數讀取 AUTH_TOKEN');
     }
 
