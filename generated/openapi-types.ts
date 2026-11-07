@@ -6591,6 +6591,25 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                /** @description 同一 IP 的授權碼交換超過 60 次／1 分鐘（獨立於登入、註冊及 Apple 登入額度） */
+                429: {
+                    headers: {
+                        /** @description 重試前需等待的秒數 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: false;
+                            message: string;
+                            /** @enum {string} */
+                            error: "AUTH_RATE_LIMIT_EXCEEDED";
+                            /** @enum {number} */
+                            retryAfter: 60;
+                        };
+                    };
+                };
                 500: components["responses"]["InternalServerError"];
             };
         };
