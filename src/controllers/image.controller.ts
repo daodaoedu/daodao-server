@@ -43,6 +43,9 @@ const filesSchema = z.array(fileSchema);
 
 /** Resolve ownership from the authenticated account, never multipart fields or optional JWT profile claims. */
 const resolveImageOwner = async (req: MulterRequest): Promise<string> => {
+  if (req.isTemporary === true || req.user?.isTemp === true) {
+    throw new ForbiddenError('臨時使用者無法操作圖片');
+  }
   const userId = req.user?.id;
   if (typeof userId !== 'number' || !Number.isSafeInteger(userId) || userId <= 0) {
     throw new UnauthorizedError('無效的使用者身分');

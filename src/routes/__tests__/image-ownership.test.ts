@@ -158,6 +158,27 @@ describe('public image deletion ownership', () => {
     expect(objects.get('legacy-image')?.body).toEqual(png);
   });
 
+  it.each(['delete', 'single-upload', 'multiple-upload'] as const)('rejects temporary identity colliding with a real account on %s', async operation => {
+    seed();
+    const claims = { isTemp: true, external_id: OWNER };
+    const action = operation === 'delete'
+      ? remove('victim-image', 710001, claims)
+      : upload(operation === 'multiple-upload', 710001, claims)
+        .attach(operation === 'multiple-upload' ? 'files' : 'file', png, { filename: 'test.png', contentType: 'image/png' });
+    expect((await action).status).toBe(403);
+    expect(mockFindUser).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(deletedKeys).toEqual([]);
+    expect(objects.get('victim-image')?.body).toEqual(png);
+  });
+
+  it('preserves owner access for registered JWTs without the optional temporary flag', async () => {
+    seed();
+    expect((await remove('victim-image', 710001, { isTemp: undefined })).status).toBe(200);
+    expect(deletedKeys).toEqual(['victim-image']);
+    expect(objects.has('victim-image')).toBe(false);
+  });
+
   it('does not grant administrators an owner bypass', async () => {
     seed();
     expect((await remove('victim-image', 710002, { roles: ['admin'] })).status).toBe(403);
