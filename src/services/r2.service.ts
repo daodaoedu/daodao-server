@@ -3,8 +3,10 @@
  * 處理檔案上傳、下載和刪除操作
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
+import { z } from 'zod';
+import { ForbiddenError, NotFoundError } from '../middleware/error.middleware';
 import { ApiSuccessResponse } from '../types/api-response.types';
 import { createSuccessResponse } from '../utils/response-helper';
 
@@ -34,7 +36,10 @@ const s3Client = hasR2Credentials ? new S3Client({
  * @param filename - 檔案名稱
  * @returns 上傳成功的檔案名稱
  */
-export const uploadToR2 = async (file: Express.Multer.File, filename: string): Promise<string> => {
+export const uploadToR2 = async (file: Express.Multer.File, filename: string, ownerId?: string): Promise<string> => {
+  if (ownerId !== undefined && !z.string().uuid().safeParse(ownerId).success) {
+    throw new ForbiddenError('無法確認圖片擁有者');
+  }
   if (!s3Client) {
     if (isTestEnvironment) {
       // Mock successful upload in test environment
@@ -55,6 +60,11 @@ export const uploadToR2 = async (file: Express.Multer.File, filename: string): P
       Body: file.buffer,
       ContentType: file.mimetype,
       ACL: 'public-read' as const,
+      ...(ownerId === undefined ? {} : {
+        Metadata: { 'daodao-owner-id': ownerId, 'daodao-owner-version': '1' },
+        // Ownership must not be replaced between a later HEAD and DELETE.
+        IfNoneMatch: '*',
+      }),
     };
 
     const command = new PutObjectCommand(params);
@@ -163,14 +173,15 @@ export const deleteMultipleFromR2 = async (filenames: string[]): Promise<void> =
  * @param filename - 檔案名稱
  * @returns API 回應格式的上傳結果
  */
-export const uploadToR2Api = async (file: Express.Multer.File, filename: string): Promise<ApiSuccessResponse<{
+export const uploadToR2Api = async (file: Express.Multer.File, filename: string, ownerId: string): Promise<ApiSuccessResponse<{
   filename: string;
   url: string;
   size: number;
   mimetype: string;
 }>> => {
   try {
-    const uploadedFilename = await uploadToR2(file, filename);
+    if (!z.string().uuid().safeParse(ownerId).success) throw new ForbiddenError('無法確認圖片擁有者');
+    const uploadedFilename = await uploadToR2(file, filename, ownerId);
     
     // 建構完整的 URL
     const baseUrl = process.env.R2_PUBLIC_URL || `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ENDPOINT?.replace('https://', '')}`;
@@ -201,11 +212,31 @@ export const uploadToR2Api = async (file: Express.Multer.File, filename: string)
  * @param filename - 檔案名稱
  * @returns API 回應格式的刪除結果
  */
-export const deleteFromR2Api = async (filename: string): Promise<ApiSuccessResponse<{
+export const deleteFromR2Api = async (filename: string, ownerId: string): Promise<ApiSuccessResponse<{
   filename: string;
   deletedAt: string;
 }>> => {
   try {
+    if (!z.string().uuid().safeParse(ownerId).success) throw new ForbiddenError('無權限刪除此圖片');
+    if (!s3Client) throw new Error('R2 client not initialized');
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) throw new Error('R2_BUCKET_NAME not configured');
+    let metadata: Record<string, string> | undefined;
+    try {
+      const object = await s3Client.send(new HeadObjectCommand({ Bucket: bucketName, Key: filename }));
+      metadata = object.Metadata;
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && '$metadata' in error
+        && typeof error.$metadata === 'object' && error.$metadata !== null
+        && 'httpStatusCode' in error.$metadata && error.$metadata.httpStatusCode === 404) {
+        throw new NotFoundError('圖片不存在');
+      }
+      throw error;
+    }
+    // Legacy objects have no proven uploader; usage in a resource is not ownership.
+    if (metadata?.['daodao-owner-version'] !== '1' || metadata['daodao-owner-id'] !== ownerId) {
+      throw new ForbiddenError('無權限刪除此圖片');
+    }
     await deleteFromR2(filename);
     
     return createSuccessResponse({
