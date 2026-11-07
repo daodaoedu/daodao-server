@@ -8,6 +8,11 @@ import { join } from 'path';
 import { createServer } from 'net';
 import type { Options, RateLimitRequestHandler } from 'express-rate-limit';
 import { createSharedRateLimiter, disconnectRateLimitRedis } from '../shared-rate-limit';
+import { loggerService } from '../../services/logging/logger.service';
+
+jest.mock('../../services/logging/logger.service', () => ({
+  loggerService: { error: jest.fn() },
+}));
 
 let redisProcess: ChildProcess;
 let admin: Redis;
@@ -44,6 +49,7 @@ async function startRedis(): Promise<void> {
 
 /** Stop and await the owned child so recovery tests can reuse its port. */
 async function stopRedis(): Promise<void> {
+  if (redisProcess.exitCode !== null || redisProcess.signalCode !== null) return;
   await new Promise<void>((resolve) => {
     redisProcess.once('exit', () => resolve());
     if (container) spawnSync('docker', ['stop', container]);
@@ -200,8 +206,14 @@ describe('shared Redis rate limits through HTTP', () => {
     const began = Date.now();
     await request(server).post('/report').expect(200);
     expect(Date.now() - began).toBeLessThan(1500);
-    expect(errors).toHaveBeenCalled();
     await startRedis();
+    expect(errors).toHaveBeenCalled();
+    expect(loggerService.error).toHaveBeenCalledWith('Rate limit bypassed because Redis is unavailable', {
+      event: 'rate_limit_fail_open', limiter: 'recovery', policy: 'fail_open', dependency: 'redis',
+    });
+    expect(loggerService.error).toHaveBeenCalledWith('Rate-limit Redis connection unavailable', {
+      event: 'rate_limit_redis_connection_unavailable', dependency: 'redis',
+    });
     // The dedicated client reconnects independently of the fixture's admin client.
     await new Promise((resolve) => setTimeout(resolve, 1200));
     await request(server).post('/report').expect(200);
@@ -218,7 +230,7 @@ describe('shared Redis rate limits through HTTP', () => {
       const result = original.apply(this, args);
       if (String(args[0]).toUpperCase() === 'EVALSHA' && !lost) {
         lost = true;
-        return Promise.resolve(result).then(() => { throw new Error('Command timed out after Redis executed increment'); });
+        return Promise.resolve(result).then(() => { throw new Error('Command timed out secret=password user:452 EVALSHA redis://credential@host'); });
       }
       return result;
     });
@@ -226,6 +238,11 @@ describe('shared Redis rate limits through HTTP', () => {
     const keys = await admin.keys('*lost-response:*');
     expect(keys).toHaveLength(1);
     expect(await admin.get(keys[0])).toBe('2');
+    expect(loggerService.error).toHaveBeenCalledTimes(1);
+    expect(loggerService.error).toHaveBeenCalledWith('Rate limit bypassed because Redis is unavailable', {
+      event: 'rate_limit_fail_open', limiter: 'lost-response', policy: 'fail_open', dependency: 'redis',
+    });
+    expect(JSON.stringify(jest.mocked(loggerService.error).mock.calls)).not.toMatch(/password|user:452|EVALSHA|credential/);
     await request(server).post('/report').expect(429);
   });
 
@@ -238,6 +255,10 @@ describe('shared Redis rate limits through HTTP', () => {
     await request(server).post('/report').expect(200);
     expect(Date.now() - began).toBeLessThan(1300);
     expect(errors).toHaveBeenCalled();
+    expect(loggerService.error).toHaveBeenCalledTimes(1);
+    expect(loggerService.error).toHaveBeenCalledWith('Rate limit bypassed because Redis is unavailable', {
+      event: 'rate_limit_fail_open', limiter: 'stall', policy: 'fail_open', dependency: 'redis',
+    });
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await request(server).post('/report').expect(429);
   });

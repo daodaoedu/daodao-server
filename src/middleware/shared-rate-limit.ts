@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'async_hooks';
+import { loggerService } from '../services/logging/logger.service';
 import rateLimit, { type Options, type RateLimitRequestHandler, type Store } from 'express-rate-limit';
 import Redis from 'ioredis';
 import { RedisStore, type RedisReply } from 'rate-limit-redis';
@@ -23,11 +24,18 @@ function getClient(): Redis {
       commandTimeout: 500,
       retryStrategy: (attempt): number => Math.min(attempt * 100, 2000),
     });
-    // Each failed request is logged by express-rate-limit's passOnStoreError.
-    // An error listener is also required while the client reconnects in idle time.
-    client.on('error', (error: Error): void => {
-      console.error('Rate-limit Redis connection error:', error.message);
+    // Console output is discarded by deployed PM2/container logging settings.
+    // Persist one sanitized connection event per outage, not one per reconnect.
+    let outageReported = false;
+    client.on('error', (): void => {
+      if (!outageReported) {
+        outageReported = true;
+        loggerService.error('Rate-limit Redis connection unavailable', {
+          event: 'rate_limit_redis_connection_unavailable', dependency: 'redis',
+        });
+      }
     });
+    client.on('ready', (): void => { outageReported = false; });
   }
   return client;
 }
@@ -86,7 +94,18 @@ export function createSharedRateLimiter(
   const store: Store = {
     prefix,
     init: (config): void => { configuration = config; },
-    increment: async (key) => commandContext.run({}, async () => (await getStore()).increment(key)),
+    increment: async (key) => commandContext.run({}, async () => {
+      try {
+        return await (await getStore()).increment(key);
+      } catch {
+        // Do not attach Redis commands, counter keys, identities or raw errors.
+        loggerService.error('Rate limit bypassed because Redis is unavailable', {
+          event: 'rate_limit_fail_open', limiter: name, policy: 'fail_open', dependency: 'redis',
+        });
+        // express-rate-limit logs the thrown error too; sanitize that output.
+        throw new Error('Rate-limit Redis is unavailable');
+      }
+    }),
     decrement: async (key): Promise<void> => (await getStore()).decrement(key),
     resetKey: async (key): Promise<void> => (await getStore()).resetKey(key),
   };
