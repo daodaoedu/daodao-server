@@ -121,6 +121,7 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     413: {
       description: '檔案過大',
       content: {
@@ -200,6 +201,7 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     413: {
       description: '檔案過大或總數過多',
       content: {
@@ -243,7 +245,7 @@ registry.registerPath({
   path: '/api/v1/images/{filename}',
   tags: ['Images'],
   summary: '刪除圖片',
-  description: '從雲端儲存中刪除指定的圖片檔案。需要身份驗證。',
+  description: '刪除登入使用者自己上傳的圖片。僅允許擁有者紀錄可驗證的圖片；未記錄擁有者的舊圖片保留且回傳 403。',
   request: {
     params: filenameParamSchema
   },
@@ -258,6 +260,7 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     404: { $ref: '#/components/responses/NotFoundError' },
     429: {
       description: '請求過於頻繁',

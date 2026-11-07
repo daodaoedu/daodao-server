@@ -13,7 +13,8 @@ import {
   deleteMultipleFromR2Api,
   getFromR2
 } from '../services/r2.service';
-import { asyncHandler, BadRequestError } from '../middleware/error.middleware';
+import { asyncHandler, BadRequestError, ForbiddenError, UnauthorizedError } from '../middleware/error.middleware';
+import { prisma } from '../services/database/prisma.service';
 import { createSuccessResponse, createErrorResponse } from '../utils/response-helper';
 import {
   ALLOWED_MIME_TYPES,
@@ -39,6 +40,18 @@ const fileSchema = z.object({
  * 多檔案驗證 Schema
  */
 const filesSchema = z.array(fileSchema);
+
+/** Resolve ownership from the authenticated account, never multipart fields or optional JWT profile claims. */
+const resolveImageOwner = async (req: MulterRequest): Promise<string> => {
+  const userId = req.user?.id;
+  if (typeof userId !== 'number' || !Number.isSafeInteger(userId) || userId <= 0) {
+    throw new UnauthorizedError('無效的使用者身分');
+  }
+  const user = await prisma.users.findUnique({ where: { id: userId }, select: { external_id: true } });
+  const owner = z.string().uuid().safeParse(user?.external_id);
+  if (!owner.success) throw new ForbiddenError('無法確認圖片擁有者');
+  return owner.data;
+};
 
 /**
  * 上傳單一圖片
@@ -67,7 +80,8 @@ export const uploadSingleImage = asyncHandler(async (req: MulterRequest, res: Re
   const uniqueFileName: string = uuidv4();
 
   // 使用 API 版本上傳檔案到 R2
-  const result = await uploadToR2Api(file, uniqueFileName);
+  const ownerId = await resolveImageOwner(req);
+  const result = await uploadToR2Api(file, uniqueFileName, ownerId);
   
   res.status(201).json(result);
 });
@@ -104,6 +118,8 @@ export const uploadMultipleImages = asyncHandler(async (req: MulterRequest, res:
     throw new BadRequestError(errorMessages.join(', '));
   }
 
+  const ownerId = await resolveImageOwner(req);
+
   // 準備上傳檔案資訊
   const filesToUpload: Array<{ file: Express.Multer.File; uniqueFileName: string }> = fileArray.map(file => ({
     file,
@@ -118,7 +134,7 @@ export const uploadMultipleImages = asyncHandler(async (req: MulterRequest, res:
     // 逐個上傳檔案，使用 API 版本
     for (const { file, uniqueFileName } of filesToUpload) {
       try {
-        const uploadResult = await uploadToR2Api(file, uniqueFileName);
+        const uploadResult = await uploadToR2Api(file, uniqueFileName, ownerId);
         uploadedFiles.push(uniqueFileName);
         uploadResults.push({
           url: uploadResult.data.url,
@@ -128,16 +144,6 @@ export const uploadMultipleImages = asyncHandler(async (req: MulterRequest, res:
         });
       } catch (uploadError) {
         console.error(`Error uploading file: ${file.originalname}`, uploadError);
-        
-        // 清理已上傳的檔案
-        if (uploadedFiles.length > 0) {
-          try {
-            await deleteMultipleFromR2Api(uploadedFiles);
-            console.log(`Cleaned up ${uploadedFiles.length} uploaded files due to error`);
-          } catch (cleanupError) {
-            console.error('Error cleaning up uploaded files:', cleanupError);
-          }
-        }
         
         const errorMessage = uploadError instanceof Error ? uploadError.message : `檔案 "${file.originalname}" 上傳失敗`;
         throw new Error(errorMessage);
@@ -253,7 +259,8 @@ export const deleteImage = asyncHandler(async (req: MulterRequest, res: Response
   }
 
   // 使用 API 版本刪除檔案
-  const result = await deleteFromR2Api(sanitizedFilename);
+  const ownerId = await resolveImageOwner(req);
+  const result = await deleteFromR2Api(sanitizedFilename, ownerId);
   res.json(result);
 });
 
