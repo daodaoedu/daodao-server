@@ -51048,6 +51048,11 @@
     },
     "/api/v1/monitor": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "tags": [
           "System Monitor"
         ],
@@ -51114,12 +51119,6 @@
                         },
                         "processTitle": {
                           "type": "string"
-                        },
-                        "processArgs": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
                         }
                       },
                       "required": [
@@ -51134,8 +51133,7 @@
                         "type",
                         "cpus",
                         "processId",
-                        "processTitle",
-                        "processArgs"
+                        "processTitle"
                       ]
                     },
                     "postgres": {
@@ -51240,6 +51238,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"

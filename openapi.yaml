@@ -34612,6 +34612,8 @@ paths:
           $ref: '#/components/responses/InternalServerError'
   /api/v1/monitor:
     get:
+      security:
+        - bearerAuth: []
       tags:
         - System Monitor
       summary: 取得系統監控資訊
@@ -34661,10 +34663,6 @@ paths:
                         type: number
                       processTitle:
                         type: string
-                      processArgs:
-                        type: array
-                        items:
-                          type: string
                     required:
                       - hostname
                       - platform
@@ -34678,7 +34676,6 @@ paths:
                       - cpus
                       - processId
                       - processTitle
-                      - processArgs
                   postgres:
                     type: object
                     properties:
@@ -34747,6 +34744,10 @@ paths:
                   - postgres
                   - disk
                 description: 系統監控資訊響應
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/notifications/unsubscribe:

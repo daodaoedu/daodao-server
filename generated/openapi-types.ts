@@ -15337,7 +15337,6 @@ export interface paths {
                                 processMemory?: unknown;
                                 processId: number;
                                 processTitle: string;
-                                processArgs: string[];
                             };
                             postgres: {
                                 version?: string;
@@ -15368,6 +15367,8 @@ export interface paths {
                         };
                     };
                 };
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 500: components["responses"]["InternalServerError"];
             };
         };
