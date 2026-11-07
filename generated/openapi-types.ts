@@ -11495,7 +11495,7 @@ export interface paths {
         };
         /**
          * 取得資料庫資訊
-         * @description 取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等
+         * @description 僅管理員可取得 PostgreSQL 和 Redis 的詳細資訊，包括欄位、索引、約束等
          */
         get: {
             parameters: {
@@ -11536,6 +11536,8 @@ export interface paths {
                         };
                     };
                 };
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
                 500: components["responses"]["InternalServerError"];
             };
         };
