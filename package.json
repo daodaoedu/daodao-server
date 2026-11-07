@@ -76,7 +76,7 @@
     "load-esm": "1.0.3",
     "moment-timezone": "^0.5.47",
     "multer": "^2.0.0",
-    "nodemailer": "^6.9.8",
+    "nodemailer": "^10.1.4",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.13.1",
