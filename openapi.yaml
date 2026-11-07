@@ -34684,11 +34684,11 @@ paths:
         - bearerAuth: []
       tags:
         - System Monitor
-      summary: 取得系統監控資訊
-      description: 取得系統資源使用情況，包括 CPU、記憶體、磁碟和 PostgreSQL 狀態
+      summary: 取得系統健康統計
+      description: 僅管理員可讀取 CPU 負載、記憶體、磁碟用量及 PostgreSQL 連線統計，不包含主機或資料庫識別資訊。
       responses:
         '200':
-          description: 成功獲取系統監控資訊
+          description: 系統健康統計；資料庫不可用時保留其他健康資訊
           content:
             application/json:
               schema:
@@ -34697,12 +34697,6 @@ paths:
                   system:
                     type: object
                     properties:
-                      hostname:
-                        type: string
-                      platform:
-                        type: string
-                      arch:
-                        type: string
                       uptime:
                         type: number
                       loadAverage:
@@ -34713,82 +34707,55 @@ paths:
                         type: number
                       freeMemory:
                         type: number
-                      release:
-                        type: string
-                      type:
-                        type: string
-                      userInfo:
-                        nullable: true
-                      cpus:
-                        type: array
-                        items:
-                          nullable: true
-                      networkInterfaces:
-                        nullable: true
                       processMemory:
-                        nullable: true
-                      processId:
-                        type: number
-                      processTitle:
-                        type: string
+                        type: object
+                        properties:
+                          rss:
+                            type: number
+                          heapTotal:
+                            type: number
+                          heapUsed:
+                            type: number
+                          external:
+                            type: number
+                          arrayBuffers:
+                            type: number
+                        required:
+                          - rss
+                          - heapTotal
+                          - heapUsed
+                          - external
+                          - arrayBuffers
                     required:
-                      - hostname
-                      - platform
-                      - arch
                       - uptime
                       - loadAverage
                       - totalMemory
                       - freeMemory
-                      - release
-                      - type
-                      - cpus
-                      - processId
-                      - processTitle
+                      - processMemory
                   postgres:
-                    type: object
-                    properties:
-                      version:
-                        type: string
-                      current_connections:
-                        type: number
-                      max_connections:
-                        type: number
-                      database_size:
-                        type: string
-                      start_time:
-                        type: string
-                      config:
-                        type: object
-                        additionalProperties:
-                          type: string
-                      tables:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            table_name:
-                              type: string
-                            size:
-                              type: string
-                            row_count:
-                              type: number
-                          required:
-                            - table_name
-                            - size
-                            - row_count
-                      error:
-                        type: string
-                      details:
-                        type: string
+                    anyOf:
+                      - type: object
+                        properties:
+                          current_connections:
+                            type: number
+                          max_connections:
+                            type: number
+                        required:
+                          - current_connections
+                          - max_connections
+                      - type: object
+                        properties:
+                          error:
+                            type: string
+                            enum:
+                              - PostgreSQL 連線不可用
+                        required:
+                          - error
                   disk:
                     type: array
                     items:
                       type: object
                       properties:
-                        filesystem:
-                          type: string
-                        type:
-                          type: string
                         size:
                           type: number
                         used:
@@ -34797,21 +34764,15 @@ paths:
                           type: number
                         use:
                           type: number
-                        mount:
-                          type: string
                       required:
-                        - filesystem
-                        - type
                         - size
                         - used
                         - available
                         - use
-                        - mount
                 required:
                   - system
                   - postgres
                   - disk
-                description: 系統監控資訊響應
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
