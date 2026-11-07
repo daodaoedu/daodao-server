@@ -6,12 +6,21 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
+import type { RateLimitRequestHandler } from 'express-rate-limit';
 
 const mockSubmitBugReport = jest.fn();
 jest.mock('@/services/feedback.service', () => ({
   __esModule: true,
   submitBugReport: (...args: unknown[]) => mockSubmitBugReport(...args),
   default: { submitBugReport: (...args: unknown[]) => mockSubmitBugReport(...args) },
+}));
+
+// Route tests isolate Redis; the shared-counter integration suite uses real Redis.
+jest.mock('@/middleware/shared-rate-limit', () => ({
+  createSharedRateLimiter: (_name: string, options: Record<string, unknown>): RateLimitRequestHandler => {
+    const { default: rateLimit, MemoryStore } = jest.requireActual('express-rate-limit');
+    return rateLimit({ ...options, store: new MemoryStore() });
+  },
 }));
 
 import { globalErrorHandler } from '@/middleware/error.middleware';
