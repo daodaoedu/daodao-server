@@ -13,7 +13,7 @@ import type { UserBasicInfo } from '../types/common.types';
 import { ApiSuccessResponse, PaginatedApiResponse } from '../types/api-response.types';
 import { createSuccessResponse, createPaginatedResponse } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
-import { NotFoundError, BadRequestError } from '../middleware/error.middleware';
+import { NotFoundError, BadRequestError, ForbiddenError } from '../middleware/error.middleware';
 import tagService from './tag.service';
 
 /**
@@ -310,7 +310,8 @@ export const getNoteDetail = async (
 export const updateNote = async (
   projectId: string,
   noteId: number,
-  updateData: NoteUpdateRequest
+  updateData: NoteUpdateRequest,
+  userId: number
 ): Promise<ApiSuccessResponse<NoteResponse>> => {
     return await prisma.$transaction(async (tx) => {
       const project = await tx.project.findUnique({
@@ -335,6 +336,10 @@ export const updateNote = async (
 
       if (!note || !note.post) {
         throw new NotFoundError('便利貼不存在');
+      }
+
+      if (note.post.user_id !== userId) {
+        throw new ForbiddenError('無權限操作此便利貼');
       }
 
         const { week, title, content, date, imgUrls, videoUrls, visibility } = updateData;
@@ -474,8 +479,9 @@ export const getPublicNotes = async (
  */
 export const deleteNote = async (
   projectId: string,
-  noteId: number
-): Promise<ApiSuccessResponse<void>> => {
+  noteId: number,
+  userId: number
+): Promise<ApiSuccessResponse<null>> => {
     return await prisma.$transaction(async (tx) => {
       const project = await tx.project.findUnique({
         where: { external_id: projectId }
@@ -501,12 +507,16 @@ export const deleteNote = async (
         throw new NotFoundError('便利貼不存在');
       }
 
+      if (note.post.user_id !== userId) {
+        throw new ForbiddenError('無權限操作此便利貼');
+      }
+
       // 刪除便利貼（會級聯刪除相關的 post）
       await tx.note.delete({
         where: { id: noteId }
       });
 
-      return createSuccessResponse(undefined, {
+      return createSuccessResponse(null, {
         message: '便利貼已刪除'
       });
     });
