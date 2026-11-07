@@ -16,12 +16,12 @@ module.exports = {
   ],
 
   // ES modules support
-  extensionsToTreatAsEsm: ['.ts'],
+  extensionsToTreatAsEsm: [],
 
   // Transform configuration
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true,
+      useESM: false,
       // Keep full program type checking in `pnpm run typecheck`. Building a
       // TypeScript language service per suite retains the large Prisma types.
       tsconfig: { isolatedModules: true }
