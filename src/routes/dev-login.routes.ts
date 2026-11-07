@@ -9,7 +9,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import rateLimit from 'express-rate-limit';
+import { createSharedRateLimiter } from '../middleware/shared-rate-limit';
 import { registry } from '../config/openapi-registry';
 import { apiErrorResponseSchema } from '../validators/api-response.validators';
 import { validate } from '../middleware/validation.middleware';
@@ -81,7 +81,7 @@ export const createDevLoginRouter = (options: DevLoginRouterOptions = {}): Route
   const router = Router();
   const limiter =
     options.limiter ??
-    rateLimit({
+    createSharedRateLimiter('dev-login', {
       windowMs: 15 * 60 * 1000,
       max: 60, // 冒煙矩陣一輪會登入多次，比 authLimiter 寬但仍有上限
       standardHeaders: true,

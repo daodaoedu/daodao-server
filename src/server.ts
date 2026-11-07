@@ -14,7 +14,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
+import { createSharedRateLimiter, disconnectRateLimitRedis } from './middleware/shared-rate-limit';
 import slowDown from 'express-slow-down';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
@@ -197,7 +197,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Rate limiting
-const globalLimiter = rateLimit({
+const globalLimiter = createSharedRateLimiter('server-global', {
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 1000,
   message: "Too many requests from this IP, please try again later.",
@@ -494,6 +494,7 @@ async function gracefulShutdown(signal: string) {
 
     // 關閉 BullMQ Redis 連線
     await closeQueueConnection();
+    disconnectRateLimitRedis();
     console.log('✅ BullMQ Redis 連線已關閉');
 
     // 關閉郵件服務
