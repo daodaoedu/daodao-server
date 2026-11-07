@@ -1,6 +1,6 @@
 {
   "postgresImage": "postgres:16-alpine",
   "storageRepository": "daodaoedu/daodao-storage",
-  "storageRef": "6049496a3c5e5ff7fd663decab1273e7d499e6e0",
+  "storageRef": "06676669428b63484f5d5d55c2cbda9b490dabb1",
   "schemaDirectory": "schema"
 }
