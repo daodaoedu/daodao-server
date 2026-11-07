@@ -61,7 +61,7 @@ class SharedTestDatabaseTests(unittest.TestCase):
     def test_ci_uses_shared_manifest_and_keeps_runner_tests_blocking(self):
         workflow = yaml.safe_load(WORKFLOW.read_text())
         config = json.loads(CONFIG.read_text())
-        job = workflow["jobs"]["test"]
+        job = workflow["jobs"]["backend"]
         self.assertEqual(job["services"]["postgres"]["image"], config["postgresImage"])
         steps = job["steps"]
         reader = next(step for step in steps if step.get("id") == "test-db")

@@ -17,12 +17,12 @@ class OAuthIntegrationGateTests(unittest.TestCase):
         workflow = yaml.safe_load(
             (ROOT / ".github/workflows/continuous-integration.yml").read_text()
         )
-        job = workflow["jobs"]["test"]
+        job = workflow["jobs"]["backend"]
         step = next(
             entry for entry in job["steps"]
             if entry.get("name") == "Run OAuth integration tests"
         )
-        self.assertNotIn("if", step)
+        self.assertEqual(step["if"], "needs.workflow-tests.outputs.oauth == 'true'")
         self.assertFalse(step.get("continue-on-error", False))
         self.assertFalse(job.get("continue-on-error", False))
         for exit_code in (0, 37):
@@ -49,7 +49,7 @@ class OAuthIntegrationGateTests(unittest.TestCase):
         workflow = yaml.safe_load(
             (ROOT / ".github/workflows/continuous-integration.yml").read_text()
         )
-        job = workflow["jobs"]["test"]
+        job = workflow["jobs"]["backend"]
         step = next(
             entry for entry in job["steps"]
             if entry.get("name") == "Run OAuth integration tests"
