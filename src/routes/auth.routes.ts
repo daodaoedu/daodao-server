@@ -71,6 +71,22 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    429: {
+      description: '同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度）',
+      headers: {
+        'Retry-After': { description: '重試前需等待的秒數', schema: { type: 'integer' } }
+      },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.literal(false),
+            message: z.string(),
+            error: z.literal('AUTH_RATE_LIMIT_EXCEEDED'),
+            retryAfter: z.literal(900)
+          })
+        }
+      }
+    },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -81,6 +97,7 @@ registry.registerPath({
  * 請求體：LoginRequest - 包含 email, password, rememberMe
  */
 router.post('/login',
+  authLimiter,
   validate(loginValidator, 'body'),
   authController.login
 );
@@ -130,6 +147,22 @@ registry.registerPath({
         }
       }
     },
+    429: {
+      description: '同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度）',
+      headers: {
+        'Retry-After': { description: '重試前需等待的秒數', schema: { type: 'integer' } }
+      },
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.literal(false),
+            message: z.string(),
+            error: z.literal('AUTH_RATE_LIMIT_EXCEEDED'),
+            retryAfter: z.literal(900)
+          })
+        }
+      }
+    },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
@@ -140,6 +173,7 @@ registry.registerPath({
  * 請求體：RegisterRequest - 包含 username, email, password, confirmPassword, name
  */
 router.post('/register',
+  authLimiter,
   validate(registerValidator, 'body'),
   authController.register
 );

@@ -5779,6 +5779,25 @@ export interface paths {
                 };
                 400: components["responses"]["BadRequestError"];
                 401: components["responses"]["UnauthorizedError"];
+                /** @description 同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度） */
+                429: {
+                    headers: {
+                        /** @description 重試前需等待的秒數 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: false;
+                            message: string;
+                            /** @enum {string} */
+                            error: "AUTH_RATE_LIMIT_EXCEEDED";
+                            /** @enum {number} */
+                            retryAfter: 900;
+                        };
+                    };
+                };
                 500: components["responses"]["InternalServerError"];
             };
         };
@@ -5837,6 +5856,25 @@ export interface paths {
                                 code: string;
                                 message: string;
                             };
+                        };
+                    };
+                };
+                /** @description 同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度） */
+                429: {
+                    headers: {
+                        /** @description 重試前需等待的秒數 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: false;
+                            message: string;
+                            /** @enum {string} */
+                            error: "AUTH_RATE_LIMIT_EXCEEDED";
+                            /** @enum {number} */
+                            retryAfter: 900;
                         };
                     };
                 };

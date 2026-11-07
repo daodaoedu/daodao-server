@@ -23403,6 +23403,37 @@ paths:
           $ref: '#/components/responses/BadRequestError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          description: 同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度）
+          headers:
+            Retry-After:
+              description: 重試前需等待的秒數
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - false
+                  message:
+                    type: string
+                  error:
+                    type: string
+                    enum:
+                      - AUTH_RATE_LIMIT_EXCEEDED
+                  retryAfter:
+                    type: number
+                    enum:
+                      - 900
+                required:
+                  - success
+                  - message
+                  - error
+                  - retryAfter
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/auth/register:
@@ -23451,6 +23482,37 @@ paths:
                   - data
                   - error
                 description: 用戶已存在錯誤響應
+        '429':
+          description: 同一 IP 的認證請求超過 10 次／15 分鐘（登入與註冊共用額度）
+          headers:
+            Retry-After:
+              description: 重試前需等待的秒數
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                      - false
+                  message:
+                    type: string
+                  error:
+                    type: string
+                    enum:
+                      - AUTH_RATE_LIMIT_EXCEEDED
+                  retryAfter:
+                    type: number
+                    enum:
+                      - 900
+                required:
+                  - success
+                  - message
+                  - error
+                  - retryAfter
         '500':
           $ref: '#/components/responses/InternalServerError'
   /api/v1/auth/logout:
