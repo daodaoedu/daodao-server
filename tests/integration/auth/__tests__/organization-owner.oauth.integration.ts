@@ -260,7 +260,9 @@ afterAll(async () => {
   } finally {
     if (server.listening) await new Promise<void>((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); });
     await emailService.close();
+    const redisEnded = new Promise<void>(resolve => { redis.once('end', resolve); });
     await redis.quit();
+    await redisEnded;
     await prisma.$disconnect();
     loggerService.getWinstonLogger().close();
     nock.enableNetConnect();
