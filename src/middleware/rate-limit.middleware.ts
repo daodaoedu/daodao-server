@@ -3,14 +3,14 @@
  */
 
 import type { NextFunction, Request, Response } from 'express';
-import rateLimit from 'express-rate-limit';
+import { createSharedRateLimiter } from './shared-rate-limit';
 import { TooManyRequestsError } from './error.middleware';
 
 /**
  * 全域速率限制器
  * 限制每個 IP 每分鐘的請求數量
  */
-export const globalLimiter = rateLimit({
+export const globalLimiter = createSharedRateLimiter('global', {
   windowMs: 60 * 1000, // 1 分鐘
   max: 300, // 限制每個 IP 每分鐘最多 300 個請求
   message: {
@@ -38,7 +38,7 @@ export const globalLimiter = rateLimit({
  * 嚴格速率限制器
  * 用於敏感操作（如登入、註冊、郵件發送）
  */
-export const strictLimiter = rateLimit({
+export const strictLimiter = createSharedRateLimiter('strict', {
   windowMs: 60 * 1000, // 1 分鐘
   max: 60, // 限制每個 IP 每分鐘最多 60 個請求
   message: {
@@ -65,7 +65,7 @@ export const strictLimiter = rateLimit({
  * 認證相關速率限制器
  * 用於登入、註冊等認證操作
  */
-export const authLimiter = rateLimit({
+export const authLimiter = createSharedRateLimiter('auth', {
   windowMs: 15 * 60 * 1000, // 15 分鐘
   max: 10, // 限制每個 IP 每 15 分鐘最多 10 次認證嘗試
   message: {
@@ -92,7 +92,7 @@ export const authLimiter = rateLimit({
  * API 創建操作速率限制器
  * 用於限制資源創建操作
  */
-export const createLimiter = rateLimit({
+export const createLimiter = createSharedRateLimiter('create', {
   windowMs: 60 * 1000, // 1 分鐘
   max: 30, // 限制每個 IP 每分鐘最多 30 個創建請求
   message: {
@@ -118,7 +118,7 @@ export const createLimiter = rateLimit({
 /**
  * 檔案上傳速率限制器
  */
-export const uploadLimiter = rateLimit({
+export const uploadLimiter = createSharedRateLimiter('upload', {
   windowMs: 60 * 1000, // 1 分鐘
   max: 5, // 限制每個 IP 每分鐘最多 5 個檔案上傳請求
   message: {
@@ -148,7 +148,7 @@ export const uploadLimiter = rateLimit({
  */
 export const BUG_REPORT_RATE_LIMIT = { windowMs: 10 * 60 * 1000, max: 5 } as const;
 
-export const bugReportLimiter = rateLimit({
+export const bugReportLimiter = createSharedRateLimiter('bugReport', {
   windowMs: BUG_REPORT_RATE_LIMIT.windowMs,
   max: BUG_REPORT_RATE_LIMIT.max,
   standardHeaders: true,
