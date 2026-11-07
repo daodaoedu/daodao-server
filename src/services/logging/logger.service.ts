@@ -7,6 +7,7 @@ import winston, { Logger, LoggerOptions } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 import fs from 'fs';
+import { sanitizeUrlForLogging, sanitizeLogText, sanitizeLogData } from '../../utils/log-sanitizer';
 
 // 日誌級別配置
 export const LOG_LEVELS = {
@@ -134,23 +135,23 @@ class LoggerService {
 
   // 基本日誌方法
   error(message: string, meta?: Record<string, unknown>): void {
-    this.logger.error(message, meta);
+    this.logger.error(sanitizeLogText(message), sanitizeLogData(meta) as Record<string, unknown> | undefined);
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
-    this.logger.warn(message, meta);
+    this.logger.warn(sanitizeLogText(message), sanitizeLogData(meta) as Record<string, unknown> | undefined);
   }
 
   info(message: string, meta?: Record<string, unknown>): void {
-    this.logger.info(message, meta);
+    this.logger.info(sanitizeLogText(message), sanitizeLogData(meta) as Record<string, unknown> | undefined);
   }
 
   http(message: string, meta?: Record<string, unknown>): void {
-    this.logger.http(message, meta);
+    this.logger.http(sanitizeLogText(message), sanitizeLogData(meta) as Record<string, unknown> | undefined);
   }
 
   debug(message: string, meta?: Record<string, unknown>): void {
-    this.logger.debug(message, meta);
+    this.logger.debug(sanitizeLogText(message), sanitizeLogData(meta) as Record<string, unknown> | undefined);
   }
 
   // 特殊日誌方法
@@ -173,7 +174,7 @@ class LoggerService {
   }): void {
     this.http('HTTP Request', {
       method: req.method,
-      url: req.url,
+      url: sanitizeUrlForLogging(req.url),
       statusCode: req.statusCode,
       duration: req.duration,
       userAgent: req.userAgent,

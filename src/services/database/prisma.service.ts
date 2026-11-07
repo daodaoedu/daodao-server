@@ -14,7 +14,7 @@ export class PrismaService {
     $on(eventType: 'warn', callback: (event: Prisma.LogEvent) => void): void;
     $on(eventType: 'info', callback: (event: Prisma.LogEvent) => void): void;
   };
-  private isConnected: boolean = false;
+  private isConnected = false;
 
   private constructor() {
     this.prismaClient = new PrismaClient({
@@ -155,20 +155,6 @@ export class PrismaService {
     operation: (prisma: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>) => Promise<T>
   ): Promise<T> {
     return this.prismaClient.$transaction(operation);
-  }
-
-  /**
-   * 執行原始 SQL 查詢
-   */
-  public async queryRaw<T = unknown>(query: string, ...values: unknown[]): Promise<T> {
-    return this.prismaClient.$queryRawUnsafe(query, ...values) as Promise<T>;
-  }
-
-  /**
-   * 執行原始 SQL 命令
-   */
-  public async executeRaw(query: string, ...values: unknown[]): Promise<number> {
-    return this.prismaClient.$executeRawUnsafe(query, ...values);
   }
 }
 

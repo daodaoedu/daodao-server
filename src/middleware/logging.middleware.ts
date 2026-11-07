@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@/services/logging';
+import { sanitizeUrlForLogging, sanitizeLogText, sanitizeLogData } from '@/utils/log-sanitizer';
 
 // 擴展 Request 類型以支持日誌相關屬性
 interface RequestWithLogger extends Request {
@@ -23,11 +24,11 @@ function generateRequestId(): string {
  */
 export function shouldLogRequestBody(path: string, method: string): boolean {
   const sensitivePatterns = [
-    /\/auth\/login/,
-    /\/auth\/register/,
-    /\/auth\/password/,
-    /\/email/,
-    /\/future-letters(?:\/|$)/,
+    /\/auth\/login/i,
+    /\/auth\/register/i,
+    /\/auth\/password/i,
+    /\/email/i,
+    /\/future-letters(?:[/?]|$)/i,
     /\/surveys\/public\/[^/]+\/responses(?:[/?]|$)/i,
   ];
   
@@ -38,39 +39,16 @@ export function shouldLogRequestBody(path: string, method: string): boolean {
 /**
  * 清理敏感資料
  */
-function sanitizeData(data: unknown): unknown {
-  if (!data || typeof data !== 'object') return data;
-  
-  const sensitiveKeys = ['password', 'token', 'secret', 'key', 'authorization'];
-  const sanitized = { ...data as Record<string, unknown> };
-  
-  for (const key of Object.keys(sanitized)) {
-    if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
-      sanitized[key] = '[REDACTED]';
-    }
-  }
-  
-  return sanitized;
-}
-
 export function sanitizeHeadersForLogging(headers: unknown): unknown {
-  if (!headers || typeof headers !== 'object') return headers;
-
-  const sanitized = sanitizeData(headers) as Record<string, unknown>;
-  for (const key of Object.keys(sanitized)) {
-    if (key.toLowerCase() === 'cookie' || key.toLowerCase() === 'set-cookie') {
-      sanitized[key] = '[REDACTED]';
-    }
-  }
-  return sanitized;
+  return sanitizeLogData(headers);
 }
 
 function isSensitiveAnswerPath(path: string): boolean {
-  return /\/future-letters(?:\/|$)/.test(path) || /\/surveys\/public\/[^/]+\/responses(?:[/?]|$)/i.test(path);
+  return /\/future-letters(?:[/?]|$)/i.test(path) || /\/surveys\/public\/[^/]+\/responses(?:[/?]|$)/i.test(path);
 }
 
 export function sanitizeRequestBodyForLogging(path: string, data: unknown): unknown {
-  return isSensitiveAnswerPath(path) ? '[REDACTED]' : sanitizeData(data);
+  return isSensitiveAnswerPath(path) ? '[REDACTED]' : sanitizeLogData(data);
 }
 
 /**
@@ -99,16 +77,16 @@ export const requestLogger = (
   } = {
     requestId: req.requestId,
     method: req.method,
-    url: req.originalUrl,
+    url: sanitizeUrlForLogging(req.originalUrl),
     userAgent: req.get('User-Agent'),
     ip: req.ip || req.connection.remoteAddress,
     userId: req.user ? (req.user as { id?: string | number }).id : undefined,
-    query: Object.keys(req.query).length > 0 ? sanitizeData(req.query) : undefined,
+    query: Object.keys(req.query).length > 0 ? '[REDACTED]' : undefined,
   };
 
   // 只在適當的情況下記錄請求體
   if (shouldLogRequestBody(req.path, req.method) && req.body) {
-    requestMeta.body = sanitizeData(req.body);
+    requestMeta.body = sanitizeLogData(req.body);
   }
 
   logger.info('Request started', requestMeta);
@@ -154,7 +132,7 @@ export const requestLogger = (
     } = {
       requestId: req.requestId,
       method: req.method,
-      url: req.originalUrl,
+      url: sanitizeUrlForLogging(req.originalUrl),
       statusCode,
       duration,
       userId: req.user ? (req.user as { id?: string | number }).id : undefined,
@@ -163,7 +141,7 @@ export const requestLogger = (
 
     // 只在錯誤時記錄響應體，且要清理敏感資料
     if (statusCode >= 400 && responseBody) {
-      responseMeta.responseBody = sanitizeData(responseBody);
+      responseMeta.responseBody = sanitizeLogData(responseBody);
     }
 
     // 記錄響應
@@ -173,7 +151,7 @@ export const requestLogger = (
     if (duration > 5000) {
       logger.warn('Slow request detected', {
         requestId: req.requestId,
-        url: req.originalUrl,
+        url: sanitizeUrlForLogging(req.originalUrl),
         duration,
         threshold: '5000ms'
       });
@@ -185,9 +163,9 @@ export const requestLogger = (
     logger.error('Response error', {
       requestId: req.requestId,
       method: req.method,
-      url: req.originalUrl,
-      error: error.message,
-      stack: error.stack
+      url: sanitizeUrlForLogging(req.originalUrl),
+      error: sanitizeLogText(error.message),
+      stack: error.stack ? sanitizeLogText(error.stack) : undefined
     });
   });
 
@@ -209,9 +187,9 @@ export const apiLogger = (
     const duration = Date.now() - startTime;
     
     // 使用 Winston 記錄 HTTP 請求
-    logger.http(`${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`, {
+    logger.http(`${req.method} ${sanitizeUrlForLogging(req.originalUrl)} - ${res.statusCode} - ${duration}ms`, {
       method: req.method,
-      url: req.originalUrl,
+      url: sanitizeUrlForLogging(req.originalUrl),
       statusCode: res.statusCode,
       duration,
       ip: req.ip
@@ -234,12 +212,12 @@ export const errorLogger = (
   logger.error('Unhandled error', {
     requestId: req.requestId,
     method: req.method,
-    url: req.originalUrl,
+    url: sanitizeUrlForLogging(req.originalUrl),
     userId: req.user ? (req.user as { id?: string | number }).id : undefined,
     error: {
       name: error.name,
-      message: error.message,
-      stack: error.stack
+      message: sanitizeLogText(error.message),
+      stack: error.stack ? sanitizeLogText(error.stack) : undefined
     },
     headers: sanitizeHeadersForLogging(req.headers),
     body: sanitizeRequestBodyForLogging(req.originalUrl, req.body)

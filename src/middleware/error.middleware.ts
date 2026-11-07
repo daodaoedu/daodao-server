@@ -3,6 +3,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { sanitizeUrlForLogging, sanitizeLogText } from '../utils/log-sanitizer';
 
 /**
  * 基本錯誤類
@@ -190,8 +191,8 @@ export const globalErrorHandler = (
     try {
       console.error('Error details:', {
         name: error?.name || 'Unknown',
-        message: error?.message || 'Unknown error',
-        stack: error?.stack || 'No stack trace available',
+        message: sanitizeLogText(error?.message || 'Unknown error'),
+        stack: sanitizeLogText(error?.stack || 'No stack trace available'),
         statusCode,
       });
     } catch (loggingError) {
@@ -207,10 +208,10 @@ export const globalErrorHandler = (
     try {
       console.error('Error:', {
         name: error?.name || 'Unknown',
-        message: error?.message || 'Unknown error',
+        message: sanitizeLogText(error?.message || 'Unknown error'),
         statusCode,
         timestamp: new Date().toISOString(),
-        url: req.url,
+        url: sanitizeUrlForLogging(req.url),
         method: req.method,
       });
     } catch (loggingError) {
