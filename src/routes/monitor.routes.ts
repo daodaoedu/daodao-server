@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { registry } from '../config/openapi-registry';
 import os from 'os';
 import { prismaService } from '../services/database/prisma.service';
+import { authenticateAny } from '../middleware/auth';
+import { requireAdmin } from '../middleware/permission.middleware';
 
 const router = Router();
 
@@ -22,7 +24,6 @@ interface SystemInfo {
   processMemory: NodeJS.MemoryUsage;
   processId: number;
   processTitle: string;
-  processArgs: string[];
 }
 
 interface PostgresInfo {
@@ -67,6 +68,7 @@ interface MonitorResponse {
 registry.registerPath({
   method: 'get',
   path: '/api/v1/monitor',
+  security: [{ bearerAuth: [] }],
   tags: ['System Monitor'],
   summary: '取得系統監控資訊',
   description: '取得系統資源使用情況，包括 CPU、記憶體、磁碟和 PostgreSQL 狀態',
@@ -91,8 +93,7 @@ registry.registerPath({
               networkInterfaces: z.any(),
               processMemory: z.any(),
               processId: z.number(),
-              processTitle: z.string(),
-              processArgs: z.array(z.string())
+              processTitle: z.string()
             }),
             postgres: z.object({
               version: z.string().optional(),
@@ -124,11 +125,13 @@ registry.registerPath({
         }
       }
     },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', authenticateAny, requireAdmin, async (req: Request, res: Response) => {
   try {
     // 取得系統基本資訊
     const systemInfo: SystemInfo = {
@@ -147,7 +150,6 @@ router.get('/', async (req: Request, res: Response) => {
       processMemory: process.memoryUsage(),
       processId: process.pid,
       processTitle: process.title,
-      processArgs: process.argv,
     };
 
     // 取得 PostgreSQL 版本資訊
