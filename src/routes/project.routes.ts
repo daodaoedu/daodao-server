@@ -743,7 +743,7 @@ registry.registerPath({
   path: '/api/v1/projects/{projectId}/notes/{noteId}',
   tags: ['Notes'],
   summary: '更新便利貼',
-  description: '更新指定便利貼的資料',
+  description: '僅便利貼擁有者可更新指定便利貼的資料',
   request: {
     params: noteParamsSchema,
     body: {
@@ -765,6 +765,7 @@ registry.registerPath({
     },
     400: { $ref: '#/components/responses/BadRequestError' },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     404: { $ref: '#/components/responses/NotFoundError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   },
@@ -779,7 +780,7 @@ registry.registerPath({
   path: '/api/v1/projects/{projectId}/notes/{noteId}',
   tags: ['Notes'],
   summary: '刪除便利貼',
-  description: '刪除指定的便利貼',
+  description: '僅便利貼擁有者可刪除指定的便利貼',
   request: {
     params: noteParamsSchema
   },
@@ -793,6 +794,7 @@ registry.registerPath({
       }
     },
     401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
     404: { $ref: '#/components/responses/NotFoundError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   },

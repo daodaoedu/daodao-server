@@ -116,7 +116,8 @@ export const updateNote = asyncHandler(async (req: Request, res: Response): Prom
   const result = await noteService.updateNote(
     projectId,
     noteIdNum,
-    updateData
+    updateData,
+    user.id
   );
 
   // 驗證響應格式
@@ -158,7 +159,7 @@ export const deleteNote = asyncHandler(async (req: Request, res: Response): Prom
     throw new BadRequestError('無效的便利貼ID');
   }
 
-  const result = await noteService.deleteNote(projectId, noteIdNum);
+  const result = await noteService.deleteNote(projectId, noteIdNum, user.id);
 
   // 驗證響應格式
   const validatedResponse = deleteNoteResponseSchema.parse(result);
