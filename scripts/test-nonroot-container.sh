@@ -11,7 +11,9 @@ cleanup() {
   docker volume rm "$volume" >/dev/null 2>&1 || true
   rm -rf "$fixture"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 # Fail before starting any application if root or writable program/system files.
 docker run --rm --network none --entrypoint node "$image" -e '
 const fs=require("fs");
@@ -42,14 +44,14 @@ docker run -d --name "$container" --label io.daodao.test=nonroot-334 --network n
  --mount "type=volume,src=$volume,dst=/app/logs" \
  --mount "type=bind,src=$fixture/server.js,dst=/app/dist/src/server.js,readonly" "$image" >/dev/null
 ready=0
-for attempt in $(seq 1 60); do
+for _attempt in $(seq 1 60); do
  if docker exec "$container" node -e 'const s=require("fs").readFileSync("/app/logs/fixture.log","utf8");if(!s.includes("started:1000"))process.exit(1)' >/dev/null 2>&1; then ready=1;break;fi
  sleep 1
 done
 [ "$ready" = 1 ] || { docker logs "$container"; echo 'PM2 fixture did not start' >&2;exit 1; }
 docker kill --signal TERM "$container" >/dev/null
 stopped=0
-for attempt in $(seq 1 30); do
+for _attempt in $(seq 1 30); do
  if [ "$(docker inspect --format '{{.State.Running}}' "$container")" = false ]; then stopped=1;break;fi
  sleep 1
 done

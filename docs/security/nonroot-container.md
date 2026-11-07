@@ -33,3 +33,24 @@ For a new dedicated directory, the operator can provision it for UID/GID 1000
 with mode 0750; existing logs require a reviewed migration/ACL plan. A root-owned
 0755 directory is intentionally insufficient. If permissions are not prepared,
 block deployment and retain the existing deployed image until they are ready.
+
+The CD workflow now runs `scripts/preflight-container-logs.sh` after pulling the
+candidate and before stopping/removing the old container. It uses the exact
+Compose service mount and candidate image, overrides only the entrypoint and
+UID/GID 1000, and starts no dependencies. The probe only checks access: log
+directory read/write/traversal, current environment log files and associated
+Winston rotation metadata. It does not create, delete or change permissions.
+A failed probe leaves the existing container running. Directory access alone
+does not prove real writes, quota capacity or rotation; the operator must still
+verify those after an authorized rollout. A successful local disposable-volume
+probe does not confirm the host directory is prepared.
+
+The isolated smoke exits 130 on SIGINT and 143 on SIGTERM, then cleans up its
+own resources. Cancellation cannot return a successful smoke result.
+
+Unreadable/invalid rotation metadata fails closed. Empty or unclassified audit
+metadata also requires write access because it may belong to this environment.
+This conservative check can block deployment for shared metadata; it preserves
+the existing service and never repairs permissions automatically. Only valid
+metadata whose entries are all identifiable as another environment is exempt
+from the write-access check.

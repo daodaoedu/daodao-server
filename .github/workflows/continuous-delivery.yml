@@ -509,6 +509,11 @@ jobs:
               exit 1
             fi
 
+            # Fail closed on the candidate image's actual log mount before stopping anything.
+            # This only checks permissions; host ownership/ACL changes require operator approval.
+            DOCKER_HUB_USERNAME=${DOCKER_HUB_USERNAME} IMAGE_TAG=${IMAGE_TAG} COMMIT_SHA=${COMMIT_SHA} \
+              sh scripts/preflight-container-logs.sh
+
             # ===== 清理舊容器 =====
             # 先停止所有相關的舊容器（可能有 scale 留下的多餘容器）
             # ========================
