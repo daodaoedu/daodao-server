@@ -49103,6 +49103,13 @@
                             "type": "string",
                             "format": "date-time"
                           },
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "description": "場次共用 IANA 時區",
+                            "example": "Asia/Taipei"
+                          },
                           "status": {
                             "type": "string"
                           },
@@ -49123,6 +49130,7 @@
                           "displayName",
                           "startDate",
                           "endDate",
+                          "timezone",
                           "status",
                           "joinedAt",
                           "programName",
