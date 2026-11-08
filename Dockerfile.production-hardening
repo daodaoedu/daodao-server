@@ -1,0 +1,9 @@
+# Derive only runtime ownership from the exact deployed production artifact.
+# No source copy, dependency resolution, compilation or entrypoint replacement.
+FROM vincentxxx/app@sha256:9f4e7c959e44be88340737494238e0cecab2b60fc56e2f646ee6e64d8b8647d8
+
+USER root
+ENV PM2_HOME=/home/node/.pm2
+RUN mkdir -p /home/node/.pm2 /app/logs && \
+    chown node:node /home/node/.pm2 /app/logs
+USER node
