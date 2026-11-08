@@ -13,6 +13,8 @@ import redis from '../../../../src/services/database/redis.service';
 import { initializePassport } from '../../../../src/services/auth/oauth.service';
 import authRoutes from '../../../../src/routes/auth.routes';
 import organizationRoutes from '../../../../src/routes/organization.routes';
+import userRoutes from '../../../../src/routes/user.routes';
+import { jwtService } from '../../../../src/services/jwt.service';
 import { globalErrorHandler } from '../../../../src/middleware/error.middleware';
 import { emailService } from '../../../../src/services/email/email.service';
 import { loggerService } from '../../../../src/services/logging/logger.service';
@@ -53,6 +55,7 @@ app.use(session({ secret: process.env.SESSION_SECRET as string, resave: false, s
 app.use(initializePassport());
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/lighthouse', organizationRoutes);
+app.use('/api/v1/users', userRoutes);
 app.use(globalErrorHandler);
 const server = http.createServer(app);
 
@@ -186,10 +189,12 @@ async function pending(email: string): Promise<PendingInvitation> {
   const invitation = await prisma.organization_invitations.findFirstOrThrow({ where: { organization_id: organizationId } });
   expect(invitation.accepted_at).toBeNull();
   const messages = await eventually(
-    () => mailbox<{ messages: Array<{ ID: string; Subject: string }> }>('/api/v1/messages'),
-    value => value.messages.some(message => message.Subject.includes(name)),
+    () => mailbox<{ messages: Array<{ ID: string; Subject: string; To: Array<{ Address: string }> }> }>('/api/v1/messages'),
+    value => value.messages.some(message => message.Subject.includes(name)
+      && message.To.some(recipient => recipient.Address.toLowerCase() === email.toLowerCase())),
   );
-  const messageId = messages.messages.find(message => message.Subject.includes(name))?.ID;
+  const messageId = messages.messages.find(message => message.Subject.includes(name)
+    && message.To.some(recipient => recipient.Address.toLowerCase() === email.toLowerCase()))?.ID;
   const message = await mailbox<{ HTML: string; Text: string }>(`/api/v1/message/${messageId}`);
   const token = `${message.HTML}\n${message.Text}`.match(/organization-invitation\?token=([a-f0-9]{64})/)?.[1];
   if (!token) throw new Error('The actual local invitation email is missing its capability.');
@@ -270,6 +275,102 @@ afterAll(async () => {
 });
 
 describe('Actual Passport / Redis / PostgreSQL owner invitation flow', () => {
+  it('repeats first registration with the same provider identity in clean owned data and keeps signup sessions usable in Lighthouse', async () => {
+    // A stable Google identity is new to the application whenever its owned app
+    // data is absent. The provider's token/profile HTTP is controlled by Nock;
+    // signup, cookies, identity checks and organization permissions stay real.
+    const identity = { subject: `first-signup-${run}`, email: `first-signup-${run}@oauth.example.test` };
+    temporarySubjects.push(identity.subject);
+    await role('User'); // createUser assigns the canonical ordinary-user role2.
+
+    for (const cycle of [1, 2]) {
+      let invite: PendingInvitation | undefined;
+      try {
+        expect(await prisma.contacts.count({ where: { google_id: identity.subject } })).toBe(0);
+        expect(await prisma.users.count({ where: { contacts: { email: identity.email } } })).toBe(0);
+        expect(await prisma.temp_users.count({ where: { email: identity.email } })).toBe(0);
+        invite = await pending(identity.email);
+        expect(await prisma.organization_members.count({ where: { organization_id: invite.organizationId } })).toBe(0);
+
+        const state = await begin();
+        googleProfile(identity);
+        const callback = await request(server).get('/api/v1/auth/google/callback')
+          .query({ code: randomUUID(), state }).expect(302);
+        const callbackUrl = new URL(callback.headers.location);
+        expect(callbackUrl.searchParams.get('isNewUser')).toBe('true');
+        expect(callbackUrl.searchParams.get('redirect')).toBe('/en/organization-invitation');
+        const temporaryCookie = authenticationCookie(callback);
+        const temporary = await prisma.temp_users.findFirstOrThrow({ where: { google_id: identity.subject } });
+        expect(temporary.verified_login_email).toBe(identity.email);
+        const beforeSignup = await request(server).get('/api/v1/auth/me').set('Cookie', temporaryCookie).expect(200);
+        expect(beforeSignup.body.data.isTemporary).toBe(true);
+        await request(server).post('/api/v1/lighthouse/organization-invitations/accept')
+          .set('Cookie', temporaryCookie).send({ token: invite.token }).expect(401);
+        expect(await prisma.organization_members.count({ where: { organization_id: invite.organizationId } })).toBe(0);
+
+        // Use the production users route including auth, form parsing and DTO
+        // validation. No user/contact/trusted-email row is seeded for signup.
+        const signup = await request(server).post('/api/v1/users/me').set('Cookie', temporaryCookie)
+          .send({ customId: `oauth_${run.slice(0, 16)}_${cycle}`, name: `首次註冊 ${run} ${cycle}`, isSubscribeEmail: false, isSendEmail: false, isOpenProfile: false })
+          .expect(201);
+        const formalCookie = authenticationCookie(signup);
+        const formalToken: string = signup.body.data.token;
+        expect(decodeURIComponent(formalCookie.slice('auth_token='.length))).toBe(formalToken);
+        const claims = jwtService.verifyToken(formalToken);
+        const user = await prisma.users.findFirstOrThrow({ where: { contacts: { google_id: identity.subject } } });
+        if (!user.external_id) throw new Error('Persisted signup user must have a public UUID.');
+        expect(claims).toMatchObject({ id: user.id, _id: user.external_id, isTemp: false });
+        expect(user.verified_login_email).toBe(identity.email);
+        expect(await prisma.temp_users.count({ where: { google_id: identity.subject } })).toBe(0);
+        const me = await request(server).get('/api/v1/auth/me').set('Cookie', formalCookie).expect(200);
+        expect(me.body.data).toMatchObject({ isTemporary: false, user: { id: user.external_id } });
+
+        // Deliberately signed but inconsistent regression input. Normal-session
+        // cookies above are issued only by the real callback/signup handlers.
+        const absentNumericId = 2_000_000_000;
+        expect(await prisma.users.count({ where: { id: absentNumericId } })).toBe(0);
+        const stale = jwtService.generateToken({ id: absentNumericId, _id: user.external_id, isTemp: false });
+        await request(server).post('/api/v1/lighthouse/organization-invitations/accept')
+          .set('Authorization', `Bearer ${stale}`).send({ token: invite.token }).expect(401);
+        expect((await prisma.organization_invitations.findUniqueOrThrow({ where: { id: invite.invitationId } })).accepted_at).toBeNull();
+        expect(await prisma.organization_members.count({ where: { organization_id: invite.organizationId } })).toBe(0);
+
+        const accepted = await request(server).post('/api/v1/lighthouse/organization-invitations/accept')
+          .set('Cookie', formalCookie).send({ token: invite.token }).expect(200);
+        expect(accepted.body.data).toMatchObject({ status: 'accepted', organizationId: invite.organizationId });
+        expect(await prisma.organization_members.findMany({ where: { organization_id: invite.organizationId }, select: { user_id: true, role: true } }))
+          .toEqual([{ user_id: user.id, role: 'owner' }]);
+        const list = await request(server).get('/api/v1/lighthouse/organizations').set('Cookie', formalCookie).expect(200);
+        expect(list.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: invite.organizationId })]));
+        const detail = await request(server).get(`/api/v1/lighthouse/organizations/${invite.organizationId}`).set('Cookie', formalCookie).expect(200);
+        expect(detail.body.data.id).toBe(invite.organizationId);
+        const adminView = await request(server).get(`/api/v1/lighthouse/admin/organizations/${invite.organizationId}/invitations`)
+          .set('Cookie', adminCookie).expect(200);
+        expect(adminView.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: invite.invitationId, status: 'accepted' })]));
+        const replay = await request(server).post('/api/v1/lighthouse/organization-invitations/accept')
+          .set('Cookie', formalCookie).send({ token: invite.token }).expect(200);
+        expect(replay.body.data).toEqual({ status: 'used' });
+      } finally {
+        // This runner's whole DB is disposable. Even here, remove only the
+        // exact subject/email/org created by this test, never a shared QA user.
+        if (invite) await prisma.organization.delete({ where: { id: invite.organizationId } });
+        const owned = await prisma.users.findFirst({ where: { contacts: { google_id: identity.subject, email: identity.email } } });
+        if (owned) {
+          await prisma.user_login_history.deleteMany({ where: { user_id: owned.id } });
+          if (hasPersonaTable) await prisma.persona_user_state.deleteMany({ where: { user_id: owned.id } });
+          await prisma.email_logs.deleteMany({ where: { user_id: owned.id } });
+          await prisma.users.delete({ where: { id: owned.id } });
+          if (owned.basic_info_id !== null) await prisma.basic_info.delete({ where: { id: owned.basic_info_id } });
+          if (owned.activity_stats_id !== null) await prisma.user_activity_stats.delete({ where: { id: owned.activity_stats_id } });
+        }
+        await prisma.contacts.deleteMany({ where: { google_id: identity.subject, email: identity.email } });
+        await prisma.temp_users.deleteMany({ where: { google_id: identity.subject, email: identity.email } });
+      }
+      expect(await prisma.contacts.count({ where: { google_id: identity.subject } })).toBe(0);
+      expect(await prisma.temp_users.count({ where: { google_id: identity.subject } })).toBe(0);
+    }
+  });
+
   it('records an unmatched Google request while Nock blocks the external network', () => {
     // A child process contains Nock's native HTTP parser handles after denied I/O.
     // Serialize the exact recorder used by the negative callback cases.
