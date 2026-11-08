@@ -60282,8 +60282,7 @@
                         "commute"
                       ]
                     },
-                    "maxItems": 5,
-                    "default": []
+                    "maxItems": 5
                   },
                   "timingOther": {
                     "type": "string",
@@ -60333,7 +60332,6 @@
                       "draft",
                       "ready"
                     ],
-                    "default": "ready",
                     "description": "draft：儲存草稿；ready：完成新增／更新"
                   }
                 }

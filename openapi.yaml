@@ -40921,7 +40921,6 @@ paths:
                     example: morning
                     examples: *ref_7
                   maxItems: 5
-                  default: *ref_86
                 timingOther:
                   type: string
                   nullable: true
@@ -40959,7 +40958,6 @@ paths:
                   enum:
                     - draft
                     - ready
-                  default: ready
                   description: draft：儲存草稿；ready：完成新增／更新
       responses:
         '200':
