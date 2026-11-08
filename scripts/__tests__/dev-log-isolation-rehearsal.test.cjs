@@ -94,14 +94,14 @@ test('dev transition, actual Winston rotation, and fixed-image/original-mount ro
   const names = ['prod', 'old', 'dev', 'bad-start', 'bad-ready', 'bad-log'].map(n => `${run}-${n}`);
   docker(['volume', 'create', '--label', label, volume]);
   try {
-    setup(`const f=require('fs');f.mkdirSync('/fixture/checkout/logs',{recursive:true});f.writeFileSync('/fixture/checkout/logs/legacy-dev.synthetic','retained');f.writeFileSync('/fixture/checkout/logs/prod.synthetic','synthetic');f.writeFileSync('/fixture/effective.json',JSON.stringify({services:{dev_app:{volumes:[{type:'bind',source:'/fixture/external/dev',target:'/app/logs'}]},production_app:{volumes:[{type:'bind',source:'/fixture/checkout/logs',target:'/app/logs'}]},prod_app:{volumes:[{type:'bind',source:'/fixture/checkout/logs',target:'/app/logs'}]}}}));`);
+    setup(`const f=require('fs');f.mkdirSync('/fixture/external',{mode:0o755});f.mkdirSync('/fixture/checkout/logs',{recursive:true});f.writeFileSync('/fixture/checkout/logs/legacy-dev.synthetic','retained');f.writeFileSync('/fixture/checkout/logs/prod.synthetic','synthetic');f.writeFileSync('/fixture/effective.json',JSON.stringify({services:{dev_app:{volumes:[{type:'bind',source:'/fixture/external/dev',target:'/app/logs'}]},production_app:{volumes:[{type:'bind',source:'/fixture/checkout/logs',target:'/app/logs'}]},prod_app:{volumes:[{type:'bind',source:'/fixture/checkout/logs',target:'/app/logs'}]}}}));`);
     const prepare = ['run', '--rm', '--network', 'none', '--label', label, '--user', '0:0',
       '--mount', `type=volume,src=${volume},dst=/fixture`, '--mount', `type=bind,src=${scripts},dst=/checks,readonly`,
       '--entrypoint', 'node', image, '/checks/prepare-log-directory.cjs', '--config', '/fixture/effective.json',
       '--checkout', '/fixture/checkout', '--service', 'dev_app'];
     const dry = docker(prepare);
     assert.match(dry.stdout, /would-create/);
-    setup(`require('assert/strict').equal(require('fs').existsSync('/fixture/external'),false)`);
+    setup(`const f=require('fs'),a=require('assert/strict');a.equal(f.existsSync('/fixture/external'),true);a.equal(f.existsSync('/fixture/external/dev'),false)`);
     assert.match(docker([...prepare, '--apply']).stdout, /created/);
     assert.match(docker([...prepare, '--apply']).stdout, /unchanged/);
     setup(`const f=require('fs'),a=require('assert/strict');const p=f.statSync('/fixture/external'),d=f.statSync('/fixture/external/dev');a.equal(p.uid,0);a.equal(p.mode&0o022,0);a.equal(d.uid,1000);a.equal(d.gid,1000);a.equal(d.mode&0o777,0o750);`);

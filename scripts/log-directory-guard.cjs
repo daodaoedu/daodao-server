@@ -3,19 +3,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 /** Whether two absolute paths share a subtree. */
 function overlaps(a, b) { return a === '/' || b === '/' || a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`); }
-/** Validate dev-only isolation against every effective bind and checkout. */
+/** Validate the selected allowlisted environment against every effective bind and checkout. */
 function sourceFor(config, checkout, service) {
-  if (service !== 'dev_app' || !path.isAbsolute(checkout)) throw Error('Invalid service or checkout');
-  const volumes = config.services?.dev_app?.volumes;
+  const leaves = {dev_app:'dev', prod_app:'prod', production_app:'production'};
+  if (!Object.hasOwn(leaves, service) || !path.isAbsolute(checkout)) throw Error('Invalid service or checkout');
+  const leaf = leaves[service];
+  const volumes = config.services?.[service]?.volumes;
   const logs = volumes?.filter(v => v.target === '/app/logs');
-  if (logs?.length !== 1 || logs[0].type !== 'bind') throw Error('Missing unique dev log bind');
+  if (logs?.length !== 1 || logs[0].type !== 'bind') throw Error('Missing unique selected log bind');
   const source = logs[0].source;
-  if (typeof source !== 'string' || !path.isAbsolute(source) || path.normalize(source) !== source || path.basename(source) !== 'dev' || /[\r\n\t]/.test(source)) throw Error('Invalid dev source');
-  if (overlaps(source, path.resolve(checkout))) throw Error('Dev source overlaps checkout');
+  if (typeof source !== 'string' || !path.isAbsolute(source) || path.normalize(source) !== source || path.basename(source) !== leaf || /[\r\n\t]/.test(source)) throw Error('Invalid selected log source');
+  if (overlaps(source, path.resolve(checkout))) throw Error('Log source overlaps checkout');
   for (const [name, svc] of Object.entries(config.services)) {
     for (const v of svc.volumes || []) {
       if (name === service && v === logs[0]) continue;
-      if (v.type === 'bind' && (typeof v.source !== 'string' || !path.isAbsolute(v.source) || overlaps(source, path.resolve(v.source)))) throw Error('Dev source overlaps another bind');
+      if (v.type === 'bind' && (typeof v.source !== 'string' || !path.isAbsolute(v.source) || overlaps(source, path.resolve(v.source)))) throw Error('Log source overlaps another bind');
     }
   }
   return source;

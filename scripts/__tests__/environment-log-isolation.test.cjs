@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {execFileSync}=require('node:child_process');
-test('effective dev mount is external; both production aliases retain legacy',()=>{
+test('effective dev, prod and production mounts use distinct external leaves',()=>{
  const dir=fs.mkdtempSync('/tmp/daodao-506-compose-');
  try {
   for(const name of ['dev','prod']) fs.writeFileSync(`${dir}/.env.${name}`,'');
@@ -10,8 +10,9 @@ test('effective dev mount is external; both production aliases retain legacy',()
   const c=JSON.parse(execFileSync('docker',['compose','-f',`${dir}/docker-compose.yaml`,'config','--format','json'],{env:{...process.env,DOCKER_HUB_USERNAME:'fixture'}}));
   const source=s=>c.services[s].volumes.find(v=>v.target==='/app/logs').source;
   assert.equal(source('dev_app'),'/var/log/daodao-server/dev');
-  assert.equal(source('prod_app'),`${dir}/logs`);
-  assert.equal(source('production_app'),`${dir}/logs`);
+  assert.equal(source('prod_app'),'/var/log/daodao-server/prod');
+  assert.equal(source('production_app'),'/var/log/daodao-server/production');
+
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('simultaneous owned bind containers cannot see new dev marker through legacy production mounts',()=>{

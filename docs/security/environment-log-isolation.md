@@ -1,179 +1,174 @@
-# Dev log isolation: reviewed rollout plan
+# Environment log isolation and reviewed rollout
 
-This change moves only `dev_app` to `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev:/app/logs`.
-`prod_app` and `production_app` retain `./logs:/app/logs` (the deployed checkout's
-legacy `/root/daodao-server/logs`). Both use the `prod` filename prefix and share
-that physical directory. They are **not isolated from one another**. Historical
-dev files remain in legacy; nothing is automatically moved, removed or repaired.
-Full #506 AC and a production migration window remain outstanding.
+This candidate configuration gives each service one external log leaf:
 
-## Consumers
+| Service | Candidate host source | Container target | Logger prefix |
+| --- | --- | --- | --- |
+| dev_app | `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev` | `/app/logs` | dev |
+| prod_app | `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/prod` | `/app/logs` | prod |
+| production_app | `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/production` | `/app/logs` | prod |
 
-Every consumer now requires `--env dev|prod|production|legacy`; omission fails
-before external access. Repository callers are the logging guide and cron
-installer; no application UI invokes these scripts. Existing installed cron
-entries are unverified and must be reviewed during the authorized window.
+Configuration is not a deployment record. Dev was deployed and verified at
+`df7bd2ec19a1f78df70aa67a79732b72368f2fba` in
+[CD42455862681](https://github.com/daodaoedu/daodao-server/actions/runs/42455862681).
+The production candidate is local preparation, not an authorized live cutover.
+The latest saved host inventory has `production_app` healthy on its old root
+image and legacy bind; no `prod_app` container was present. Recheck this at the
+window. Never start an inactive service merely to make a migration test green.
+Historical dev/prod files stay in `/root/daodao-server/logs`; no automatic move,
+delete, recursive chown or migration of rotation audit files is provided.
 
-| Selector | Source | Visible files |
-| --- | --- | --- |
-| dev | `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev` | `dev-*.log*` |
-| prod / production | `/root/daodao-server/logs` | `prod-*.log*` (shared) |
-| legacy | `/root/daodao-server/logs` | all immediate regular files, including old dev history |
+## Consumers and transitional reads
 
-`bash scripts/log-monitor.sh --env dev` reads host files and never creates a
-missing directory. `bash scripts/download-logs.sh --env dev` downloads via SSH
-alias `daodao` and rsync into `./logs/dev/<timestamp>-<pid>`. rsync is required;
-there is no unfiltered scp fallback, recursive traversal, symlink following,
-remote delete or mirror deletion. gzip decompression affects only the selected
-local download; compressed copies remain. `other/` entrypoints delegate to the
-same implementation. All existing source ancestors are checked for symlinks before reads, locally
-and by a metadata-only remote shell check. Dev overrides cannot nest under
-legacy or the known checkout; relative/dot/double-slash paths are rejected.
-`DAODAO_LOG_ROOT` must be explicitly exported to select an
-approved nondefault dev root; missing dev never falls back to legacy.
+All consumers require `--env dev|prod|production|legacy`; omission fails before
+external access. New selectors use the same external leaves as the table above.
+`prod` and `production` share a filename prefix, **not a directory**. `legacy`
+explicitly reads old immediate regular files at `/root/daodao-server/logs`.
+A missing new source fails; it never falls back to legacy or another selector.
+During the transition, use `--env legacy` to inspect unmigrated production
+history, rather than claiming `--env production` already has live data.
 
-`bash scripts/other/setup-log-backup-cron.sh --env dev` is a real installation
-operation: it creates a per-environment wrapper and pins both selector and root.
-The execution log remains local `logs/cron-backup.log`. Review old schedules
-before installation; an old unscoped wrapper will now fail until replaced. The
-installer replaces only a matching new per-environment wrapper entry, allowing
-separate schedules. Do not execute it during local verification: tests use stub
-crontab, SSH and rsync only. No SMTP, environment-file or live-log access is
-needed for these consumer tests.
+Examples, only when the corresponding external read/install action is authorized:
 
-## Dev-only host window (plan only; not executed)
+```sh
+bash scripts/log-monitor.sh --env production
+bash scripts/download-logs.sh --env production
+bash scripts/log-monitor.sh --env legacy
+```
 
-1. Obtain the host window and record checkout canonical path, candidate image
-   digest, old running container ID and exact old image digest. Save `docker
-   inspect` JSON for dev **and both production services**, including every mount
-   (type/source/destination/read-only), image, UID and runtime settings. Capture
-   effective Compose JSON with the same approved environment and override files
-   used by CD. Protect snapshots as operational data; do not commit secrets.
-   Snapshot old Compose/configuration and retain the old image locally. Capture
-   owner/group/mode and canonical paths of legacy logs, their parent, all other
-   bind sources and new root. Confirm new dev leaf is outside checkout and has
-   no ancestor/descendant overlap or symlink alias with any other service mount.
-2. Review the full inventory, including non-Compose containers. New parent root
-   must be root-owned and not group/other writable, so UID 1000 cannot rename
-   leaves or modify another environment. Never recursively chown/chmod a shared
-   root or legacy logs. Only the new dedicated dev leaf may become `1000:1000`
-   mode `0750`. If a parent is missing, review the tool's root-owned `0755`
-   parent creation separately; no existing parent is repaired automatically.
-3. Run the initializer **on the actual deployment host**, after steps 1–2.
-   Before merging, the approved host window must stage the reviewed PR helpers
-   in a separate protected `/srv/daodao-rollout/506/helpers` bundle (initializer
-   and its sibling guard, with hashes checked against the reviewed PR). This
-   does not replace the running checkout or start an app. Generate the candidate
-   effective JSON from the reviewed Compose file with the actual host project
-   directory and approved env/override files; keep the old effective snapshot
-   separately. Do not assume the old checkout already contains these new tools.
-   The fixed retained image below supplies Node only; it need not contain the
-   new helper files. Prepare and read back the new directory before merge/CD.
-   If merge happens first, an expected missing-directory preflight failure must
-   preserve old dev; authorized preparation and a later CD retry are still
-   required. Never treat merge as authorization to create the directory.
-   A workstation cannot validate host paths: the tool calls `lstat`/`stat` on its
-   own filesystem. First manually resolve and review the complete mount/ancestor
-   inventory (including containers outside Compose). Unknown paths, unresolved
-   aliases or symlinks block this step; a container view cannot establish facts
-   about host ancestors hidden by bind mounts.
+Downloads use SSH alias `daodao` and rsync into environment-specific local
+snapshots. No scp fallback, remote delete, mirror-delete, symlink following or
+recursive traversal is added. Existing ancestors are checked for symlinks;
+external sources cannot nest under legacy or the known checkout. Unsafe root
+syntax and relative paths are rejected. Export `DAODAO_LOG_ROOT` explicitly for
+a separately reviewed override; it applies to all new environment selectors.
 
-   If the host already has Node, use its existing Node without installing a new
-   runtime. These commands run on the host, with the captured config at its real
-   protected snapshot path:
+Before this revision reaches any shared checkout, inventory existing scoped
+`prod`/`production` wrappers on every execution host/user. If any still backs up
+legacy-writing production, migrate that schedule explicitly to `--env legacy`
+under its own approval **before** updating its consumer code; after cutover,
+explicitly switch it to the dedicated selector. A successful download from an
+empty new leaf is not proof that current production is being backed up. Do not
+silently fall back. Checking one user crontab does not cover other users or timers.
 
-   ```sh
-   cd /root/daodao-server
-   node /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs --config /srv/daodao-rollout/506/effective-compose.json --checkout /root/daodao-server --service dev_app
-   # Only after separate approval, as root on this same host:
-   node /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs --config /srv/daodao-rollout/506/effective-compose.json --checkout /root/daodao-server --service dev_app --apply
-   ```
+The cron installer is an actual write operation, not a test command. Review
+installed entries before calling `scripts/other/setup-log-backup-cron.sh --env
+production`. Per-environment wrappers pin the selector/root. Existing unscoped
+schedules are not silently rewritten. Local tests deny real SSH, SMTP, rsync,
+and cron operations. Uploader/R2/long-term archive enablement remains #509;
+DuckDB tooling remains #510.
 
-   Alternatively use Node from the **already pulled fixed candidate image**.
-   The following is a reviewable host command for the default `/var/log` root
-   and canonical `/root/daodao-server` checkout. It assumes `/root`, `/var/log`
-   and `/srv/daodao-rollout/506` already exist and were manually checked for
-   aliases. The snapshot directory is root-owned and protected. Adapt every
-   literal path from the reviewed inventory before approval; do not run this
-   unchanged for a custom log root or checkout. No host Node install is needed.
+## Local contract and evidence
 
-   ```bash
-   # Host shell; set this to the exact locally retained candidate digest.
-   : "${CANDIDATE_IMAGE:?set the reviewed already-pulled image digest}"
-   case "$CANDIDATE_IMAGE" in *@sha256:*) ;; *) echo 'Digest required' >&2; exit 1;; esac
-   # Add EVERY effective bind outside the three trees mounted below, at its
-   # exact reviewed canonical host path. Example syntax only:
-   EXTRA_RO=()
-   # EXTRA_RO+=(--mount type=bind,src=/data/other,dst=/data/other,readonly)
-   # Empty is valid ONLY if the full inventory proves no other paths exist.
-   INIT_ARGS=(--config /srv/daodao-rollout/506/effective-compose.json --checkout /root/daodao-server --service dev_app)
-   COMMON=(--rm --pull never --network none --read-only --user 0:0
-     --mount type=bind,src=/root,dst=/root,readonly
-     --mount type=bind,src=/srv/daodao-rollout/506,dst=/srv/daodao-rollout/506,readonly
-     --workdir /root/daodao-server --entrypoint node)
-   # Default dry-run: host log parent and all legacy/checkout/snapshot data RO.
-   docker run "${COMMON[@]}" "${EXTRA_RO[@]}" \
-     --mount type=bind,src=/var/log,dst=/var/log,readonly \
-     "$CANDIDATE_IMAGE" /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs "${INIT_ARGS[@]}"
-   # ONLY after explicit host apply approval: selected parent tree becomes RW.
-   # /root (including legacy logs), checkout, snapshots and other binds stay RO.
-   docker run "${COMMON[@]}" "${EXTRA_RO[@]}" \
-     --mount type=bind,src=/var/log,dst=/var/log \
-     "$CANDIDATE_IMAGE" /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs "${INIT_ARGS[@]}" --apply
-   ```
+`sourceFor` accepts only the fixed service-to-leaf mapping in the table, rejects
+checkout overlap, every other effective bind overlap, ambiguous paths and
+symlink aliases. Operators must additionally check **all actual host container
+mounts**, including non-Compose and physical bind aliases, against the proposed
+source. Compose-only metadata cannot prove the host-wide boundary.
 
-   Prefer the narrower existing `/var/log/daodao-server` parent bind at that
-   same path when it already exists; `/var/log` is needed only to allow the
-   explicitly reviewed creation of a missing root-owned parent. The initializer
-   itself permits only the selected new dev leaf plus that missing parent;
-   it never repairs existing metadata or changes legacy logs. This is a trusted
-   reviewed helper running as root, so review its code and fixed image before
-   granting any RW bind. Do not mount `/` or the Docker socket. Read-only mounts
-   must not obscure an ancestor alias that was left unverified on the host.
+`prepare-log-directory.cjs` defaults to dry-run. The dedicated parent must
+already exist, be root-owned and have no group/other write or special bits.
+A missing parent is refused: separately review its exclusive preparation;
+never chmod an existing shared parent. `--apply` creates only the selected new
+leaf as UID/GID1000 mode0750. Existing matching leaves are idempotent, mismatches
+are refused without repair. Other environment files and metadata stay intact.
 
-   Expected dry-run JSON action is `would-create` or `unchanged`; refusal blocks
-   the window. Read back actual parent/leaf metadata and every previous source
-   after approved apply. Local fixtures must substitute their own canonical
-   checkout/config/all-bind paths and disposable parent mount consistently;
-   they prove command mechanics only, never host metadata or rollout readiness.
-4. Pull/retain the candidate, validate effective Compose again, then run **before
-   any stop/remove** from the host canonical checkout:
+All three deployment pairs use boundary/source/metadata checks before the
+original UID1000 file-access probe:
+
+- `APP_ENV=dev APP_SERVICE=dev_app`
+- `APP_ENV=prod APP_SERVICE=prod_app`
+- `APP_ENV=prod APP_SERVICE=production_app`
+
+Do not rename production's env file or logger prefix to match the leaf name.
+Host Python3 selects the exact service image from effective JSON; `config
+--images` includes dependencies and is not a unique image selector. Candidate
+image Node runs the guards, so host Node is not required. Missing Python,
+source, unsafe metadata, invalid image, failed probe and INT/TERM abort before
+stop/remove. Preflight never creates missing host sources. Candidate prod and
+production binds explicitly set `bind.create_host_path: false`, so direct
+Compose invocation also refuses a missing source. The existing dev bind and
+its deployment preflight remain unchanged.
+
+Focused tests cover mapping, selected-only initialization, metadata and alias
+refusals, consumer scope, interruption and failure propagation. Three simultaneous
+owned bind containers check cross-environment marker invisibility and preserved
+legacy history. Separate fixture rehearsal covers startup/logging/readiness
+failure and restoration of a pinned old image plus its actual runtime mount.
+These are local mechanics, not proof that a real production rollout succeeded.
+
+## Production window: prepare a reviewable operation first
+
+1. Review the **entire** candidate application revision against the old running
+   production revision, not just this log diff. Do not accidentally bundle every
+   accumulated dev change into a supposedly configuration-only rollout. Freeze
+   the candidate digest, allowed API smoke, maximum outage and rollback trigger.
+   A single container stop/recreate has an outage; zero downtime is not promised.
+2. Freeze overlapping CD work. Existing concurrency is per ref, while branches
+   share a checkout/host. Preflight must inspect exactly the configuration that
+   starts the service. Review CD disk/image cleanup before the window: it must
+   not remove the only old image or rollback artifacts. This PR does not add a
+   host-wide deployment lock or automatic rollback.
+3. Read-only inventory: all running/stopped containers, actual UID/GID, image
+   IDs/RepoDigests, every canonical/physical mount, log parent/leaf/file metadata,
+   disk space, checkout, Compose overrides/project and installed log consumers.
+   Save full old `docker inspect` and effective configuration in a protected
+   root-only bundle **on the host**. Full runtime/env snapshots contain secrets;
+   do not export them to a report or Git. The sanitized inventory alone cannot
+   reconstruct the old runtime.
+4. Retain the exact old image ID and verified registry digest or protected image
+   archive. Confirm recovery survives the planned cleanup. A mutable production
+   tag or a Compose checkout is not a rollback. Rehearse image plus env inputs,
+   command/entrypoint, user, binds, network aliases, healthcheck and restart policy
+   in an owned isolated fixture before a live cutover.
+5. Stage the reviewed helpers and candidate effective JSON in a versioned,
+   root-owned0700 directory outside the checkout. Record hashes. Check that the
+   shared log parent already satisfies the contract; prepare only the selected
+   new production leaf after explicit initialization approval. If inactive prod
+   leaf preparation is also approved, treat it as a distinct selected operation;
+   preparing it does not authorize starting `prod_app`.
+
+   With host Node available, the reviewed CLI form is:
 
    ```sh
-   APP_ENV=dev APP_SERVICE=dev_app sh scripts/preflight-container-logs.sh
+   node /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs --config /srv/daodao-rollout/506/effective-compose.json --checkout /root/daodao-server --service production_app
+   # Only after the selected host write is explicitly approved:
+   node /srv/daodao-rollout/506/helpers/prepare-log-directory.cjs --config /srv/daodao-rollout/506/effective-compose.json --checkout /root/daodao-server --service production_app --apply
    ```
 
-   Host Python 3 (verified during preparation) selects the exact service image from effective JSON; a missing interpreter or invalid image aborts before stop/remove.
-   This uses the candidate image's Node for boundary validation and a read-only
-   metadata gate (dev leaf exactly UID/GID 1000 and mode 0750 without special
-   bits; root-owned parent with no group/other write permission), then performs
-   the read-only UID 1000 access probe. A missing source, unsafe boundary or
-   unreadable rotation metadata blocks deployment with old dev still running.
-   Preflight does not create the source. No new host Node dependency is needed
-   for preflight. Review override-file handling against the deployment command.
-5. Start only dev with the reviewed new mount. Verify real application readiness
-   and a bounded dev request; confirm the actual Winston marker lands in new
-   `dev-*-YYYY-MM-DD.log`. Check UID 1000 write, append and rename/rotation using
-   an approved marker; inspect audit metadata and retention behavior. Do not
-   inject failure into production or mistake a synthetic local HTTP probe for
-   live API readiness. Confirm the marker cannot be seen through **any**
-   production container mount. Old legacy dev history may still be visible.
-6. Read back both production containers' IDs/images/mounts and host log metadata
-   and compare to step 1. Verify their own existing logging still works without
-   restarting or changing production. Any unexpected image/mount/metadata change
-   blocks acceptance. Verify selected dev monitor/download/backup manually only
-   after the corresponding external actions are authorized.
-7. If preflight, startup, readiness, writes or rotation fail: retain evidence and
-   both log locations. Before stopping a running old dev, prefer aborting the
-   cutover. After a failed cutover, stop only the new dev, restore the captured
-   **old image digest plus exact original mount/runtime configuration**, and
-   restart dev from that snapshot. Merely checking out a Compose file is not a
-   rollback. Verify old readiness and logging, production comparison, and retain
-   new logs for diagnosis. Never mirror-delete or merge legacy/new directories.
-   If old logging is blocked by permissions, stop and escalate; do not chmod
-   production or run as root to force recovery.
+   Without host Node, use the already retained fixed candidate image, no pull,
+   no network or Docker socket, read-only root filesystem and protected bundle.
+   Bind required checkout/inventory paths read-only. Only for approved apply,
+   mount the existing dedicated `/var/log/daodao-server` parent at the same
+   absolute path RW; never grant all `/var/log` RW. The helper itself may create
+   only the chosen leaf. Read back metadata and a bounded own-marker UID1000
+   write/append/rename/cleanup, with other services still unchanged.
+6. Run the selected production preflight while the old container is still
+   healthy. Failure or cancellation must preserve it. Recheck candidate
+   revision/config immediately before the separately approved cutover.
+   Only the chosen `production_app` may be stopped/recreated. Existing CD may
+   reload shared nginx and handle dependencies; review those effects explicitly.
+   Do not claim an arbitrary `compose up` changes only one process.
+7. After cutover, verify exact image/revision, UID/GID1000, leaf mount, readiness,
+   approved normal API and own synthetic request marker in the new Winston log.
+   Check rotation audit ownership/retention and actual files via the container-to-
+   host bind mapping. Observe natural 20MB/daily rotation; a small separate
+   synthetic rotation test is only mechanics evidence. Check all other mounts
+   cannot see the new marker; compare dev identity/image/mount and legacy
+   owner/mode/inode. Update consumers/cron only under their separate write scope.
 
-Record each check and rollback outcome separately. Local disposable-container
-rehearsal is evidence for mechanics only; host preparation, live deployment,
-real application readiness and PM acceptance remain pending. Schedule the
-prod/production separation as a separate reviewed window.
+## Abort, rollback and completion
+
+Before stop, abort on any failed guard and retain the old service. After a failed
+cutover, use the approved trigger to stop only the new production container,
+keep its logs, restore the fixed old image and **complete original runtime**
+from the protected snapshot. An old image may use root and legacy; recovery
+restores that recorded state, while candidate checks never fall back to root.
+Verify old readiness/API/logging and other services. If old runtime metadata or
+logging is inconsistent, stop and escalate rather than chmod shared logs.
+
+Never move live files, merge old/new rotation audits or mirror-delete history.
+Record merge, deployment, live smoke, actual rotation and formal acceptance
+separately. AC-01–04 remain required. No production window, global CD lock,
+full-version upgrade approval, R2 backup or historical cleanup is implied by
+this configuration. Keep #506 open until all applicable live evidence exists.
