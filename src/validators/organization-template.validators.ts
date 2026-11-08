@@ -44,11 +44,11 @@ const templateFieldsSchema = z.object({
   frequencyMinDays: frequencyDaysSchema.nullable().optional(),
   frequencyMaxDays: frequencyDaysSchema.nullable().optional(),
   sessionDurationMinutes: sessionMinutesSchema.nullable().optional(),
-  practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).optional().default([]),
+  practiceTimePeriods: z.array(practiceTimePeriodSchema).max(5).optional(),
   timingOther: z.string().trim().max(ORG_TEMPLATE_TIMING_OTHER_MAX, `自訂時段最多 ${ORG_TEMPLATE_TIMING_OTHER_MAX} 字`).nullable().optional().openapi({ description: '自訂執行時段（practice_templates.other_context）' }),
   tags: z.array(z.string().trim().min(1).max(ORG_TEMPLATE_TAG_LENGTH_MAX)).max(ORG_TEMPLATE_TAGS_MAX, `標籤最多 ${ORG_TEMPLATE_TAGS_MAX} 個`).optional(),
   resources: z.array(organizationTemplateResourceInputSchema).max(ORG_TEMPLATE_RESOURCES_MAX, `資源最多 ${ORG_TEMPLATE_RESOURCES_MAX} 個`).optional(),
-  status: organizationTemplateStatusSchema.optional().default('ready')
+  status: organizationTemplateStatusSchema.optional()
 });
 
 type TemplateFields = z.infer<typeof templateFieldsSchema>;
@@ -70,7 +70,10 @@ export const assertTemplateReady = (value: { practiceAction?: string | null; dur
   return issues;
 };
 
-export const createOrganizationTemplateSchema = templateFieldsSchema.superRefine((value, ctx) => {
+export const createOrganizationTemplateSchema = templateFieldsSchema.extend({
+  practiceTimePeriods: templateFieldsSchema.shape.practiceTimePeriods.default([]),
+  status: templateFieldsSchema.shape.status.default('ready')
+}).superRefine((value, ctx) => {
   if (value.status === 'draft') {
     if (!hasAnyContent(value)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: '草稿至少需要填寫一項內容' });
     return;
