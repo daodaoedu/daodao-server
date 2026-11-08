@@ -264,12 +264,6 @@ export const globalErrorHandler = (
         ...(req.startTime && { processingTime: Date.now() - req.startTime })
       }
     }),
-    ...(process.env.NODE_ENV === 'dev' && { 
-      debug: {
-        stack: error?.stack || 'No stack trace available',
-        name: error?.name || 'Unknown' 
-      }
-    })
   };
 
   res.status(statusCode).json(response);
