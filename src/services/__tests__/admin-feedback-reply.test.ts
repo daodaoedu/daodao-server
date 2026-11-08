@@ -25,9 +25,9 @@ const FEEDBACK_ID = 8;
 const REPLY_ID = 77;
 
 /** 讓 transaction 內的 UPDATE … RETURNING 與 INSERT … RETURNING 依序回傳 */
-const givenFeedback = (feedback: { user_id: number | null; content: string } | null): void => {
+const givenFeedback = (feedback: { user_id: number | null; content: string; source?: string | null } | null): void => {
   prismaMock.$queryRaw
-    .mockResolvedValueOnce(feedback ? [feedback] as never : [] as never)
+    .mockResolvedValueOnce(feedback ? [{ source: 'bug_report_form', ...feedback }] as never : [] as never)
     .mockResolvedValueOnce([{ id: REPLY_ID }] as never);
 };
 
@@ -149,6 +149,27 @@ describe('replyToFeedback（daodao#451）', () => {
       .resolves.toEqual({ replyId: REPLY_ID, emailStatus: 'sent' });
   });
 
+  it('不是錯誤回報表單來的回饋：回覆照存，不寄「錯誤回報」信也不建通知，回傳 not_applicable', async () => {
+    givenFeedback({ user_id: REPORTER_ID, content: '希望有深色模式', source: null });
+
+    const result = await adminFeedbackService.replyToFeedback(FEEDBACK_ID, '收到建議', ADMIN_ID);
+
+    expect(result).toEqual({ replyId: REPLY_ID, emailStatus: 'not_applicable' });
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(prismaMock.notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('email_logs 寫不進去時信仍寄出並回 sent', async () => {
+    givenFeedback({ user_id: REPORTER_ID, content: '描述' });
+    givenReporter('reporter@example.com');
+    mockCreateEmailLog.mockRejectedValue(new Error('db down'));
+    mockSendEmail.mockResolvedValue({ success: true });
+
+    await expect(adminFeedbackService.replyToFeedback(FEEDBACK_ID, '回覆', ADMIN_ID))
+      .resolves.toEqual({ replyId: REPLY_ID, emailStatus: 'sent' });
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+  });
+
   it('回報不存在時回 404，不寄信也不建通知', async () => {
     givenFeedback(null);
 
@@ -200,5 +221,19 @@ describe('listFeedback（daodao#451 AC-02／AC-03）', () => {
     ] })]);
     const { items } = await adminFeedbackService.listFeedback({ limit: 20, offset: 0 });
     expect(items[0].replies.map(r => r.emailStatus)).toEqual([null, 'failed', 'sent']);
+  });
+});
+
+describe('listFeedback 單筆篩選（daodao#451 AC-04 後台連結）', () => {
+  it('帶 id 時以參數綁定只查那一則，連結的回報不在最新 20 筆也找得到', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([] as never);
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ total: BigInt(1) }] as never)
+      .mockResolvedValueOnce([{ total: BigInt(30), pending: BigInt(0), this_month: BigInt(0) }] as never)
+      .mockResolvedValueOnce([] as never);
+    await adminFeedbackService.listFeedback({ id: 3, limit: 20, offset: 0 });
+    const listSql = prismaMock.$queryRaw.mock.calls[2][0] as unknown as { text: string; values: unknown[] };
+    expect(listSql.text).toMatch(/f\.id = \$\d+/);
+    expect(listSql.values).toContain(3);
   });
 });

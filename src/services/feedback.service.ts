@@ -176,7 +176,7 @@ export const listMyBugReports = async (userId: number): Promise<{ items: MyBugRe
        (SELECT json_agg(json_build_object('id', fr.id, 'content', fr.content, 'createdAt', fr.created_at) ORDER BY fr.created_at)
           FROM feedback_replies fr WHERE fr.feedback_id = f.id) AS replies
      FROM feedback f
-     WHERE f.user_id = ${userId} AND f.category = 'bug'
+     WHERE f.user_id = ${userId} AND f.source = 'bug_report_form'
      ORDER BY f.created_at DESC, f.id DESC
      LIMIT 100`
   )

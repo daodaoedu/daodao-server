@@ -258,12 +258,15 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   /** 將 payload JSONB 展開為前端所需欄位 */
   const notifications = items.map((row) => {
     const p = (row.payload ?? {}) as Record<string, unknown>;
-    const commentMetadata = commentMetadataMap.get(row.entity_id);
-    // 優先使用 payload 中的 external_id，否則查 practiceExternalIdMap，最後 fallback 到 entity_id
+    // 補查表以 entity_id 為 key，只能套用在同類型的通知上；否則其他類型（如 feedback）的 id
+    // 撞到同頁 practice／comment 的 id 時會被換成別的實體（daodao#451）
+    const commentMetadata = row.entity_type === 'comment' ? commentMetadataMap.get(row.entity_id) : undefined;
+    const practiceExternalId = row.entity_type === 'practice' ? practiceExternalIdMap.get(row.entity_id) : undefined;
+    // 優先使用 payload 中的 external_id，否則查補查表，最後 fallback 到 entity_id
     const entityId =
       (p.entity_external_id as string | undefined) ??
       commentMetadata?.entityExternalId ??
-      practiceExternalIdMap.get(row.entity_id) ??
+      practiceExternalId ??
       String(row.entity_id);
     return {
       id:               row.id,

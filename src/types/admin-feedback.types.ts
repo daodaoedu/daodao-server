@@ -39,8 +39,11 @@ export type FeedbackReplyEmailStatus = 'pending' | 'sent' | 'failed' | 'skipped'
 /** POST /admin/feedback/:id/reply 的回應（daodao#451） */
 export interface FeedbackReplyResult {
   replyId: number
-  /** sent＝已寄出；failed＝寄送失敗；no_recipient＝回報者已刪除或沒有聯絡信箱 */
-  emailStatus: 'sent' | 'failed' | 'no_recipient'
+  /**
+   * sent＝已寄出；failed＝寄送失敗；no_recipient＝回報者已刪除或沒有聯絡信箱；
+   * not_applicable＝不是錯誤回報表單來的回饋，回覆只記在後台、不寄信也不通知
+   */
+  emailStatus: 'sent' | 'failed' | 'no_recipient' | 'not_applicable'
 }
 
 export interface FeedbackListResult {

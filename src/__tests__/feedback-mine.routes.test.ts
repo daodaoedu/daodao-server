@@ -77,3 +77,13 @@ describe('GET /api/v1/feedback/mine', () => {
     expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
   });
 });
+
+describe('GET /api/v1/feedback/mine 來源條件', () => {
+  it('以錯誤回報表單來源篩選，管理者改了分類的回報仍列在我的回報', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([] as never);
+    await request(app).get('/api/v1/feedback/mine').set('x-test-user', '71');
+    const sql = prismaMock.$queryRaw.mock.calls[0][0] as unknown as { text: string };
+    expect(sql.text).toMatch(/f\.source = 'bug_report_form'/);
+    expect(sql.text).not.toMatch(/f\.category = 'bug'/);
+  });
+});

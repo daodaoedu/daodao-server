@@ -21,6 +21,9 @@ import type {
 /** email_logs 記錄回覆信用的 entity_type（email_type 沿用既有的 notification，避開 storage CHECK） */
 export const FEEDBACK_REPLY_EMAIL_ENTITY = 'feedback_reply'
 
+/** 設定頁錯誤回報表單寫入的 feedback.source（feedback.service.ts submitBugReport） */
+export const BUG_REPORT_SOURCE = 'bug_report_form'
+
 /**
  * 取出錯誤回報的截圖網址（feedback.meta.screenshots，見 feedback.service.ts uploadScreenshots）。
  * 只回傳後台可直接當 <img src> 載入的 http(s) 絕對網址；R2_PUBLIC_URL 未設時存下的相對路徑與其他值略過。
@@ -40,7 +43,7 @@ const metaString = (meta: unknown, key: string): string | null => {
  * 錯誤回報表單存在 feedback.meta 的處理資訊（daodao#451 AC-03）；不是錯誤回報表單來的回饋為 null
  */
 const toBugReportInfo = (source: string | null, meta: unknown): FeedbackItem['bugReport'] => {
-  if (source !== 'bug_report_form') return null
+  if (source !== BUG_REPORT_SOURCE) return null
   return {
     area: metaString(meta, 'area'),
     link: metaString(meta, 'link'),
@@ -56,10 +59,11 @@ const toEmailStatus = (status: string | null | undefined): FeedbackReplyEmailSta
 
 /**
  * 列出回饋（含篩選與分頁）
- * @param filters - 狀態、分類篩選及分頁參數
+ * @param filters - 單筆 id、狀態、分類篩選及分頁參數
  */
-const listFeedback = async (filters: { status?: string; category?: string; limit: number; offset: number }): Promise<FeedbackListResult> => {
+const listFeedback = async (filters: { id?: number; status?: string; category?: string; limit: number; offset: number }): Promise<FeedbackListResult> => {
   const conditions: Prisma.Sql[] = [Prisma.sql`1=1`]
+  if (filters.id !== undefined) conditions.push(Prisma.sql`f.id = ${filters.id}`)
   if (filters.status) conditions.push(Prisma.sql`f.status = ${filters.status}`)
   if (filters.category) conditions.push(Prisma.sql`f.category = ${filters.category}`)
   const where = Prisma.join(conditions, ' AND ')
@@ -187,7 +191,13 @@ const deliverReplyEmail = async (params: {
       userId: reporterId, emailType: EMAIL_TYPES.NOTIFICATION,
       entityType: FEEDBACK_REPLY_EMAIL_ENTITY, entityId: replyId,
       subject, status: EMAIL_STATUS.PENDING,
-    }).catch(() => null)
+    }).catch((error: unknown) => {
+      // 記不到 email_logs 仍照寄，但後台列表會看不到這則的寄送結果，留 log 方便追
+      loggerService.error('admin-feedback: reply email log create failed', {
+        replyId, error: error instanceof Error ? error.message : String(error),
+      })
+      return null
+    })
     logId = log?.id ?? null
 
     const result = await emailService.sendEmail({
@@ -249,8 +259,8 @@ const replyToFeedback = async (id: number, content: string, adminId: number): Pr
   const saved = await prisma.$transaction(async (tx) => {
     // 先更新狀態確認回饋存在；不存在就不寫回覆（否則撞 FK 變 500）
     // feedback 沒有 replied_at 欄位，回覆時間以 feedback_replies.created_at 為準
-    const feedbackRows = await tx.$queryRaw<Array<{ user_id: number | null; content: string }>>`
-      UPDATE feedback SET status = 'replied', updated_at = NOW() WHERE id = ${id} RETURNING user_id, content
+    const feedbackRows = await tx.$queryRaw<Array<{ user_id: number | null; content: string; source: string | null }>>`
+      UPDATE feedback SET status = 'replied', updated_at = NOW() WHERE id = ${id} RETURNING user_id, content, source
     `
     const feedback = feedbackRows[0]
     if (!feedback) throw new NotFoundError('找不到這則意見回饋')
@@ -259,8 +269,11 @@ const replyToFeedback = async (id: number, content: string, adminId: number): Pr
       VALUES (${id}, ${adminId}, ${content}, NOW())
       RETURNING id
     `
-    return { reporterId: feedback.user_id, reportContent: feedback.content, replyId: reply.id }
+    return { reporterId: feedback.user_id, reportContent: feedback.content, source: feedback.source, replyId: reply.id }
   })
+
+  // 回覆信與「我的回報」只涵蓋錯誤回報表單送出的回報；其他來源的回饋回覆只記在後台（issue 範圍不含其他類型）
+  if (saved.source !== BUG_REPORT_SOURCE) return { replyId: saved.replyId, emailStatus: 'not_applicable' }
 
   if (saved.reporterId !== null) {
     await createReplyNotification({

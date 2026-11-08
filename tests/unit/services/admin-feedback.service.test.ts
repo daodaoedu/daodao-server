@@ -159,7 +159,7 @@ describe('adminFeedbackService.replyToFeedback', () => {
   beforeEach(() => {
     setupTransactionMock();
     prismaMock.$queryRaw
-      .mockResolvedValueOnce([{ user_id: null, content: '描述' }] as never)
+      .mockResolvedValueOnce([{ user_id: null, content: '描述', source: 'bug_report_form' }] as never)
       .mockResolvedValueOnce([{ id: 31 }] as never);
   });
 
