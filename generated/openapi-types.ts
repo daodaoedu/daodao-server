@@ -11763,8 +11763,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 發送密碼重設郵件
-         * @description 發送密碼重設連結給用戶。支援可選身份驗證（允許未登入用戶重設密碼）。
+         * 密碼重設郵件入口已停用
+         * @deprecated
+         * @description 此遺留入口已停用，回應「密碼重設功能暫時不可用」，不處理輸入資料或寄送郵件。
          */
         post: {
             parameters: {
@@ -11773,21 +11774,8 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["PasswordResetEmailRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description 密碼重設郵件發送成功 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["EmailSuccessResponse"];
-                    };
-                };
                 400: components["responses"]["BadRequestError"];
                 500: components["responses"]["InternalServerError"];
             };
@@ -47949,32 +47937,6 @@ export interface components {
              * @example 123
              */
             userId?: number;
-        };
-        /** @description 寄送密碼重設郵件的請求資料 */
-        PasswordResetEmailRequest: {
-            /**
-             * Format: email
-             * @description 需要重設密碼的用戶郵件
-             * @example user@example.com
-             * @example user@example.com
-             * @example john.doe@company.com
-             * @example student@university.edu
-             */
-            email: string;
-            /**
-             * Format: uri
-             * @description 用戶點擊重設密碼的安全連結
-             * @example https://example.com/reset-password?token=xyz789
-             */
-            resetLink: string;
-            /**
-             * @description 用戶的顯示姓名
-             * @example 王小明
-             * @example 王小明
-             * @example John Doe
-             * @example 李雅韻
-             */
-            name?: string;
         };
         /** @description 寄送馬拉松活動相關郵件的請求資料 */
         MarathonEmailRequest: {

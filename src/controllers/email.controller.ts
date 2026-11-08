@@ -210,41 +210,11 @@ export const sendWelcomeEmail = asyncHandler(async (req: Request, res: Response)
 });
 
 /**
- * 發送密碼重設郵件
+ * 已停用的遺留密碼重設郵件入口
  * POST /api/v1/email/password-reset
  */
-export const sendPasswordResetEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { email, resetLink, name } = req.body;
-
-  if (!email) {
-    throw new BadRequestError('email 為必填項');
-  }
-
-  if (!resetLink) {
-    throw new BadRequestError('resetLink 為必填項');
-  }
-
-  // 查找用戶 ID 以啟用 email_logs 記錄
-  const userId = await resolveUserIdByEmail(email) ?? undefined;
-
-  // 發送密碼重設郵件
-  const result = await emailService.sendPasswordResetEmail(email, resetLink, name, userId);
-
-  if (!result.success) {
-    if (result.skipped) {
-      res.json(createSuccessResponse({ messageId: undefined }, { message: EMAIL_TEMPLATE_DISABLED_MESSAGE }));
-      return;
-    }
-    throw new Error(result.error || '密碼重設郵件發送失敗');
-  }
-
-  const response = createSuccessResponse({
-    messageId: result.messageId
-  }, {
-    message: '密碼重設郵件發送成功'
-  });
-
-  res.json(response);
+export const sendPasswordResetEmail = asyncHandler(async (_req: Request, _res: Response) => {
+  throw new BadRequestError('密碼重設功能暫時不可用');
 });
 
 /**
