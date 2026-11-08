@@ -17,7 +17,15 @@ if [ "$APP_SERVICE" = dev_app ]; then
   trap 'exit 130' INT
   trap 'exit 143' TERM
   docker compose --env-file ".env.$APP_ENV" -f "$compose_file" config --no-env-resolution --format json > "$config"
-  image=$(docker compose --env-file ".env.$APP_ENV" -f "$compose_file" config --images "$APP_SERVICE")
+  # config --images includes dependency images, even with a service argument.
+  # Python 3 is a verified host prerequisite; parse the exact effective service.
+  image=$(python3 -c '
+import json, re, sys
+value = json.load(sys.stdin)["services"][sys.argv[1]]["image"]
+if not isinstance(value, str) or not value or re.search(r"\s", value) or value.startswith("-"):
+    raise ValueError("Invalid candidate image")
+print(value)
+' "$APP_SERVICE" < "$config")
   [ -n "$image" ] || { echo 'Missing candidate image' >&2; exit 1; }
   docker run --rm -i --network none --read-only --user 1000:1000 \
     --mount "type=bind,src=$script_dir/log-directory-guard.cjs,dst=/guard.cjs,readonly" \

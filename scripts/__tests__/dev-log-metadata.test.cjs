@@ -5,7 +5,8 @@ const {spawnSync}=require('node:child_process');
 test('preflight rejects unsafe leaf and parent metadata before file access probe',()=>{
  const script=`const fs=require('fs'),cp=require('child_process'),assert=require('assert');
  fs.mkdirSync('/fixture'); fs.mkdirSync('/fixture/bin'); fs.mkdirSync('/fixture/external'); fs.mkdirSync('/fixture/external/dev');
- fs.writeFileSync('/fixture/config',JSON.stringify({services:{dev_app:{volumes:[{type:'bind',source:'/fixture/external/dev',target:'/app/logs'}]}}}));
+ fs.writeFileSync('/fixture/config',JSON.stringify({services:{dev_app:{image:'candidate:test',volumes:[{type:'bind',source:'/fixture/external/dev',target:'/app/logs'}]}}}));
+ fs.writeFileSync('/fixture/bin/python3', '#!/bin/sh\\necho candidate:test\\n', {mode:493});
  fs.writeFileSync('/fixture/bin/docker',\`#!/bin/sh
 printf '%s\\n' "$*" >> /fixture/calls
 case "$*" in
