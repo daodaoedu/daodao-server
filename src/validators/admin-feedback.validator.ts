@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
 export const feedbackQuerySchema = z.object({
+  /** 只取這一則（通知信的後台連結 ?id=，daodao#451） */
+  id: z.coerce.number().int().positive().optional(),
   status: z.enum(['pending', 'replied', 'closed']).optional(),
   category: z.enum(['bug', 'feature', 'question', 'other']).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),

@@ -12197,6 +12197,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 列出登入者自己送出的錯誤回報與團隊回覆（新到舊，最多 100 筆） */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyBugReportListApiResponse"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                403: components["responses"]["ForbiddenError"];
+                500: components["responses"]["InternalServerError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/follows": {
         parameters: {
             query?: never;
@@ -48339,6 +48378,154 @@ export interface components {
              * @example 2024-01-15T10:30:00.000Z
              */
             timestamp: string;
+        };
+        /**
+         * @description Standard success response format
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "id": 123,
+         *         "_id": "550e8400-e29b-41d4-a716-446655440000",
+         *         "name": "JavaScript 基礎教程",
+         *         "description": "從零開始學習 JavaScript 程式設計",
+         *         "status": "published"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z"
+         *     }
+         * @example {
+         *       "success": true,
+         *       "data": {
+         *         "userId": 456,
+         *         "username": "john_doe",
+         *         "email": "john@example.com",
+         *         "role": "student"
+         *       },
+         *       "timestamp": "2024-01-15T10:30:00.000Z",
+         *       "meta": {
+         *         "cacheHit": true,
+         *         "processingTime": 23.1
+         *       }
+         *     }
+         */
+        MyBugReportListApiResponse: {
+            /**
+             * @description Indicates successful API response
+             * @enum {boolean}
+             */
+            success: true;
+            /** @description The main response data */
+            data: {
+                items: components["schemas"]["MyBugReport"][];
+            };
+            /**
+             * Format: date-time
+             * @description ISO 8601 timestamp of the response
+             */
+            timestamp: string;
+            /**
+             * @description Optional metadata about the response
+             * @example {
+             *       "searchQuery": "JavaScript教程",
+             *       "searchTime": 45,
+             *       "cacheHit": false,
+             *       "processingTime": 123.5,
+             *       "requestId": "req-123e4567-e89b-12d3-a456-426614174000"
+             *     }
+             * @example {
+             *       "categoryCounts": {
+             *         "前端開發": 25,
+             *         "後端開發": 18,
+             *         "資料科學": 12
+             *       },
+             *       "filters": {
+             *         "difficulty": "intermediate",
+             *         "language": "zh-TW"
+             *       }
+             *     }
+             */
+            meta?: {
+                /** @description Search query used for filtering results */
+                searchQuery?: string;
+                /** @description Time taken to execute the search query in milliseconds */
+                searchTime?: number;
+                /** @description Applied filters for the request */
+                filters?: {
+                    [key: string]: unknown;
+                };
+                /** @description Count of items per category */
+                categoryCounts?: {
+                    [key: string]: number;
+                };
+                /** @description Aggregated statistical data */
+                aggregateData?: {
+                    [key: string]: unknown;
+                };
+                /** @description Unique identifier for request tracking */
+                requestId?: string;
+                /** @description Whether the response was served from cache */
+                cacheHit?: boolean;
+                /** @description Total processing time in milliseconds */
+                processingTime?: number;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        MyBugReport: {
+            /**
+             * @description 回報 id
+             * @example 8
+             */
+            id: number;
+            /**
+             * @description 回報描述
+             * @example 按下送出後畫面沒有反應
+             */
+            content: string;
+            /**
+             * @description 問題區域（ui／performance／auth／data／other）
+             * @example ui
+             */
+            area: string | null;
+            /**
+             * @description 相關連結
+             * @example https://app.daodao.so/settings
+             */
+            link: string | null;
+            /**
+             * @description 截圖網址
+             * @example []
+             */
+            screenshots: string[];
+            /**
+             * @description 處理狀態
+             * @example replied
+             * @enum {string}
+             */
+            status: "pending" | "replied" | "closed";
+            /**
+             * @description 回報時間（ISO 8601）
+             * @example 2026-11-08T02:00:00.000Z
+             */
+            createdAt: string;
+            /** @description 團隊回覆，由舊到新 */
+            replies: components["schemas"]["MyBugReportReply"][];
+        };
+        MyBugReportReply: {
+            /**
+             * @description 回覆 id
+             * @example 12
+             */
+            id: number;
+            /**
+             * @description 團隊回覆內容
+             * @example 已修正，謝謝回報！
+             */
+            content: string;
+            /**
+             * @description 回覆時間（ISO 8601）
+             * @example 2026-11-08T03:00:00.000Z
+             */
+            createdAt: string;
         };
         FollowTargetBody: {
             /**
