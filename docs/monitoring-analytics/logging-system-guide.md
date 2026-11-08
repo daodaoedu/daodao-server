@@ -1,3 +1,5 @@
+> 部署路徑已改為 dev-only 隔離：dev 使用 `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev`，prod/production 仍共用 legacy `./logs` 並使用 `prod-*` 檔名。舊 dev 歷史未搬刪。主機操作請先依 [切換與回復計畫](../security/environment-log-isolation.md) 查核；下方 `/app/logs` 為容器內路徑，舊 `./logs` 主機範例僅適用 legacy。監控與下載必須明確傳 `--env dev|prod|production|legacy`，缺少 dev 來源不會 fallback。
+
 # DaoDao 日誌系統完整指南
 
 ## 概述
@@ -27,7 +29,7 @@ DaoDao 伺服器採用 **Winston 為主的統一日誌系統**，已完成日誌
 **功能特色:**
 - 支援多級別日誌：`error`, `warn`, `info`, `http`, `debug`
 - 環境適應性格式化（開發/生產環境）
-- 自動文件輪轉功能（10MB，保留 10 個文件）
+- 每日文件輪轉（單檔 20MB，保留 30 天，舊檔 gzip 壓縮）
 - 錯誤堆疊追蹤和結構化輸出
 
 **日誌級別配置:**
@@ -42,10 +44,10 @@ export const LOG_LEVELS = {
 ```
 
 **當前配置:**
-- **開發環境**: 僅控制台輸出 (level: debug)
+- **開發環境**: `dev-error-YYYY-MM-DD.log` 與 `dev-combined-YYYY-MM-DD.log`，並依 logger 設定輸出控制台
 - **生產環境**: 僅文件輸出 (level: info)
-  - `logs/error.log` - 錯誤日誌
-  - `logs/combined.log` - 合併日誌
+  - `logs/prod-error-YYYY-MM-DD.log` - 錯誤日誌
+  - `logs/prod-combined-YYYY-MM-DD.log` - 合併日誌
 
 #### 2. 日誌中間件 (`src/middleware/logging.middleware.ts`)
 
@@ -127,7 +129,7 @@ services:
         max-file: "1"
     volumes:
       - ./src:/app/src
-      - ./logs:/app/logs
+      - ${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev:/app/logs
 ```
 
 ### 3. 環境變數配置
@@ -192,16 +194,16 @@ logger.logRequest({
 #### 生產環境
 ```bash
 # 查看所有日誌
-tail -f logs/combined.log
+tail -f /root/daodao-server/logs/prod-combined-$(date +%F).log
 
 # 查看錯誤日誌
-tail -f logs/error.log
+tail -f /root/daodao-server/logs/prod-error-$(date +%F).log
 
 # 查看最新 100 行
-tail -n 100 logs/combined.log
+tail -n 100 /root/daodao-server/logs/prod-combined-$(date +%F).log
 
-# 監控腳本
-./scripts/log-monitor.sh
+# 監控腳本（prod / production 仍共用來源）
+bash scripts/log-monitor.sh --env prod
 ```
 
 #### 開發環境
@@ -244,14 +246,14 @@ npm run dev
 ```bash
 #!/bin/bash
 # 檢查日誌目錄、文件大小、最新錯誤、輪轉狀態
-./scripts/log-monitor.sh
+bash scripts/log-monitor.sh --env dev
 ```
 
 **輸出範例:**
 ```
 === Log File Sizes ===
-1.2M    logs/combined.log
-256K    logs/error.log
+1.2M    /var/log/daodao-server/dev/dev-combined-2026-11-08.log
+256K    /var/log/daodao-server/dev/dev-error-2026-11-08.log
 
 === Recent Errors ===
 {"timestamp":"2024-07-26 15:30:45","level":"error","message":"Database connection failed"}
@@ -263,10 +265,10 @@ npm run dev
 
 ### 日誌輪轉
 
-- **文件大小限制**: 10MB
-- **保留文件數**: 10 個
-- **自動輪轉**: Winston 自動處理
-- **命名規則**: `combined.log.1`, `combined.log.2`, ...
+- **單檔大小設定**: 原始碼 `maxSize: 20m`
+- **保留期間設定**: 原始碼 `maxFiles: 30d`，不是固定文件數
+- **自動輪轉**: Winston DailyRotateFile；舊檔 gzip 壓縮
+- **命名規則**: `<dev|prod|local>-<combined|error>-YYYY-MM-DD.log`，同日超過大小後有輪替序號
 
 ### 性能監控
 
@@ -338,7 +340,7 @@ function shouldLogRequestBody(path: string, method: string): boolean {
 ```bash
 # 檢查目錄權限
 ls -la logs/
-chmod 755 logs/
+# Do not chmod legacy logs; follow the reviewed dev-leaf preparation plan.
 
 # 檢查 Winston 配置
 grep -n "logs/" src/services/logging/logger.service.ts
@@ -368,7 +370,7 @@ docker-compose up -d --force-recreate
 echo $NODE_ENV
 
 # 驗證日誌級別
-tail -n 1 logs/combined.log | jq '.level'
+tail -n 1 /root/daodao-server/logs/prod-combined-$(date +%F).log | jq '.level'
 ```
 
 ### 調試模式
@@ -381,8 +383,8 @@ export LOG_LEVEL=debug
 # 測試日誌記錄
 curl -X POST http://localhost:3000/api/health
 
-# 檢查結果
-tail -f logs/combined.log
+# 檢查部署 dev 結果（本地 NODE_ENV=development 使用 local 前綴）
+bash scripts/log-monitor.sh --env dev
 ```
 
 ## 最佳實踐
@@ -463,9 +465,9 @@ if (duration > 5000) {
 - **運維友好**: 自動輪轉、監控腳本、調試支援
 
 ### 系統指標
-- **日誌文件**: 最大 200MB 總存儲 (10MB × 2 類型 × 10 文件)
+- **日誌容量**: 沒有已設定的總儲存硬上限；20m 是單檔門檻，30d 是保留期間，總量仍取決於日誌流量與壓縮，須監控磁碟空間
 - **性能影響**: 最小化，異步寫入
-- **可用性**: 99.9% (文件系統依賴)
+- **可用性**: 尚無量測承諾；取決於檔案系統權限、容量與維運監控
 - **查詢性能**: JSON 格式支援快速解析和搜索
 
 ## 未來規劃

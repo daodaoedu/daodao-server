@@ -29,7 +29,7 @@ test('preflight forwards failure from exact service without lifecycle commands',
   const result=spawnSync('sh',['scripts/preflight-container-logs.sh'],{cwd:root,env:{...process.env,PATH:dir+':'+process.env.PATH,CALLS:path.join(dir,'calls'),APP_ENV:'dev',APP_SERVICE:'dev_app'},encoding:'utf8'});
   assert.equal(result.status,42);
   const call=fs.readFileSync(path.join(dir,'calls'),'utf8');
-  assert.match(call,/compose --env-file .env.dev -f docker-compose.yaml run --rm --no-deps -T --user 1000:1000 --entrypoint node dev_app -/);
+  assert.match(call,/compose --env-file .env.dev -f docker-compose.yaml config --no-env-resolution --format json/);
   assert.doesNotMatch(call,/\b(stop|rm -f|up)\b/);
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

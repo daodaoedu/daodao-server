@@ -21,18 +21,18 @@ provider integration or deployment readiness.
 
 ## Required before rollout
 
-All current dev/prod/production Compose services bind `./logs:/app/logs`.
-The image's directory ownership is hidden by that mount. The deployment owner
-must check the exact host log directory and its existing files/rotation ACLs:
-UID/GID 1000 needs directory traversal, creation and rotation permissions.
-Coordinate ownership or a scoped ACL for that directory before deploying.
-Do not use `chmod 777`, run the application as root or recursively change a
-shared parent directory. This patch does not change any actual host directory.
+Only dev binds `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev:/app/logs`.
+Prod and production retain `./logs:/app/logs`; both write `prod-*` files and
+remain physically shared. Legacy dev history is retained there. The image's
+directory ownership is hidden by each mount. Prepare only the new dedicated dev
+leaf as UID/GID 1000 mode 0750, under a root-owned parent not writable by UID
+1000. Never recursively change a shared parent or existing production logs.
+Missing/unsafe sources block deployment; no root/chmod fallback is allowed.
 
-For a new dedicated directory, the operator can provision it for UID/GID 1000
-with mode 0750; existing logs require a reviewed migration/ACL plan. A root-owned
-0755 directory is intentionally insufficient. If permissions are not prepared,
-block deployment and retain the existing deployed image until they are ready.
+See [environment log isolation](environment-log-isolation.md) for the exact
+initializer CLI, preflight, snapshot, dev-only cutover and rollback plan. Those
+host operations require a separately authorized window; local checks do not
+prove host permissions or a completed rollout.
 
 The CD workflow now runs `scripts/preflight-container-logs.sh` after pulling the
 candidate and before stopping/removing the old container. It uses the exact

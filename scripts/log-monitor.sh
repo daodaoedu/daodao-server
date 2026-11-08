@@ -1,26 +1,20 @@
 #!/bin/bash
-
-# 日誌監控腳本
-LOG_DIR="./logs"
-
-# 檢查日誌目錄
-if [ ! -d "$LOG_DIR" ]; then
-    mkdir -p "$LOG_DIR"
-    echo "Created logs directory"
-fi
-
-# 檢查日誌文件大小
-echo "=== Log File Sizes ==="
-du -h $LOG_DIR/*.log 2>/dev/null || echo "No log files found"
-
-# 檢查錯誤日誌最新條目
-echo -e "\n=== Recent Errors ==="
-if [ -f "$LOG_DIR/error.log" ]; then
-    tail -n 5 "$LOG_DIR/error.log"
+set -eo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/log-consumer-scope.sh"
+log_consumer_scope "$@"
+log_consumer_directory_guard "$LOG_DIR"
+shopt -s nullglob
+if [ -n "$LOG_PREFIX" ]; then
+    files=("$LOG_DIR/$LOG_PREFIX"-*.log*)
+    errors=("$LOG_DIR/$LOG_PREFIX"-error-*.log)
 else
-    echo "No error log found"
+    files=("$LOG_DIR/"*)
+    errors=("$LOG_DIR/"*-error-*.log)
 fi
-
-# 檢查日誌輪轉狀態
-echo -e "\n=== Log Rotation Status ==="
-ls -lah $LOG_DIR/ 2>/dev/null || echo "Logs directory empty"
+printf 'Environment: %s\nSource: %s\n=== Log File Sizes ===\n' "$LOG_ENV" "$LOG_DIR"
+for file in "${files[@]}"; do [ ! -f "$file" ] || [ -L "$file" ] || du -h "$file"; done
+printf '\n=== Recent Errors ===\n'
+for file in "${errors[@]}"; do [ ! -f "$file" ] || [ -L "$file" ] || tail -n 5 "$file"; done
+printf '\n=== Log Rotation Status (selected files) ===\n'
+for file in "${files[@]}"; do [ ! -f "$file" ] || [ -L "$file" ] || ls -lah "$file"; done
