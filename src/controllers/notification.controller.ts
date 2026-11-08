@@ -82,6 +82,9 @@ export const updatePreferences = asyncHandler(async (req: Request, res: Response
  * - P1 優先，再依 created_at DESC
  * - cursor 分頁：?cursor=<id>&limit=20
  */
+/** 系統以團隊身分發出的通知顯示的 actor 名稱 */
+const TEAM_ACTOR_NAME = '島島團隊';
+
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user?.id) throw new UnauthorizedError('需要登入');
 
@@ -277,12 +280,16 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       isRead:           row.is_read ?? false,
       aggregationCount: row.aggregation_count ?? 1,
       createdAt:        row.created_at,
-      actor: {
-        id:       row.actor.external_id ?? '',
-        name:     row.actor.nickname ?? '',
-        photoURL: row.actor.contacts?.photo_url ?? undefined,
-        customId: row.actor.custom_id ?? null,
-      },
+      // 團隊回覆錯誤回報：actor 是回覆的管理者，對回報者只顯示「島島團隊」，
+      // 不回傳管理者的 id、暱稱、頭像、customId（daodao#451）
+      actor: row.type === NOTIFICATION_TYPES.FEEDBACK_REPLIED
+        ? { id: '', name: TEAM_ACTOR_NAME, photoURL: undefined, customId: null }
+        : {
+            id:       row.actor.external_id ?? '',
+            name:     row.actor.nickname ?? '',
+            photoURL: row.actor.contacts?.photo_url ?? undefined,
+            customId: row.actor.custom_id ?? null,
+          },
       ...(p.practice_title !== undefined        && { practiceTitle:        p.practice_title as string }),
       ...(p.intent !== undefined                && { connectMessage:        p.intent as string }),
       ...(p.content !== undefined               && { content:               p.content as string }),
