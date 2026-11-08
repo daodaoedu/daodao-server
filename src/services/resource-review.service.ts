@@ -269,24 +269,6 @@ export async function getReviews(
   }
 
 
-  // 調試：查詢所有評價（包括已刪除）
-  const testQuery = await prisma.resource_review.findMany({
-    where: { resources: PUBLIC_RESOURCE_WHERE },
-    select: { id: true, resource_id: true, status: true, user_id: true, deleted_at: true },
-    take: 10,
-    orderBy: { id: 'desc' }
-  });
-
-  // 臨時調試信息
-  if (filters.resourceId === '074d9c9d-313d-4246-bec6-665798acf53f') {
-    const debugInfo = {
-      allReviewsInDb: testQuery,
-      whereCondition: where,
-      resourceIdFilter: filters.resourceId
-    };
-    console.log('🔍 調試信息:', JSON.stringify(debugInfo, null, 2));
-  }
-
   // 查詢心得評價列表
   const reviews = await prisma.resource_review.findMany({
     where,
@@ -361,7 +343,6 @@ export async function getReviews(
     hasMore
   );
 
-  // 臨時調試：為特定資源返回調試信息
   const metaData: Record<string, unknown> = {
     searchQuery: filters.tags?.join(','),
     filters: {
@@ -372,14 +353,6 @@ export async function getReviews(
       maxScore: filters.maxScore
     }
   };
-
-  if (filters.resourceId === '074d9c9d-313d-4246-bec6-665798acf53f') {
-    metaData.debug = {
-      allReviewsInDb: testQuery,
-      finalWhereCondition: where,
-      reviewsFoundCount: reviews.length
-    };
-  }
 
   return createCursorPaginatedResponse(reviewList, {
     cursors: pagination_meta.cursors,
