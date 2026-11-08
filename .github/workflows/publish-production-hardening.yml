@@ -1,0 +1,105 @@
+name: Publish verified production hardening image
+
+'on':
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-hardening-image-publisher
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout trusted publisher
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Checkout frozen release definition
+        uses: actions/checkout@v4
+        with:
+          ref: 662bd2c96b22aa5ef86e92c1c22d081d8ab5c0d9
+          path: release-definition
+          persist-credentials: false
+      - name: Install pnpm before Node cache initialization
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: release-definition/pnpm-lock.yaml
+      - name: Install frozen dependencies without lifecycle scripts
+        working-directory: release-definition
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Download Prisma CLI engines for isolated fixtures
+        working-directory: release-definition
+        env:
+          DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/hardening_fixture
+        run: pnpm exec prisma generate
+      - name: Pull pinned candidate base and local fixture images
+        run: |
+          docker pull --platform linux/amd64 vincentxxx/app@sha256:9f4e7c959e44be88340737494238e0cecab2b60fc56e2f646ee6e64d8b8647d8
+          docker pull --platform linux/amd64 postgres:14
+          docker pull --platform linux/amd64 redis:6.0-alpine
+      - name: Build and verify exact candidate with isolated fixtures
+        run: >-
+          python3 -I .github/scripts/production-hardening-release.py verify
+          --definition release-definition
+          --bundle "$RUNNER_TEMP/hardening-bundle"
+          --run-id "$GITHUB_RUN_ID"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --publisher-revision "$GITHUB_SHA"
+      - name: Preserve verified image and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-hardening-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hardening-bundle
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    if: github.ref == 'refs/heads/dev'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout trusted publisher
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download verified image and evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: production-hardening-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hardening-bundle
+      - name: Authenticate image publisher
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Publish verified image and read back remote identity
+        run: >-
+          python3 -I .github/scripts/production-hardening-release.py publish
+          --bundle "$RUNNER_TEMP/hardening-bundle"
+          --run-id "$GITHUB_RUN_ID"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --publisher-revision "$GITHUB_SHA"
+      - name: Preserve publication receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-hardening-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hardening-bundle/publication-receipt.json
+          retention-days: 7
+          if-no-files-found: error

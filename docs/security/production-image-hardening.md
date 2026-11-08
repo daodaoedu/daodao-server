@@ -125,3 +125,38 @@ startup-backlog requirements by retaining old code; it does not ship current
 dev's other security/product fixes. Full application upgrades remain a distinct
 release. #506 stays open until the real production window and required live
 isolation, writes, normal API and rotation evidence are complete.
+
+
+## Dedicated CI publisher
+
+After `publish-production-hardening.yml` is merged into the default `dev`
+branch, manually run **Publish verified production hardening image** on `dev`.
+There are no release inputs. This workflow freezes the release definition at
+`662bd2c96b22aa5ef86e92c1c22d081d8ab5c0d9` and the actual production base digest
+specified above; merging newer application changes does not include them in this
+image.
+
+The verification job has no Docker Hub credentials. It builds only the derivative,
+compares all 27,894 application artifact entries, runs isolated synthetic database
+and Redis fixtures, and verifies controlled old-image restoration. It exports the
+exact tested image with a checksum and run-bound receipt. Fixture dependencies and
+Prisma generation run on the runner, never inside the release image.
+
+A separate publishing job downloads that run's artifact and uses the existing
+`DOCKER_HUB_USERNAME` and `DOCKER_HUB_ACCESS_TOKEN` repository secrets. It loads
+and pushes the tested archive without rebuilding or running application code.
+Only `vincentxxx/app:production-hardening-662bd2c96b22-ci-<run>-<attempt>` is
+published. It then reads the registry config identity and pulls by digest to
+confirm the tested image ID. Obtain the immutable reference from the
+`production-hardening-publication-<run>-<attempt>` artifact's
+`publication-receipt.json`; retain that receipt with the approved release record.
+Workflow artifacts expire after seven days.
+
+If a run fails, use **Re-run all jobs** or start a new manual run. Re-running only
+the failed publishing job changes the attempt identity and cannot reuse an older
+attempt's verification artifact. A failed remote verification does not authorize
+cutover, even if the unique candidate tag was already pushed.
+
+This workflow performs no SSH, host directory preparation, Compose changes or
+production deployment. A successful publication makes a candidate available;
+the production maintenance window and live acceptance remain separate.
