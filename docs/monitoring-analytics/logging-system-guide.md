@@ -1,4 +1,4 @@
-> 部署路徑已改為 dev-only 隔離：dev 使用 `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev`，prod/production 仍共用 legacy `./logs` 並使用 `prod-*` 檔名。舊 dev 歷史未搬刪。主機操作請先依 [切換與回復計畫](../security/environment-log-isolation.md) 查核；下方 `/app/logs` 為容器內路徑，舊 `./logs` 主機範例僅適用 legacy。監控與下載必須明確傳 `--env dev|prod|production|legacy`，缺少 dev 來源不會 fallback。
+> 候選配置將 dev/prod/production 分別掛載 `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/{dev,prod,production}`，prod/production 仍使用 `prod-*` 檔名。現場只有 dev 已切換；production 仍在 legacy，正式切換另經核准。舊歷史未搬刪。主機操作依 [切換與回復計畫](../security/environment-log-isolation.md) 查核。監控與下載必須明確傳 `--env dev|prod|production|legacy`；新來源缺失不 fallback，遷移前的正式歷史請顯式使用 legacy。
 
 # DaoDao 日誌系統完整指南
 
@@ -202,7 +202,7 @@ tail -f /root/daodao-server/logs/prod-error-$(date +%F).log
 # 查看最新 100 行
 tail -n 100 /root/daodao-server/logs/prod-combined-$(date +%F).log
 
-# 監控腳本（prod / production 仍共用來源）
+# 監控腳本（prod / production 使用各自專屬來源；尚未遷移請用 --env legacy）
 bash scripts/log-monitor.sh --env prod
 ```
 
@@ -340,7 +340,7 @@ function shouldLogRequestBody(path: string, method: string): boolean {
 ```bash
 # 檢查目錄權限
 ls -la logs/
-# Do not chmod legacy logs; follow the reviewed dev-leaf preparation plan.
+# Do not chmod legacy logs; follow the reviewed selected-leaf preparation plan.
 
 # 檢查 Winston 配置
 grep -n "logs/" src/services/logging/logger.service.ts

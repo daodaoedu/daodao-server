@@ -12,8 +12,6 @@ x-prod-app-base: &prod-app-base
   networks:
     - prod-daodao-network
     - prod_network
-  volumes:
-    - ./logs:/app/logs
   # 健康檢查配置 - 必須明確定義才能讓 docker compose --wait 生效
   healthcheck:
     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
@@ -25,6 +23,12 @@ x-prod-app-base: &prod-app-base
 services:
   prod_app:
     <<: *prod-app-base
+    volumes:
+      - type: bind
+        source: ${DAODAO_LOG_ROOT:-/var/log/daodao-server}/prod
+        target: /app/logs
+        bind:
+          create_host_path: false
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-prod}${COMMIT_SHA:+-}${COMMIT_SHA}
     networks:
       prod-daodao-network:
@@ -37,6 +41,12 @@ services:
 
   production_app:
     <<: *prod-app-base
+    volumes:
+      - type: bind
+        source: ${DAODAO_LOG_ROOT:-/var/log/daodao-server}/production
+        target: /app/logs
+        bind:
+          create_host_path: false
     image: ${DOCKER_HUB_USERNAME}/app:${IMAGE_TAG:-production}${COMMIT_SHA:+-}${COMMIT_SHA}
     networks:
       prod-daodao-network:

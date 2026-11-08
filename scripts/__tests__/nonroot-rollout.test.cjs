@@ -35,12 +35,23 @@ test('preflight forwards failure from exact service without lifecycle commands',
 });
 
 test('production CD pair uses the shared prod env file',()=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nonroot-production-'));
+ const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'nonroot-production-')));
  try {
-  fs.writeFileSync(path.join(dir,'docker'),'#!/bin/sh\nprintf "%s\\n" "$*" > "$CALLS"\ncat >/dev/null\nexit 0\n',{mode:0o755});
+  fs.mkdirSync(path.join(dir,'production'));
+  fs.writeFileSync(path.join(dir,'config'),JSON.stringify({services:{production_app:{image:'candidate:test',volumes:[{type:'bind',source:path.join(dir,'production'),target:'/app/logs'}]}}}));
+  fs.writeFileSync(path.join(dir,'docker'),`#!/bin/sh
+printf '%s\\n' "$*" >> "$CALLS"
+case "$*" in
+ *'config --no-env-resolution --format json') cat "$CONFIG";;
+ 'run --rm -i '*) exec "$NODE" "$GUARD" "$CHECKOUT" production_app --paths;;
+ *'/metadata.cjs'*) exit 0;;
+ *'run --rm --no-deps '*) cat >/dev/null; exit 0;;
+ *) exit 95;;
+esac
+`,{mode:0o755});
   const workflow=fs.readFileSync(path.join(root,'.github/workflows/continuous-delivery.yml'),'utf8');
   assert.match(workflow,/APP_ENV:.*dev.*dev.*prod/);
-  const result=spawnSync('sh',['scripts/preflight-container-logs.sh'],{cwd:root,env:{...process.env,PATH:dir+':'+process.env.PATH,CALLS:path.join(dir,'calls'),APP_ENV:'prod',APP_SERVICE:'production_app'},encoding:'utf8'});
+  const result=spawnSync('sh',['scripts/preflight-container-logs.sh'],{cwd:root,env:{...process.env,PATH:dir+':'+process.env.PATH,CALLS:path.join(dir,'calls'),CONFIG:path.join(dir,'config'),NODE:process.execPath,GUARD:path.join(root,'scripts/log-directory-guard.cjs'),CHECKOUT:root,APP_ENV:'prod',APP_SERVICE:'production_app'},encoding:'utf8'});
   assert.equal(result.status,0,result.stderr);
   assert.match(fs.readFileSync(path.join(dir,'calls'),'utf8'),/--env-file .env.prod .* production_app -/);
  } finally {fs.rmSync(dir,{recursive:true,force:true});}

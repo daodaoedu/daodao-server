@@ -37,31 +37,31 @@ test('download selects remote source/filter and never falls back or deletes remo
  const bin=path.join(root,'bin');fs.mkdirSync(bin);const trace=path.join(root,'trace');
  for(const name of ['ssh','rsync']){fs.writeFileSync(path.join(bin,name),'#!/bin/bash\nprintf "%s\\n" "$0 $*" >> "$TRACE"\n'+(name==='ssh'?'exit "${SSH_STATUS:-0}"\n':'exit 0\n'));fs.chmodSync(path.join(bin,name),0o755);}
  const run=(env,extra={})=>spawnSync('bash',[path.join(repo,'scripts/other/download-logs.sh'),'--env',env],{cwd:root,encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,TRACE:trace,DAODAO_LOG_ROOT:'/fixture/new',...extra}});
- for(const env of ['dev','prod','production','legacy']){fs.writeFileSync(trace,'');const r=run(env);assert.equal(r.status,0,r.stderr);const calls=fs.readFileSync(trace,'utf8');assert.match(calls,new RegExp(env==='dev'?'/fixture/new/dev':'/root/daodao-server/logs'));if(env!=='legacy')assert.ok(calls.includes('--include=/'+(env==='dev'?'dev':'prod')+'-*.log*'));assert.doesNotMatch(calls,/--delete|remove-source|scp/);}
+ for(const env of ['dev','prod','production','legacy']){fs.writeFileSync(trace,'');const r=run(env);assert.equal(r.status,0,r.stderr);const calls=fs.readFileSync(trace,'utf8');assert.ok(calls.includes('daodao:'+(env==='legacy'?'/root/daodao-server/logs':'/fixture/new/'+env)+'/'),'exact rsync source must distinguish prod from production');if(env!=='legacy')assert.ok(calls.includes('--include=/'+(env==='dev'?'dev':'prod')+'-*.log*'));assert.doesNotMatch(calls,/--delete|remove-source|scp/);}
  fs.writeFileSync(trace,'');const r=run('dev',{SSH_STATUS:'1'});assert.notEqual(r.status,0);assert.doesNotMatch(fs.readFileSync(trace,'utf8'),/rsync|\/root\/daodao/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('cron installer pins environment and root in generated wrapper using only stub crontab',()=>{
+for(const selectedEnv of ['dev','prod','production']) test(selectedEnv+' cron installer pins environment and root in generated wrapper using only stub crontab',()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'log-cron-'));try{
  fs.cpSync(path.join(repo,'scripts'),path.join(root,'scripts'),{recursive:true});const bin=path.join(root,'bin');fs.mkdirSync(bin);const state=path.join(root,'crontab');fs.writeFileSync(state,'');
  fs.writeFileSync(path.join(bin,'crontab'),'#!/bin/bash\nif [ "$1" = -l ]; then cat "$STATE"; else cat > "$STATE"; fi\n');fs.chmodSync(path.join(bin,'crontab'),0o755);
- const r=spawnSync('bash',[path.join(root,'scripts/other/setup-log-backup-cron.sh'),'--env','dev'],{input:'1\n',encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,STATE:state,DAODAO_LOG_ROOT:'/fixture/new'}});assert.equal(r.status,0,r.stderr);
- const wrapper=fs.readFileSync(path.join(root,'scripts/other/download-logs-dev-cron-wrapper.sh'),'utf8');assert.match(wrapper,/export DAODAO_LOG_ROOT=\/fixture\/new/);assert.match(wrapper,/LOG_ENV=dev/);assert.match(wrapper,/--env "\$LOG_ENV"/);assert.match(fs.readFileSync(state,'utf8'),/download-logs-dev-cron-wrapper/);
+ const r=spawnSync('bash',[path.join(root,'scripts/other/setup-log-backup-cron.sh'),'--env',selectedEnv],{input:'1\n',encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,STATE:state,DAODAO_LOG_ROOT:'/fixture/new'}});assert.equal(r.status,0,r.stderr);
+ const wrapper=fs.readFileSync(path.join(root,'scripts/other/download-logs-'+selectedEnv+'-cron-wrapper.sh'),'utf8');assert.match(wrapper,/export DAODAO_LOG_ROOT=\/fixture\/new/);assert.ok(wrapper.includes('LOG_ENV='+selectedEnv));assert.match(wrapper,/--env "\$LOG_ENV"/);assert.ok(fs.readFileSync(state,'utf8').includes('download-logs-'+selectedEnv+'-cron-wrapper'));
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('dev consumers reject ancestor symlink aliases locally and in executed remote metadata command',()=>{
+for(const selectedEnv of ['dev','prod','production']) test(selectedEnv+' consumers reject ancestor symlink aliases locally and in executed remote metadata command',()=>{
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'log-alias-')));try{
- fs.mkdirSync(path.join(root,'legacy/dev'),{recursive:true});fs.writeFileSync(path.join(root,'legacy/dev/dev-error-2026-11-08.log'),'ALIAS_SECRET');fs.symlinkSync(path.join(root,'legacy'),path.join(root,'alias'));
+ fs.mkdirSync(path.join(root,'legacy',selectedEnv),{recursive:true});fs.writeFileSync(path.join(root,'legacy',selectedEnv,(selectedEnv==='dev'?'dev':'prod')+'-error-2026-11-08.log'),'ALIAS_SECRET');fs.symlinkSync(path.join(root,'legacy'),path.join(root,'alias'));
  const bin=path.join(root,'bin');fs.mkdirSync(bin);const trace=path.join(root,'trace');
  fs.writeFileSync(path.join(bin,'ssh'),'#!/bin/bash\nprintf "%s\\n" "$*" >> "$TRACE"\nsh -c "${@: -1}"\n');fs.chmodSync(path.join(bin,'ssh'),0o755);
  fs.writeFileSync(path.join(bin,'rsync'),'#!/bin/bash\necho RSYNC_CALLED >> "$TRACE"\n');fs.chmodSync(path.join(bin,'rsync'),0o755);
- for(const script of ['scripts/log-monitor.sh','scripts/download-logs.sh']){const r=spawnSync('bash',[path.join(repo,script),'--env','dev'],{cwd:root,encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,TRACE:trace,DAODAO_LOG_ROOT:path.join(root,'alias')}});assert.notEqual(r.status,0,script);assert.doesNotMatch(r.stdout,/ALIAS_SECRET/);}
+ for(const script of ['scripts/log-monitor.sh','scripts/download-logs.sh']){const r=spawnSync('bash',[path.join(repo,script),'--env',selectedEnv],{cwd:root,encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,TRACE:trace,DAODAO_LOG_ROOT:path.join(root,'alias')}});assert.notEqual(r.status,0,script);assert.doesNotMatch(r.stdout,/ALIAS_SECRET/);}
  assert.doesNotMatch(fs.readFileSync(trace,'utf8'),/RSYNC_CALLED/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
-test('dev scope rejects legacy/checkout nesting and ambiguous roots before external access',()=>{
+for(const selectedEnv of ['dev','prod','production']) test(selectedEnv+' scope rejects legacy/checkout nesting and ambiguous roots before external access',()=>{
  for(const root of ['/root/daodao-server/logs','/root/daodao-server',repo,path.join(repo,'logs'),'/var/log/../legacy','/var//log','relative']){
- const r=spawnSync('bash',['-c','source "$1"; log_consumer_scope --env dev','scope-test',path.join(repo,'scripts/log-consumer-scope.sh')],{encoding:'utf8',env:{...process.env,DAODAO_LOG_ROOT:root}});assert.notEqual(r.status,0,root);assert.match(r.stderr,/Unsafe|overlap|absolute/);
+ const r=spawnSync('bash',['-c','source "$1"; log_consumer_scope --env "$2"','scope-test',path.join(repo,'scripts/log-consumer-scope.sh'),selectedEnv],{encoding:'utf8',env:{...process.env,DAODAO_LOG_ROOT:root}});assert.notEqual(r.status,0,root);assert.match(r.stderr,/Unsafe|overlap|absolute/);
  }
 });
 test('cron cancellation and failed install preserve existing wrapper and schedule; approval updates both',()=>{
@@ -84,5 +84,17 @@ test('cron read errors fail closed while explicit no-crontab permits first insta
  const run=(mode)=>spawnSync('bash',[path.join(root,'scripts/other/setup-log-backup-cron.sh'),'--env','dev'],{input:'1\ny\n',encoding:'utf8',env:{...process.env,PATH:bin+':'+process.env.PATH,STATE:state,WRITES:writes,READ_MODE:mode,DAODAO_LOG_ROOT:'/fixture/new'}});
  let r=run('error');assert.notEqual(r.status,0,'unknown list error must abort');assert.deepEqual(fs.readFileSync(wrapper),oldWrapper);assert.deepEqual(fs.readFileSync(state),oldCron);assert.equal(fs.existsSync(writes),false);
  fs.unlinkSync(wrapper);fs.writeFileSync(state,'');r=run('absent');assert.equal(r.status,0,r.stderr);assert.match(fs.readFileSync(wrapper,'utf8'),/DAODAO_LOG_ROOT=\/fixture\/new/);assert.match(fs.readFileSync(state,'utf8'),/download-logs-dev-cron-wrapper/);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('every environment monitor selects its exact directory and prefix without fallback',()=>{
+ const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'log-monitor-isolation-')));try{
+ for(const env of ['dev','prod','production']) {fs.mkdirSync(path.join(root,env));for(const prefix of ['dev','prod'])fs.writeFileSync(path.join(root,env,prefix+'-error-2026-11-08.log'),env+'_'+prefix+'_VISIBLE');}
+ for(const env of ['dev','prod','production']) {
+ const run=()=>spawnSync('bash',[path.join(repo,'scripts/log-monitor.sh'),'--env',env],{encoding:'utf8',env:{...process.env,DAODAO_LOG_ROOT:root}});
+ const expected=env+'_'+(env==='dev'?'dev':'prod')+'_VISIBLE';let r=run();assert.equal(r.status,0,r.stderr);assert.ok(r.stdout.includes(expected));
+ for(const other of ['dev','prod','production'])for(const prefix of ['dev','prod'])if(other+'_'+prefix+'_VISIBLE'!==expected)assert.ok(!r.stdout.includes(other+'_'+prefix+'_VISIBLE'));
+ fs.rmSync(path.join(root,env),{recursive:true});r=run();assert.notEqual(r.status,0);assert.equal(fs.existsSync(path.join(root,env)),false);
+ }
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
