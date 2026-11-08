@@ -4,6 +4,8 @@ import { authenticateAny } from '../middleware/auth'
 import upload from '../middleware/multer.middleware'
 import { requireOnboardingComplete } from '../middleware/onboarding-gate.middleware'
 import { bugReportLimiter } from '../middleware/rate-limit.middleware'
+import { registry } from '../config/openapi-registry'
+import { myBugReportListApiResponseSchema } from '../validators/feedback.validator'
 
 const router = Router()
 
@@ -21,6 +23,31 @@ router.post(
   bugReportLimiter,
   upload.array('screenshots', 3),
   feedbackController.submitBugReport as RequestHandler
+)
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/feedback/mine',
+  tags: ['Feedback'],
+  summary: '列出登入者自己送出的錯誤回報與團隊回覆（新到舊，最多 100 筆）',
+  responses: {
+    200: { description: '成功', content: { 'application/json': { schema: myBugReportListApiResponseSchema } } },
+    401: { $ref: '#/components/responses/UnauthorizedError' },
+    403: { $ref: '#/components/responses/ForbiddenError' },
+    500: { $ref: '#/components/responses/InternalServerError' },
+  },
+  security: [{ bearerAuth: [] }],
+})
+
+/**
+ * GET /api/v1/feedback/mine（daodao#451）
+ * - 只回 req.user 自己的回報；臨時用戶不會有回報（送出時就被 onboarding gate 擋），同樣擋掉避免 temp id 撞到 users id
+ */
+router.get(
+  '/mine',
+  authenticateAny as RequestHandler,
+  requireOnboardingComplete as RequestHandler,
+  feedbackController.listMyBugReports as RequestHandler
 )
 
 export default router

@@ -21,6 +21,10 @@ import { submitBugReport } from '@/services/feedback.service';
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+/** 唯一允許的 <a> 是 server 用 ADMIN_FRONTEND_URL + 數字 id 組的後台連結（daodao#451 AC-04），其他都不得出現 */
+const withoutAdminLink = (html: string): string =>
+  html.replace(/<a href="[^"]*\/admin\/feedback\?id=\d+">[^<]*<\/a>/, '');
+
 describe('feedback.service submitBugReport — notification email', () => {
   beforeEach(() => {
     mockSendEmail.mockReset().mockResolvedValue({ success: true });
@@ -41,7 +45,8 @@ describe('feedback.service submitBugReport — notification email', () => {
 
     expect(result).toEqual({ id: 42 });
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
-    const { html, subject } = mockSendEmail.mock.calls[0][0] as { html: string; subject: string };
+    const { html: rawHtml, subject } = mockSendEmail.mock.calls[0][0] as { html: string; subject: string };
+    const html = withoutAdminLink(rawHtml);
 
     // 不允許任何使用者帶進來的標籤或屬性存活
     expect(html).not.toMatch(/<script/i);
@@ -72,7 +77,7 @@ describe('feedback.service submitBugReport — notification email', () => {
     });
     await flush();
 
-    const { html } = mockSendEmail.mock.calls[0][0] as { html: string };
+    const html = withoutAdminLink((mockSendEmail.mock.calls[0][0] as { html: string }).html);
     expect(html).not.toMatch(/<script/i);
     expect(html).not.toMatch(/<a\s/i);
     expect(html).toContain('https://image.example/bug-reports/');

@@ -68,11 +68,13 @@ describe('adminFeedbackService.listFeedback', () => {
           id: 7, userId: 12, userName: '小島', content: '送出按鈕沒反應', category: 'bug', status: 'replied',
           createdAt: '2026-10-10T03:00:00.000Z', repliedAt: '2026-10-10T05:00:00.000Z',
           screenshots: ['https://storage-dev.daodao.so/bug-reports/1791698535059-fd8570e1.png'],
+          userEmail: null, bugReport: null,
           replies: [],
         },
         {
           id: 6, userId: null, userName: null, content: '希望有深色模式', category: 'feature', status: 'pending',
           createdAt: '2026-10-09T03:00:00.000Z', repliedAt: null, screenshots: [], replies: [],
+          userEmail: null, bugReport: null,
         },
       ],
     });
@@ -141,7 +143,7 @@ describe('adminFeedbackService.listFeedback 回覆內容（daodao#313）', () =>
 
     const result = await adminFeedbackService.listFeedback({ limit: 20, offset: 0 });
     expect(result.items[0].replies).toEqual([
-      { id: 3, content: '在右上角頭像選單', createdAt: '2026-10-21T05:00:00.123Z' },
+      { id: 3, content: '在右上角頭像選單', createdAt: '2026-10-21T05:00:00.123Z', emailStatus: null },
     ]);
 
     const listSql = prismaMock.$queryRaw.mock.calls
@@ -153,13 +155,18 @@ describe('adminFeedbackService.listFeedback 回覆內容（daodao#313）', () =>
 });
 
 describe('adminFeedbackService.replyToFeedback', () => {
-  beforeEach(() => setupTransactionMock());
+  // 寄信與站內通知的行為測試在 src/services/__tests__/admin-feedback-reply.test.ts（daodao#451）
+  beforeEach(() => {
+    setupTransactionMock();
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ user_id: null, content: '描述' }] as never)
+      .mockResolvedValueOnce([{ id: 31 }] as never);
+  });
 
   it('寫回覆後更新 feedback 時不碰不存在的 replied_at 欄位', async () => {
-    prismaMock.$executeRaw.mockResolvedValue(1 as never);
-    await expect(adminFeedbackService.replyToFeedback(7, '已修正，謝謝回報', 99)).resolves.toEqual({ sent: true });
+    await expect(adminFeedbackService.replyToFeedback(7, '已修正，謝謝回報', 99)).resolves.toMatchObject({ replyId: 31 });
 
-    const sqls = prismaMock.$executeRaw.mock.calls.map(([arg]) => sqlText(arg));
+    const sqls = prismaMock.$queryRaw.mock.calls.map(([arg]) => sqlText(arg));
     const update = sqls.find((s) => /UPDATE feedback SET/.test(s));
     expect(update).toBeDefined();
     expect(update).not.toMatch(/replied_at/);
@@ -167,19 +174,19 @@ describe('adminFeedbackService.replyToFeedback', () => {
   });
 
   it('回覆記下是哪位管理者回的（feedback_replies.admin_id）', async () => {
-    prismaMock.$executeRaw.mockResolvedValue(1 as never);
     await adminFeedbackService.replyToFeedback(7, '已修正', 99);
 
-    const insert = prismaMock.$executeRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
+    const insert = prismaMock.$queryRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
     expect(sqlText(insert?.[0])).toMatch(/admin_id/);
     expect(insert?.slice(1)).toEqual(expect.arrayContaining([7, 99, '已修正']));
   });
 
   it('回饋不存在時回 404，不寫入回覆（原本撞 FK 變 500）', async () => {
-    prismaMock.$executeRaw.mockResolvedValue(0 as never);
+    prismaMock.$queryRaw.mockReset();
+    prismaMock.$queryRaw.mockResolvedValueOnce([] as never);
     await expect(adminFeedbackService.replyToFeedback(404404, '已修正', 99)).rejects.toBeInstanceOf(NotFoundError);
 
-    const insert = prismaMock.$executeRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
+    const insert = prismaMock.$queryRaw.mock.calls.find(([arg]) => /INSERT INTO feedback_replies/.test(sqlText(arg)));
     expect(insert).toBeUndefined();
   });
 });

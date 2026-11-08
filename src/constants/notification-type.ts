@@ -50,6 +50,9 @@ export const NOTIFICATION_TYPES = {
   COHORT_WEEKLY_DIGEST: 'CohortWeeklyDigest',
   COHORT_MESSAGE:       'CohortMessage',
 
+  // 錯誤回報（daodao#451）：後台回覆後直接寫入 notifications，不經 notification_events
+  FEEDBACK_REPLIED: 'FeedbackReplied',
+
   // 週報（僅 email，無 InApp/Push）
   WEEKLY_DIGEST: 'WeeklyDigest',
 } as const;
