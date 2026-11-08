@@ -219,38 +219,6 @@ registry.register('WelcomeEmailRequest', welcomeEmailSchema);
 export type WelcomeEmailInput = z.infer<typeof welcomeEmailSchema>;
 
 // ===================================
-// 密碼重設郵件驗證器
-// ===================================
-
-export const passwordResetEmailSchema = z.object({
-  email: emailSchema.openapi({
-    description: '需要重設密碼的用戶郵件',
-    example: 'user@example.com'
-  }),
-  resetLink: z.string()
-    .url('請提供有效的重設連結')
-    .min(1, '重設連結為必填項')
-    .openapi({
-      description: '用戶點擊重設密碼的安全連結',
-      example: 'https://example.com/reset-password?token=xyz789',
-      format: 'uri'
-    }),
-  name: z.string()
-    .max(100, '姓名不能超過100個字符')
-    .optional()
-    .openapi({
-      description: '用戶的顯示姓名',
-      example: '王小明',
-      examples: ['王小明', 'John Doe', '李雅韻'],
-      maxLength: 100
-    })
-}).openapi('PasswordResetEmailRequest', {
-  description: '寄送密碼重設郵件的請求資料'
-});
-
-registry.register('PasswordResetEmailRequest', passwordResetEmailSchema);
-
-// ===================================
 // 馬拉松郵件驗證器
 // ===================================
 
@@ -730,7 +698,6 @@ export const emailValidators = {
   contact: contactEmailSchema,
   verification: verificationEmailSchema,
   welcome: welcomeEmailSchema,
-  passwordReset: passwordResetEmailSchema,
   marathon: marathonEmailSchema,
   custom: customEmailSchema,
   bulk: bulkEmailSchema,

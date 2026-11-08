@@ -17,7 +17,6 @@ import {
   contactEmailSchema,
   verificationEmailSchema,
   welcomeEmailSchema,
-  passwordResetEmailSchema,
   marathonEmailSchema,
   customEmailSchema,
   bulkEmailSchema,
@@ -149,32 +148,16 @@ registry.registerPath({
 });
 
 /**
- * POST /api/v1/email/password-reset - 發送密碼重設郵件
+ * POST /api/v1/email/password-reset - 已停用的遺留入口
  */
 registry.registerPath({
   method: 'post',
   path: '/api/v1/email/password-reset',
   tags: ['Email'],
-  summary: '發送密碼重設郵件',
-  description: '發送密碼重設連結給用戶。支援可選身份驗證（允許未登入用戶重設密碼）。',
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: passwordResetEmailSchema
-        }
-      }
-    }
-  },
+  summary: '密碼重設郵件入口已停用',
+  description: '此遺留入口已停用，回應「密碼重設功能暫時不可用」，不處理輸入資料或寄送郵件。',
+  deprecated: true,
   responses: {
-    200: {
-      description: '密碼重設郵件發送成功',
-      content: {
-        'application/json': {
-          schema: emailSuccessResponseSchema
-        }
-      }
-    },
     400: { $ref: '#/components/responses/BadRequestError' },
     500: { $ref: '#/components/responses/InternalServerError' }
   }
@@ -521,14 +504,9 @@ router.post('/welcome',
 
 /**
  * POST /email/password-reset
- * 發送密碼重設郵件
- * 支援可選身份驗證（允許未登入用戶重設密碼）
+ * 已停用的遺留密碼重設郵件入口
  */
-router.post('/password-reset',
-  optionalAuth,
-  validate(passwordResetEmailSchema, 'body'),
-  emailController.sendPasswordResetEmail as RequestHandler
-);
+router.post('/password-reset', emailController.sendPasswordResetEmail as RequestHandler);
 
 /**
  * POST /email/marathon
