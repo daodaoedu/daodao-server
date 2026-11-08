@@ -209,3 +209,11 @@ describe('feedbackReplySchema', () => {
     expect(feedbackReplySchema.safeParse({ content: '   ' }).success).toBe(false);
   });
 });
+
+describe('feedbackReplySchema 收件人欄位（daodao#451 AC-06）', () => {
+  it('request body 帶 to／email／recipient 也只留下 content，收件人無法由前端指定', () => {
+    expect(feedbackReplySchema.parse({
+      content: '謝謝回報', to: 'attacker@example.com', email: 'attacker@example.com', recipient: 'x@example.com',
+    })).toEqual({ content: '謝謝回報' });
+  });
+});
