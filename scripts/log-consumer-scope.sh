@@ -7,18 +7,18 @@ log_consumer_scope() {
     LOG_ENV=$2
     case "$LOG_ENV" in
         dev) LOG_DIR="${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev"; LOG_PREFIX=dev ;;
-        prod|production) LOG_DIR=/root/daodao-server/logs; LOG_PREFIX=prod ;;
+        prod|production) LOG_DIR="${DAODAO_LOG_ROOT:-/var/log/daodao-server}/$LOG_ENV"; LOG_PREFIX=prod ;;
         legacy) LOG_DIR=/root/daodao-server/logs; LOG_PREFIX='' ;;
         *) echo 'Invalid --env: use dev|prod|production|legacy' >&2; return 2 ;;
     esac
     # Paths enter remote shell commands: reject shell syntax and relative/ambiguous paths.
     case "$LOG_DIR" in /*) ;; *) echo 'Log root must be absolute' >&2; return 2;; esac
     case "$LOG_DIR" in *[!a-zA-Z0-9_./-]*|*/../*|*/./*|*//*|*/..) echo 'Unsafe log root' >&2; return 2;; esac
-    if [ "$LOG_ENV" = dev ]; then
+    if [ "$LOG_ENV" != legacy ]; then
         local consumer_checkout
         consumer_checkout=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P) || return 2
         case "$LOG_DIR/" in
-            /root/daodao-server/*|"$consumer_checkout/"*) echo 'Dev log source overlaps checkout/legacy tree' >&2; return 2 ;;
+            /root/daodao-server/*|"$consumer_checkout/"*) echo 'Log source overlaps checkout/legacy tree' >&2; return 2 ;;
         esac
     fi
 }

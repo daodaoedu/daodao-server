@@ -21,16 +21,15 @@ provider integration or deployment readiness.
 
 ## Required before rollout
 
-Only dev binds `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev:/app/logs`.
-Prod and production retain `./logs:/app/logs`; both write `prod-*` files and
-remain physically shared. Legacy dev history is retained there. The image's
-directory ownership is hidden by each mount. Prepare only the new dedicated dev
+Candidate configuration binds each service to its dedicated `${DAODAO_LOG_ROOT:-/var/log/daodao-server}/{dev,prod,production}` leaf. Only dev has live cutover evidence; production initialization and cutover require a separate approved window.
+Current live production still uses `./logs:/app/logs`; it has not been migrated by this candidate. Both production selectors keep the `prod-*` filename prefix, while candidate mounts are separate. Legacy dev history is retained. The image's
+directory ownership is hidden by each mount. Prepare only the selected dedicated
 leaf as UID/GID 1000 mode 0750, under a root-owned parent not writable by UID
 1000. Never recursively change a shared parent or existing production logs.
 Missing/unsafe sources block deployment; no root/chmod fallback is allowed.
 
 See [environment log isolation](environment-log-isolation.md) for the exact
-initializer CLI, preflight, snapshot, dev-only cutover and rollback plan. Those
+initializer CLI, preflight, snapshot, per-service cutover and rollback plan. Those
 host operations require a separately authorized window; local checks do not
 prove host permissions or a completed rollout.
 
