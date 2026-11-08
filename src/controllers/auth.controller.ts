@@ -589,32 +589,23 @@ export const resendVerificationEmail = asyncHandler(async (req: Request, res: Re
     }
   });
 
-  if (!user) {
-    throw new NotFoundError('找不到此電子郵件對應的用戶');
+  if (user && !user.verified) {
+    const newToken = jwtService.generateToken({
+      id: user.id,
+      _id: user.external_id || '',
+      isTemp: false,
+    });
+
+    await emailService.sendVerificationEmail(
+      email,
+      `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
+      user.nickname || undefined,
+      user.id
+    );
   }
-
-  // 檢查是否已驗證
-  if (user.verified) {
-    throw new BadRequestError('此郵件已經驗證過了');
-  }
-
-  // 生成新的驗證 token
-  const newToken = jwtService.generateToken({
-    id: user.id,
-    _id: user.external_id || '',
-    isTemp: false,
-  });
-
-  // 發送驗證郵件（含 log 記錄）
-  await emailService.sendVerificationEmail(
-    email,
-    `${process.env.BACKEND_URL}/api/v1/auth/verify-email?token=${newToken}`,
-    user.nickname || undefined,
-    user.id
-  );
 
   const response = createSuccessResponse({
-    message: '驗證郵件已重新發送'
+    message: '如果此電子郵件已註冊且尚未驗證，驗證郵件已發送'
   });
 
   res.json(response);
