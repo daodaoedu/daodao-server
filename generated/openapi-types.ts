@@ -19984,7 +19984,6 @@ export interface paths {
                         frequencyMinDays?: number | null;
                         frequencyMaxDays?: number | null;
                         sessionDurationMinutes?: number | null;
-                        /** @default [] */
                         practiceTimePeriods?: ("morning" | "afternoon" | "evening" | "night" | "commute")[];
                         /** @description 自訂執行時段（practice_templates.other_context） */
                         timingOther?: string | null;
@@ -19997,7 +19996,6 @@ export interface paths {
                         }[];
                         /**
                          * @description draft：儲存草稿；ready：完成新增／更新
-                         * @default ready
                          * @enum {string}
                          */
                         status?: "draft" | "ready";
