@@ -143,6 +143,7 @@ needed for these consumer tests.
    APP_ENV=dev APP_SERVICE=dev_app sh scripts/preflight-container-logs.sh
    ```
 
+   Host Python 3 (verified during preparation) selects the exact service image from effective JSON; a missing interpreter or invalid image aborts before stop/remove.
    This uses the candidate image's Node for boundary validation and a read-only
    metadata gate (dev leaf exactly UID/GID 1000 and mode 0750 without special
    bits; root-owned parent with no group/other write permission), then performs
