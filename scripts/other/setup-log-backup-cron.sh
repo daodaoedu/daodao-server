@@ -13,6 +13,8 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../log-consumer-scope.sh"
+log_consumer_scope "$@"
 DOWNLOAD_SCRIPT="$SCRIPT_DIR/download-logs.sh"
 CRON_LOG_FILE="$SCRIPT_DIR/../../logs/cron-backup.log"
 
@@ -26,10 +28,8 @@ if [ ! -f "$DOWNLOAD_SCRIPT" ]; then
 fi
 
 # 確保腳本有執行權限
-chmod +x "$DOWNLOAD_SCRIPT"
+# Downloader is invoked through bash; source permissions are unchanged.
 
-# 建立日誌目錄
-mkdir -p "$(dirname "$CRON_LOG_FILE")"
 
 echo "請選擇備份頻率："
 echo "1) 每天凌晨 2:00 備份（推薦）"
@@ -69,9 +69,56 @@ case $choice in
         ;;
 esac
 
-# 建立 wrapper 腳本（處理非互動式執行）
-WRAPPER_SCRIPT="$SCRIPT_DIR/download-logs-cron-wrapper.sh"
-cat > "$WRAPPER_SCRIPT" << 'EOF'
+# Read and obtain approval before writing any wrapper or cron state.
+WRAPPER_SCRIPT="$SCRIPT_DIR/download-logs-$LOG_ENV-cron-wrapper.sh"
+if CURRENT_CRON=$(LC_ALL=C crontab -l 2>&1); then
+    :
+else
+    CRON_READ_STATUS=$?
+    NO_CRONTAB_PATTERN='^(crontab: )?no crontab for [a-zA-Z0-9_.-]+$'
+    if [ "$CRON_READ_STATUS" -eq 1 ] && [[ "$CURRENT_CRON" =~ $NO_CRONTAB_PATTERN ]]; then
+        CURRENT_CRON=''
+    else
+        echo 'Cannot read existing crontab; no backup settings were changed' >&2
+        exit 1
+    fi
+fi
+if [ -e "$WRAPPER_SCRIPT" ] || printf '%s\n' "$CURRENT_CRON" | grep -Fq "$WRAPPER_SCRIPT"; then
+    echo -e "${YELLOW}偵測到已存在的日誌備份設定${NC}"
+    read -p "是否覆蓋？(y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "已取消"
+        exit 0
+    fi
+fi
+
+# Stage locally and restore the exact prior wrapper if crontab rejects install.
+STAGE_DIR=$(mktemp -d "$SCRIPT_DIR/.log-backup.XXXXXX")
+WRAPPER_CANDIDATE="$STAGE_DIR/wrapper"
+WRAPPER_INSTALLED=no
+COMMITTED=no
+HAD_WRAPPER=no
+if [ -e "$WRAPPER_SCRIPT" ]; then
+    cp -p "$WRAPPER_SCRIPT" "$STAGE_DIR/previous-wrapper"
+    HAD_WRAPPER=yes
+fi
+cleanup() {
+    if [ "$WRAPPER_INSTALLED" = yes ] && [ "$COMMITTED" != yes ]; then
+        if [ "$HAD_WRAPPER" = yes ]; then
+            mv -f "$STAGE_DIR/previous-wrapper" "$WRAPPER_SCRIPT"
+        else
+            rm -f "$WRAPPER_SCRIPT"
+        fi
+    fi
+    rm -rf "$STAGE_DIR"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+printf '#!/bin/bash\nexport DAODAO_LOG_ROOT=%q\nLOG_ENV=%q\n' "${DAODAO_LOG_ROOT:-/var/log/daodao-server}" "$LOG_ENV" > "$WRAPPER_CANDIDATE"
+cat >> "$WRAPPER_CANDIDATE" << 'EOF'
 #!/bin/bash
 # Cron wrapper for download-logs.sh (非互動式執行)
 
@@ -88,15 +135,9 @@ mkdir -p "$(dirname "$LOG_FILE")"
 echo "========================================" >> "$LOG_FILE"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] 開始自動備份" >> "$LOG_FILE"
 
-# 執行下載腳本（自動回答所有互動式問題）
-# 第一個問題：是否下載整個目錄 -> 回答 y
-# 第二個問題：是否刪除 .gz 檔案 -> 回答 n（保留）
-{
-    echo "y"
-    echo "n"
-} | "$DOWNLOAD_SCRIPT" >> "$LOG_FILE" 2>&1
-
-EXIT_CODE=$?
+# Downloader is noninteractive and retains compressed local copies.
+EXIT_CODE=0
+bash "$DOWNLOAD_SCRIPT" --env "$LOG_ENV" >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✓ 備份成功" >> "$LOG_FILE"
@@ -110,28 +151,21 @@ echo "" >> "$LOG_FILE"
 exit $EXIT_CODE
 EOF
 
-chmod +x "$WRAPPER_SCRIPT"
-
-# 加入 crontab
+chmod +x "$WRAPPER_CANDIDATE"
 CRON_JOB="$CRON_SCHEDULE $WRAPPER_SCRIPT"
 CRON_COMMENT="# DaoDao 日誌自動備份 - $DESCRIPTION"
-
-# 檢查是否已存在
-if crontab -l 2>/dev/null | grep -q "download-logs"; then
-    echo -e "${YELLOW}偵測到已存在的日誌備份 cron job${NC}"
-    read -p "是否覆蓋？(y/n): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "已取消"
-        exit 0
-    fi
-
-    # 移除舊的
-    crontab -l 2>/dev/null | grep -v "download-logs" | crontab -
+# Build one replacement table; never remove the active job in a separate write.
+{
+    printf '%s\n' "$CURRENT_CRON" | grep -Fv "$WRAPPER_SCRIPT" || true
+    printf '\n%s\n%s\n' "$CRON_COMMENT" "$CRON_JOB"
+} > "$STAGE_DIR/crontab"
+mv -f "$WRAPPER_CANDIDATE" "$WRAPPER_SCRIPT"
+WRAPPER_INSTALLED=yes
+if ! crontab - < "$STAGE_DIR/crontab"; then
+    echo 'Cron install failed; restoring previous wrapper' >&2
+    exit 1
 fi
-
-# 加入新的 cron job
-(crontab -l 2>/dev/null; echo ""; echo "$CRON_COMMENT"; echo "$CRON_JOB") | crontab -
+COMMITTED=yes
 
 echo ""
 echo -e "${GREEN}✓ Cron job 設定成功！${NC}"
@@ -145,6 +179,6 @@ crontab -l | tail -5
 echo ""
 echo "提示："
 echo "  - 查看備份日誌: tail -f $CRON_LOG_FILE"
-echo "  - 手動執行測試: $DOWNLOAD_SCRIPT"
+echo "  - 手動執行測試: bash $DOWNLOAD_SCRIPT --env $LOG_ENV"
 echo "  - 移除 cron job: crontab -e（然後刪除相關行）"
 echo "  - 查看所有 cron: crontab -l"
