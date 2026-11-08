@@ -7000,46 +7000,6 @@
         ],
         "description": "寄送歡迎信給新用戶的請求資料。根據 referralSource 決定使用哪個版本：social-media（找到你的學習社群）、community（和學習夥伴一起走）或 default（詳細引導）"
       },
-      "PasswordResetEmailRequest": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "minLength": 1,
-            "format": "email",
-            "description": "需要重設密碼的用戶郵件",
-            "example": "user@example.com",
-            "examples": [
-              "user@example.com",
-              "john.doe@company.com",
-              "student@university.edu"
-            ]
-          },
-          "resetLink": {
-            "type": "string",
-            "minLength": 1,
-            "format": "uri",
-            "description": "用戶點擊重設密碼的安全連結",
-            "example": "https://example.com/reset-password?token=xyz789"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "description": "用戶的顯示姓名",
-            "example": "王小明",
-            "examples": [
-              "王小明",
-              "John Doe",
-              "李雅韻"
-            ]
-          }
-        },
-        "required": [
-          "email",
-          "resetLink"
-        ],
-        "description": "寄送密碼重設郵件的請求資料"
-      },
       "MarathonEmailRequest": {
         "type": "object",
         "properties": {
@@ -44827,28 +44787,10 @@
         "tags": [
           "Email"
         ],
-        "summary": "發送密碼重設郵件",
-        "description": "發送密碼重設連結給用戶。支援可選身份驗證（允許未登入用戶重設密碼）。",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PasswordResetEmailRequest"
-              }
-            }
-          }
-        },
+        "summary": "密碼重設郵件入口已停用",
+        "description": "此遺留入口已停用，回應「密碼重設功能暫時不可用」，不處理輸入資料或寄送郵件。",
+        "deprecated": true,
         "responses": {
-          "200": {
-            "description": "密碼重設郵件發送成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailSuccessResponse"
-                }
-              }
-            }
-          },
           "400": {
             "$ref": "#/components/responses/BadRequestError"
           },
