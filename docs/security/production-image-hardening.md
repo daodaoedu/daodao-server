@@ -136,6 +136,12 @@ There are no release inputs. This workflow freezes the release definition at
 specified above; merging newer application changes does not include them in this
 image.
 
+Both jobs explicitly configure their disposable CI Docker daemon to use the
+classic image store. The identity checks compare Docker image IDs to immutable
+config digests; Docker 29 containerd stores use manifest/index identity instead.
+This setting applies only to CI runners, never to the production host. Neither
+the pinned base nor the identity checks are changed to accommodate runner defaults.
+
 The verification job has no Docker Hub credentials. It builds only the derivative,
 compares all 27,894 application artifact entries, runs isolated synthetic database
 and Redis fixtures, and verifies controlled old-image restoration. It exports the
