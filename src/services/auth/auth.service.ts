@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '../database/prisma.service';
+import { Prisma } from '../../../generated/prisma';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { jwtService } from '../jwt.service';
@@ -102,20 +103,40 @@ export const findOrCreateTempUser = async (profile: {
     });
 
     if (existingByEmail) {
+      // 另一個相同 Google 身分的登入可能已在兩次查詢之間完成建立。
+      if (existingByEmail.google_id === googleId) {
+        return createSuccessResponse({ user: existingByEmail, isNewUser: false });
+      }
       throw new ConflictError('此電子郵件已被使用');
     }
 
-    // 創建新的臨時用戶
-    tempUser = await prisma.temp_users.create({
-      data: {
-        google_id: googleId,
-        email,
-        name,
-        photo_url: photoUrl
+    try {
+      tempUser = await prisma.temp_users.create({
+        data: {
+          google_id: googleId,
+          email,
+          name,
+          photo_url: photoUrl
+        }
+      });
+      isNewUser = true;
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
       }
-    });
+      const target = error.meta?.target;
+      if (!Array.isArray(target) || target.length !== 1 || !['google_id', 'email'].includes(target[0])) {
+        throw error;
+      }
 
-    isNewUser = true;
+      // 唯一鍵競爭只能依穩定的 Google 身分重讀，不能依 email 登入其他帳號。
+      tempUser = await prisma.temp_users.findFirst({ where: { google_id: googleId } });
+      if (!tempUser) {
+        const emailCollision = await prisma.temp_users.findFirst({ where: { email } });
+        if (emailCollision) throw new ConflictError('此電子郵件已被使用');
+        throw error;
+      }
+    }
   }
 
   return createSuccessResponse({ user: tempUser, isNewUser });
