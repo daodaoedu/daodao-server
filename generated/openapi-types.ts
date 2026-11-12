@@ -22209,7 +22209,7 @@ export interface paths {
                                     id: number;
                                     /**
                                      * Format: uuid
-                                     * @description 實踐公開識別碼，用於連到參與者打卡頁
+                                     * @description 實踐公開識別碼（UUID），用於連到參與者打卡頁
                                      */
                                     externalId: string | null;
                                     title: string;
