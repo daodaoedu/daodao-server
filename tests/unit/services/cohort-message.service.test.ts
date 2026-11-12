@@ -15,10 +15,11 @@ describe('cohortMessageService', () => {
   it('lists a participant practice check-ins newest first for the drawer', async () => {
     prismaMock.cohorts.findFirst.mockResolvedValue(cohort as never);
     prismaMock.cohort_enrollments.findFirst.mockResolvedValue(enrollment as never);
-    prismaMock.practices.findFirst.mockResolvedValue({ id: 31, title: '自訂', start_date: null, end_date: null, practice_templates: { title: '每天寫下一件小事' } } as never);
+    prismaMock.practices.findFirst.mockResolvedValue({ id: 31, external_id: '3f2b1c4e-8a9d-4e5f-9b6a-1c2d3e4f5a6b', title: '自訂', start_date: null, end_date: null, practice_templates: { title: '每天寫下一件小事' } } as never);
     prismaMock.practice_checkins.findMany.mockResolvedValue([{ id: 9, checkin_date: new Date('2026-02-24T00:00:00Z'), mood: 'good', note: '只寫了兩行', image_urls: [], created_at: new Date('2026-02-24T10:00:00Z') }] as never);
     const result = await cohortMessageService.listCheckins(2, 8, 42, 77, 31);
     expect(result.participant).toEqual({ userId: 77, nickname: '小島', avatar: 'a.png' });
+    expect(result.practice.externalId).toBe('3f2b1c4e-8a9d-4e5f-9b6a-1c2d3e4f5a6b');
     expect(result.practice.title).toBe('每天寫下一件小事');
     expect(result.items[0]).toEqual(expect.objectContaining({ id: 9, note: '只寫了兩行', mood: 'good' }));
     expect(prismaMock.practices.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 31, cohort_id: 8, user_id: 77, deleted_at: null } }));

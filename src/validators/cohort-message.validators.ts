@@ -30,7 +30,7 @@ export const createCohortMessageTemplateSchema = z.object({
 
 export const cohortParticipantCheckinsResponseSchema = z.object({
   participant: z.object({ userId: z.number().int(), nickname: z.string().nullable(), avatar: z.string().nullable() }),
-  practice: z.object({ id: z.number().int(), title: z.string(), startDate: z.date().nullable(), endDate: z.date().nullable() }),
+  practice: z.object({ id: z.number().int(), externalId: z.string().uuid().nullable().openapi({ description: '實踐公開識別碼，用於連到參與者打卡頁' }), title: z.string(), startDate: z.date().nullable(), endDate: z.date().nullable() }),
   total: z.number().int().nonnegative(),
   items: z.array(z.object({
     id: z.number().int(), checkinDate: z.date(), mood: z.string().nullable(), note: z.string().nullable(),
