@@ -28,9 +28,10 @@ export const createCohortMessageTemplateSchema = z.object({
   body: z.string().trim().min(1).max(2000).openapi({ description: '範本內容', example: '看到你連續打卡一週了，節奏抓得很穩，繼續加油！' })
 });
 
+// practice.externalId 不用 .uuid()：回應會經 .parse，既有資料若有非 RFC 版本位元的 UUID 會讓整個抽屜 500（daodao#524 spec audit U4）
 export const cohortParticipantCheckinsResponseSchema = z.object({
   participant: z.object({ userId: z.number().int(), nickname: z.string().nullable(), avatar: z.string().nullable() }),
-  practice: z.object({ id: z.number().int(), title: z.string(), startDate: z.date().nullable(), endDate: z.date().nullable() }),
+  practice: z.object({ id: z.number().int(), externalId: z.string().nullable().openapi({ description: '實踐公開識別碼（UUID），用於連到參與者打卡頁', format: 'uuid' }), title: z.string(), startDate: z.date().nullable(), endDate: z.date().nullable() }),
   total: z.number().int().nonnegative(),
   items: z.array(z.object({
     id: z.number().int(), checkinDate: z.date(), mood: z.string().nullable(), note: z.string().nullable(),

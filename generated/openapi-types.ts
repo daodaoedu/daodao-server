@@ -22207,6 +22207,11 @@ export interface paths {
                                 };
                                 practice: {
                                     id: number;
+                                    /**
+                                     * Format: uuid
+                                     * @description 實踐公開識別碼（UUID），用於連到參與者打卡頁
+                                     */
+                                    externalId: string | null;
                                     title: string;
                                     /** Format: date-time */
                                     startDate: string | null;
@@ -23092,6 +23097,8 @@ export interface paths {
                                     checkinCount: number;
                                     /** @description 這位參與者打卡收到的留言與回應數 */
                                     responseCount: number;
+                                    /** @description 這位參與者在本場次其他成員打卡下發佈的留言數（以人計，同一人各實踐列相同） */
+                                    publishedCommentCount: number;
                                     /**
                                      * Format: date-time
                                      * @description 最後一次打卡或收到回應的時間
