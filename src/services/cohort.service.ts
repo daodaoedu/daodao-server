@@ -7,6 +7,7 @@ import { prisma } from './database/prisma.service';
 import { randomUUID } from 'crypto';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import type { CohortInteractionMode, CohortFeeType, CohortSignupMethod } from '../constants/cohort-setup';
+import { recordCohortPublication } from './cohort-activation-evidence.service';
 import { ensureRoom } from './chat-room.service';
 
 /** Prisma select 含新欄位與 sessions */
@@ -324,6 +325,8 @@ const create = async (programId: number, input: CreateCohortInput, userId: numbe
         select
       });
 
+      await recordCohortPublication(tx, userId, created.id, null, created.status);
+
       // 建立 sessions
       if (input.sessions && input.sessions.length > 0 && !normalized.clearSessions) {
         await tx.cohort_sessions.createMany({
@@ -469,6 +472,8 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
                   ${JSON.stringify({ isPrivate: mergedIsPrivate, affectedPracticeCount })}::jsonb)
         `;
       }
+
+      await recordCohortPublication(tx, userId, cohortId, current.status, input.status ?? current.status);
 
       // 重新 select 含最新的 sessions
       const final = await tx.cohorts.findUniqueOrThrow({ where: { id: cohortId }, select });

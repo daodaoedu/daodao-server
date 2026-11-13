@@ -7,6 +7,7 @@ import { notificationEventService } from './notification-event.service';
 import { INITIAL_PROGRESS } from '../utils/practice-progress';
 import { appendSystemMessage } from './chat-room.service';
 import { CHAT_SYSTEM_EVENTS } from '../constants/chat';
+import { recordCohortActivationJoin } from './cohort-activation-evidence.service';
 import { getCohortUnavailableReasons } from '../domain/cohort.rules';
 
 const visibilityNotice = '加入後，你的本期打卡內容將對教練與同期學員可見。';
@@ -162,6 +163,7 @@ const join = async (token: string, userId: number, consent: boolean, now = new D
         select: { id: true, cohort_id: true, status: true }
       });
     await ensureCohortDrafts(tx, cohort.id, userId);
+    await recordCohortActivationJoin(tx, userId, cohort.id, enrollment.id, target.invitation !== null);
     return { enrollmentId: enrollment.id, cohortId: enrollment.cohort_id, status: 'joined' as const, newlyJoined: true };
   });
 
