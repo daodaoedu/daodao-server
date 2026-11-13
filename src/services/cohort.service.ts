@@ -396,6 +396,7 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
 
   try {
     const result = await prisma.$transaction(async tx => {
+      const [locked] = await tx.$queryRaw<Array<{status:string}>>`SELECT status FROM cohorts WHERE id=${cohortId} FOR UPDATE`;
       await tx.cohorts.update({
         where: { id: cohortId },
         data: {
@@ -473,7 +474,7 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
         `;
       }
 
-      await recordCohortPublication(tx, userId, cohortId, current.status, input.status ?? current.status);
+      await recordCohortPublication(tx, userId, cohortId, locked.status, input.status ?? locked.status);
 
       // 重新 select 含最新的 sessions
       const final = await tx.cohorts.findUniqueOrThrow({ where: { id: cohortId }, select });

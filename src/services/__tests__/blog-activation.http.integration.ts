@@ -354,6 +354,18 @@ it("executes publication, targeted invitation, join and checkin through real HTT
 			joined_at: new Date(),
 		},
 	});
+	await expect(
+		prisma.cohort_enrollments.create({
+			data: {
+				cohort_id: cohort.id,
+				user_id: leader.id,
+				email: `extra-${run}@fixture.example.test`,
+				status: "joined",
+				role: "member",
+				joined_at: new Date(),
+			},
+		}),
+	).rejects.toMatchObject({ code: "P2002" });
 	const managerPractice = await prisma.practices.create({
 		data: {
 			user_id: leader.id,
@@ -382,6 +394,14 @@ it("executes publication, targeted invitation, join and checkin through real HTT
 			}),
 	);
 	expect(res.status).toBe(201);
+	const managerCheckin = await prisma.practice_checkins.findFirstOrThrow({
+		where: { practice_id: managerPractice.id },
+	});
+	const proofs = await prisma.$queryRaw<
+		Array<{ new_value: { role: string } }>
+	>`SELECT new_value FROM audit_logs WHERE action_type=${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ACTIVATION_PARTICIPATED} AND target_id=${String(managerCheckin.id)}`;
+	expect(proofs).toHaveLength(1);
+	expect(proofs[0].new_value.role).toBe("owner");
 	const exported = await exportBlogActivationEvidence(prisma, {
 		registeredSince: new Date(Date.now() - 86400000).toISOString(),
 		instrumentedSince: new Date(Date.now() - 86400000).toISOString(),
@@ -431,4 +451,230 @@ it("executes publication, targeted invitation, join and checkin through real HTT
 	expect(await auditCount(LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PUBLISHED)).toBe(
 		count,
 	);
+});
+
+it("attributes an actual publication transition from the locked transaction state during concurrent edits", async () => {
+	const leader = await account("race-leader");
+	const org = await prisma.organization.create({
+		data: { name: `538-race-${run}`, status: "active" },
+	});
+	await prisma.organization_members.create({
+		data: { organization_id: org.id, user_id: leader.id, role: "owner" },
+	});
+	const program = await prisma.programs.create({
+		data: { organization_id: org.id, name: "538 race", kind: "lighthouse" },
+	});
+	const cohort = await prisma.cohorts.create({
+		data: {
+			program_id: program.id,
+			slug: "race",
+			display_name: "538 race",
+			start_date: new Date("2026-01-01"),
+			end_date: new Date("2099-12-31"),
+			status: "published",
+		},
+	});
+	const endpoint = `/api/v1/lighthouse/programs/${program.id}/cohorts/${cohort.id}`;
+	let ready!: () => void;
+	let release!: () => void;
+	const read = new Promise<void>((resolve) => {
+		ready = resolve;
+	});
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let held = false;
+	const original = prisma.cohorts.findFirst.bind(prisma.cohorts);
+	const spy = jest
+		.spyOn(prisma.cohorts, "findFirst")
+		.mockImplementation((args: any) => {
+			if (
+				args?.where?.id === cohort.id &&
+				args?.select?.cohort_sessions &&
+				!held
+			) {
+				held = true;
+				return original(args).then(async (row) => {
+					ready();
+					await gate;
+					return row;
+				}) as any;
+			}
+			return original(args) as any;
+		});
+	try {
+		const first = request(server)
+			.patch(endpoint)
+			.auth(token(leader.id), { type: "bearer" })
+			.send({ status: "published" })
+			.then((response) => response);
+		await read;
+		const draft = await request(server)
+			.patch(endpoint)
+			.auth(token(leader.id), { type: "bearer" })
+			.send({ status: "draft" });
+		expect(draft.status).toBe(200);
+		release();
+		expect((await first).status).toBe(200);
+		const rows = await prisma.$queryRaw<
+			Array<{ count: bigint }>
+		>`SELECT COUNT(*) AS count FROM audit_logs WHERE action_type=${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PUBLISHED} AND target_id=${String(cohort.id)}`;
+		expect(Number(rows[0].count)).toBe(1);
+	} finally {
+		release();
+		spy.mockRestore();
+	}
+});
+
+it("preserves base availability denial after capacity or deadline without rewriting the prior join", async () => {
+	const member = await account("public-retry");
+	const org = await prisma.organization.create({
+		data: { name: `538-public-${run}`, status: "active" },
+	});
+	const program = await prisma.programs.create({
+		data: { organization_id: org.id, name: "538 public", kind: "lighthouse" },
+	});
+	const cohort = await prisma.cohorts.create({
+		data: {
+			program_id: program.id,
+			slug: "public-retry",
+			display_name: "538 public",
+			start_date: new Date("2026-01-01"),
+			end_date: new Date("2099-12-31"),
+			capacity: 1,
+			status: "published",
+		},
+	});
+	const endpoint = `/api/v1/cohorts/join/${cohort.join_token}`;
+	expect(
+		(
+			await request(server)
+				.post(endpoint)
+				.auth(token(member.id), { type: "bearer" })
+				.send({ consent: true })
+		).status,
+	).toBe(201);
+	const before = await prisma.cohort_enrollments.findFirstOrThrow({
+		where: { cohort_id: cohort.id, user_id: member.id },
+	});
+	expect(
+		(
+			await request(server)
+				.post(endpoint)
+				.auth(token(member.id), { type: "bearer" })
+				.send({ consent: true })
+		).status,
+	).toBe(409);
+	await prisma.cohorts.update({
+		where: { id: cohort.id },
+		data: { join_deadline: new Date("2026-01-01") },
+	});
+	expect(
+		(
+			await request(server)
+				.post(endpoint)
+				.auth(token(member.id), { type: "bearer" })
+				.send({ consent: true })
+		).status,
+	).toBe(409);
+	expect(
+		(
+			await prisma.cohort_enrollments.findUniqueOrThrow({
+				where: { id: before.id },
+			})
+		).joined_at,
+	).toEqual(before.joined_at);
+	const audits = await prisma.$queryRaw<
+		Array<{ count: bigint }>
+	>`SELECT COUNT(*) AS count FROM audit_logs WHERE action_type=${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ACTIVATION_JOINED} AND target_id=${String(before.id)}`;
+	expect(Number(audits[0].count)).toBe(1);
+});
+
+it("keeps one operator snapshot when an older writer commits during the export", async () => {
+	const leader = await account("snapshot-leader");
+	const org = await prisma.organization.create({
+		data: { name: `538-snapshot-${run}`, status: "active" },
+	});
+	await prisma.organization_members.create({
+		data: { organization_id: org.id, user_id: leader.id, role: "owner" },
+	});
+	const program = await prisma.programs.create({
+		data: { organization_id: org.id, name: "538 snapshot", kind: "lighthouse" },
+	});
+	const cohort = await prisma.cohorts.create({
+		data: {
+			program_id: program.id,
+			slug: "snapshot",
+			display_name: "538 snapshot",
+			start_date: new Date("2026-01-01"),
+			end_date: new Date("2099-12-31"),
+			status: "published",
+		},
+	});
+	let writerReady!: () => void,
+		commitWriter!: () => void,
+		readerReady!: () => void,
+		continueReader!: () => void;
+	const inserted = new Promise<void>((r) => (writerReady = r)),
+		commitGate = new Promise<void>((r) => (commitWriter = r)),
+		firstRead = new Promise<void>((r) => (readerReady = r)),
+		readGate = new Promise<void>((r) => (continueReader = r));
+	const writer = prisma.$transaction(async (tx) => {
+		await tx.$executeRaw`INSERT INTO audit_logs(admin_id,action_type,target_resource,target_id,new_value) VALUES(${leader.id},${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PUBLISHED},'cohort',${String(cohort.id)},'{}'::jsonb)`;
+		writerReady();
+		await commitGate;
+	});
+	await inserted;
+	let held = false;
+	const observe = (db: any) =>
+		new Proxy(db, {
+			get(target, key) {
+				if (key === "$queryRaw")
+					return async (...args: any[]) => {
+						const result = await Reflect.apply(target.$queryRaw, target, args);
+						if (!held) {
+							held = true;
+							readerReady();
+							await readGate;
+						}
+						return result;
+					};
+				const value = Reflect.get(target, key);
+				return typeof value === "function" ? value.bind(target) : value;
+			},
+		});
+	const client = {
+		$queryRaw: observe(prisma).$queryRaw,
+		$transaction: (callback: any, options: any) =>
+			prisma.$transaction(async (tx) => callback(observe(tx)), options),
+	};
+	try {
+		const options = {
+			registeredSince: new Date(Date.now() - 86400000).toISOString(),
+			instrumentedSince: new Date(Date.now() - 86400000).toISOString(),
+			asOf: new Date().toISOString(),
+		};
+		const pending = exportBlogActivationEvidence(client, options);
+		await firstRead;
+		commitWriter();
+		await writer;
+		continueReader();
+		const during = await pending;
+		expect(
+			during.input.events.some((e) => e.cohortId === String(cohort.id)),
+		).toBe(false);
+		const after = await exportBlogActivationEvidence(prisma, options);
+		expect(
+			after.input.events.some((e) => e.cohortId === String(cohort.id)),
+		).toBe(true);
+		expect(after.provenance).toMatchObject({
+			readConsistency: "repeatable_read",
+			cutoffSemantics:
+				"event_timestamps_in_current_snapshot_not_historical_commit_state",
+		});
+	} finally {
+		commitWriter();
+		continueReader();
+		await writer;
+	}
 });

@@ -1,4 +1,4 @@
-import type { Prisma } from '../../generated/prisma';
+import type { Prisma, PrismaClient } from '../../generated/prisma';
 import { z } from 'zod';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 
@@ -22,11 +22,11 @@ type ActivationExportType = {
     events: NormalizedEvent[];
     coverage: { publications: boolean; invitations: boolean; joins: boolean; participation: boolean };
   };
-  provenance: { publicationCreditPolicy: string; publicationCreditPolicyConfirmed: boolean; invitationEvidenceStage: string; capturedAt: string; registeredSince: string; instrumentedSince: string; classification: string; sourceAttribution: string; roleHistory: string; missingInvitationProvenance: boolean; missingParticipationProvenance: boolean; historicalCohorts: boolean; scope: string; privacy: string };
+  provenance: { readConsistency: string; cutoffSemantics: string; publicationCreditPolicy: string; publicationCreditPolicyConfirmed: boolean; invitationEvidenceStage: string; capturedAt: string; registeredSince: string; instrumentedSince: string; classification: string; sourceAttribution: string; roleHistory: string; missingInvitationProvenance: boolean; missingParticipationProvenance: boolean; historicalCohorts: boolean; scope: string; privacy: string };
 };
 
 /** Read only opaque identifiers/timestamps from authoritative rows; no contacts, notes, tokens or images. */
-export const exportBlogActivationEvidence = async (db: ReadDb, rawOptions: unknown): Promise<ActivationExportType> => {
+const readBlogActivationEvidence = async (db: ReadDb, rawOptions: unknown, readConsistency: string): Promise<ActivationExportType> => {
   const options = exportOptions.parse(rawOptions);
   const capturedAt = new Date();
   const since = new Date(options.registeredSince);
@@ -112,6 +112,17 @@ export const exportBlogActivationEvidence = async (db: ReadDb, rawOptions: unkno
       events,
       coverage: { publications: false, invitations: completeWindow && !missingInvitationProvenance, joins: completeWindow, participation: !missingParticipationProvenance }
     },
-    provenance: { publicationCreditPolicy: 'pending_takeover_decision', publicationCreditPolicyConfirmed: false, invitationEvidenceStage: 'target_created_not_queue_acceptance_or_delivery', capturedAt: capturedAt.toISOString(), registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'unavailable', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_and_timestamps_only' }
+    provenance: { readConsistency, cutoffSemantics: 'event_timestamps_in_current_snapshot_not_historical_commit_state', publicationCreditPolicy: 'pending_takeover_decision', publicationCreditPolicyConfirmed: false, invitationEvidenceStage: 'target_created_not_queue_acceptance_or_delivery', capturedAt: capturedAt.toISOString(), registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'unavailable', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_and_timestamps_only' }
   };
+};
+
+/** Operator clients get one read-only repeatable snapshot; a supplied transaction owns its isolation. */
+export const exportBlogActivationEvidence = async (db: ReadDb & Partial<Pick<PrismaClient, '$transaction'>>, rawOptions: unknown): Promise<ActivationExportType> => {
+  const options = exportOptions.parse(rawOptions);
+  if (new Date(options.asOf) > new Date()) throw new Error('asOf exceeds actual capture time; future observation is unavailable');
+  if (db.$transaction) return db.$transaction(async tx => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+    return readBlogActivationEvidence(tx, options, 'repeatable_read');
+  }, { isolationLevel: 'RepeatableRead' });
+  return readBlogActivationEvidence(db, options, 'caller_owned_transaction_or_adapter');
 };
