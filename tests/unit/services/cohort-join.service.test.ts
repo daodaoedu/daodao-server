@@ -66,6 +66,19 @@ describe('cohortJoinService', () => {
     }));
   });
 
+  it('does not overwrite joined_at or emit another transition when a public link is retried by the same joined account', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue(cohort as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    prismaMock.users.findUnique.mockResolvedValue({ contacts: { email: 'user@example.com' } } as never);
+    prismaMock.$queryRaw.mockResolvedValue([{ id: 8, capacity: 2 }] as never);
+    prismaMock.cohort_enrollments.findUnique.mockResolvedValue({ id:99,cohort_id:8,user_id:42,status:'joined' } as never);
+    prismaMock.cohort_enrollments.upsert.mockResolvedValue({ id:99,cohort_id:8,status:'joined' } as never);
+    await expect(cohortJoinService.join(token,42,true,new Date('2026-08-02T00:00:00Z'))).resolves.toEqual({enrollmentId:99,cohortId:8,status:'joined'});
+    expect(prismaMock.cohort_enrollments.upsert).not.toHaveBeenCalled();
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
   it('resolves an email invitation token and binds the exact invited enrollment to the signed-in account', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(null);
     prismaMock.cohort_enrollments.findUnique

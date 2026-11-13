@@ -85,6 +85,17 @@ async function main() {
   const missing=await exportBlogActivationEvidence(db,options);
   assert.equal(missing.input.coverage.invitations,false,'legacy aggregate audit is unknown, never guessed as per-user invite');
   assert.equal(missing.provenance.missingInvitationProvenance,true);
+  await db.$executeRawUnsafe('ALTER TABLE cohort_enrollments ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ');
+  await db.$executeRawUnsafe("INSERT INTO cohorts VALUES(53851,1,NOW())");
+  await db.$executeRawUnsafe("INSERT INTO cohort_enrollments (id,cohort_id,user_id,role,status,joined_at) VALUES(53861,53851,2,'member','joined',NOW()-INTERVAL '10 minutes')");
+  await db.$transaction(tx=>recordCohortActivationJoin(tx,2,53851,53861,false));
+  await db.$executeRawUnsafe("UPDATE cohort_enrollments SET status='exited' WHERE id=53861");
+  await db.$executeRawUnsafe("UPDATE cohort_enrollments SET status='invited',role='assistant' WHERE id=53861");
+  await db.$executeRawUnsafe("UPDATE cohort_enrollments SET status='joined',joined_at=NOW() WHERE id=53861");
+  await Promise.all(Array.from({length:5},()=>db.$transaction(tx=>recordCohortActivationJoin(tx,2,53851,53861,true))));
+  const rejoined=await db.$queryRaw`SELECT new_value FROM audit_logs WHERE action_type='lighthouse.cohort_activation_joined' AND target_id='53861' ORDER BY id`;
+  assert.equal(rejoined.length,2,'a distinct exit/reinvite/rejoin must survive while its retries deduplicate');
+  assert.equal(rejoined[1].new_value.role,'assistant','the new transition keeps its actual changed role');
   console.log(JSON.stringify({pass:true,checks:['nonpublication-no-event','concurrent-publication-dedup','publication-time-stable','rollback-atomic','join-dedup','no-email-or-token-payload','real-source-export-all-registrations','legacy-invite-unknown','participation-role-snapshot','participation-rollback-atomic','past-manager-remains-excluded']}));
 }
 main().then(()=>db.$disconnect()).catch(async error=>{console.error(error.message);await db.$disconnect();process.exitCode=1;});
