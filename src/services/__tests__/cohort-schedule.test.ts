@@ -23,6 +23,7 @@ const expectedSession = { id: 11, sessionDate: '2026-11-10', startTime: '19:00',
 
 beforeEach(() => {
   setupTransactionMock();
+  prismaMock.$queryRaw.mockResolvedValue([{ status: row.status }] as never);
   prismaMock.programs.findFirst.mockResolvedValue({ id: 2, organization: { status: 'active' } } as never);
   prismaMock.cohorts.findFirst.mockResolvedValue(row as never);
   prismaMock.cohorts.create.mockResolvedValue(row as never);

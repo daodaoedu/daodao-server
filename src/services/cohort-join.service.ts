@@ -7,6 +7,7 @@ import { notificationEventService } from './notification-event.service';
 import { INITIAL_PROGRESS } from '../utils/practice-progress';
 import { appendSystemMessage } from './chat-room.service';
 import { CHAT_SYSTEM_EVENTS } from '../constants/chat';
+import { recordCohortActivationJoin } from './cohort-activation-evidence.service';
 import { getCohortUnavailableReasons } from '../domain/cohort.rules';
 
 const visibilityNotice = '加入後，你的本期打卡內容將對教練與同期學員可見。';
@@ -149,6 +150,15 @@ const join = async (token: string, userId: number, consent: boolean, now = new D
       const joined = await tx.cohort_enrollments.count({ where: { cohort_id: cohort.id, status: 'joined' } });
       if (joined >= cohort.capacity) throw new ConflictError('此期已額滿');
     }
+    if (!target.invitation) {
+      const existing = await tx.cohort_enrollments.findUnique({
+        where: { cohort_id_email: { cohort_id: cohort.id, email: email! } },
+        select: { id: true, cohort_id: true, user_id: true, status: true }
+      });
+      if (existing?.status === 'joined' && existing.user_id === userId) {
+        return { enrollmentId: existing.id, cohortId: existing.cohort_id, status: 'joined' as const, newlyJoined: false };
+      }
+    }
     const enrollment = target.invitation
       ? await tx.cohort_enrollments.update({
         where: { id: target.invitation.id },
@@ -162,6 +172,7 @@ const join = async (token: string, userId: number, consent: boolean, now = new D
         select: { id: true, cohort_id: true, status: true }
       });
     await ensureCohortDrafts(tx, cohort.id, userId);
+    await recordCohortActivationJoin(tx, userId, cohort.id, enrollment.id, target.invitation !== null);
     return { enrollmentId: enrollment.id, cohortId: enrollment.cohort_id, status: 'joined' as const, newlyJoined: true };
   });
 
