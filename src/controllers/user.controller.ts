@@ -154,7 +154,7 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
   // req.body 已由 parseFormData + validate(createUserSchema) middleware 解析並驗證
   const requestData = req.body as CreateUserRequest;
   const quizClaimToken = req.cookies?.[QUIZ_CLAIM_COOKIE_NAME] as string | undefined;
-  const result = await userService.createUser(requestData, currentUser.id.toString(), { quizClaimToken });
+  const result = await userService.createUser(requestData, currentUser.id.toString(), { quizClaimToken, blogSourceContext: req.get('X-Daodao-Blog-Context') });
 
   if (result.data?.token) {
     setAuthCookie(res, result.data.token);

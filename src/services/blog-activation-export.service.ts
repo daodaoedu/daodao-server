@@ -1,12 +1,13 @@
 import type { Prisma, PrismaClient } from '../../generated/prisma';
 import { z } from 'zod';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
+import { BLOG_REGISTRATION_SOURCE_ACTION, storedBlogSourceSchema, type StoredBlogSource } from './blog-registration-source.service';
 
 type ReadDb = Pick<Prisma.TransactionClient, '$queryRaw'>;
 const exportOptions = z.object({ registeredSince: z.string().datetime({ offset: true }), asOf: z.string().datetime({ offset: true }), instrumentedSince: z.string().datetime({ offset: true }) }).strict();
 const invitationPayload = z.object({ enrollmentIds: z.array(z.number().int().positive()) });
 const joinedPayload = z.object({ cohortId: z.number().int().positive(), enrollmentId: z.number().int().positive(), role: z.enum(['owner', 'assistant', 'member']), isManager: z.boolean(), joinTransition:z.string().datetime({offset:true}).optional() });
-type RegistrationRow = { id: number; created_at: Date; is_leader: boolean; is_learner: boolean };
+type RegistrationRow = { id: number; created_at: Date; is_leader: boolean; is_learner: boolean; source_context?: unknown; source_context_id?: string | null };
 type PublicationRow = { id: number; admin_id: number; cohort_id: number; organization_id: number; created_at: Date; cohort_created_at: Date };
 type EvidenceRow = { id: number; admin_id: number; cohort_id: number; organization_id: number; created_at: Date; action_type: string; new_value: unknown };
 type CheckinRow = { id: number; user_id: number; cohort_id: number; organization_id: number; created_at: Date; evidence_id: number | null; evidence: unknown };
@@ -18,7 +19,7 @@ type ActivationExportType = {
     asOf: string;
     capturedAt: string;
     evidenceMode: 'observed';
-    registrations: { leaderId: string; registeredAt: string; audience: 'leader' | 'learner' | 'unclassified'; source: 'unknown' }[];
+    registrations: { leaderId: string; registeredAt: string; audience: 'leader' | 'learner' | 'unclassified'; source: 'blog' | 'unknown'; sourceContext?: StoredBlogSource }[];
     events: NormalizedEvent[];
     coverage: { publications: boolean; invitations: boolean; joins: boolean; participation: boolean };
   };
@@ -35,10 +36,14 @@ const readBlogActivationEvidence = async (db: ReadDb, rawOptions: unknown, readC
   if (since > asOf || instrumentation > asOf) throw new Error('Invalid reporting period');
   if (asOf > capturedAt) throw new Error('asOf exceeds actual capture time; future observation is unavailable');
   const registrations = await db.$queryRaw<RegistrationRow[]>`
-    SELECT u.id, u.created_at,
+    SELECT u.id, u.created_at, source_audit.new_value AS source_context, source_audit.target_id AS source_context_id,
            EXISTS(SELECT 1 FROM organization_members om JOIN organization o ON o.id=om.organization_id WHERE om.user_id=u.id AND o.status='active') AS is_leader,
            EXISTS(SELECT 1 FROM cohort_enrollments ce WHERE ce.user_id=u.id AND ce.role='member' AND ce.status='joined') AS is_learner
-    FROM users u WHERE u.created_at >= ${since} AND u.created_at <= ${asOf}
+    FROM users u LEFT JOIN LATERAL (
+      SELECT a.new_value,a.target_id FROM audit_logs a WHERE a.admin_id=u.id AND a.action_type=${BLOG_REGISTRATION_SOURCE_ACTION}
+        AND a.target_resource='blog_source_context' AND a.created_at <= ${asOf}
+      ORDER BY a.id LIMIT 1
+    ) source_audit ON TRUE WHERE u.created_at >= ${since} AND u.created_at <= ${asOf}
     ORDER BY u.id
   `;
   const publications = await db.$queryRaw<PublicationRow[]>`
@@ -108,11 +113,15 @@ const readBlogActivationEvidence = async (db: ReadDb, rawOptions: unknown, readC
       asOf: options.asOf,
       capturedAt: capturedAt.toISOString(),
       evidenceMode: 'observed',
-      registrations: registrations.map(row => ({ leaderId: String(row.id), registeredAt: row.created_at.toISOString(), audience: row.is_leader ? 'leader' : row.is_learner ? 'learner' : 'unclassified', source: 'unknown' })),
+      registrations: registrations.map(row => {
+        const parsed = storedBlogSourceSchema.safeParse(row.source_context);
+        const sourceContext = parsed.success && parsed.data.contextId === row.source_context_id && new Date(parsed.data.first.occurredAt) <= new Date(parsed.data.lastAssist.occurredAt) && new Date(parsed.data.lastAssist.occurredAt) <= row.created_at ? parsed.data : undefined;
+        return { leaderId: String(row.id), registeredAt: row.created_at.toISOString(), audience: row.is_leader ? 'leader' : row.is_learner ? 'learner' : 'unclassified', source: sourceContext ? 'blog' : 'unknown', ...(sourceContext ? { sourceContext } : {}) };
+      }),
       events,
       coverage: { publications: false, invitations: completeWindow && !missingInvitationProvenance, joins: completeWindow, participation: !missingParticipationProvenance }
     },
-    provenance: { readConsistency, cutoffSemantics: 'event_timestamps_in_current_snapshot_not_historical_commit_state', publicationCreditPolicy: 'pending_takeover_decision', publicationCreditPolicyConfirmed: false, invitationEvidenceStage: 'target_created_not_queue_acceptance_or_delivery', capturedAt: capturedAt.toISOString(), registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'unavailable', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_and_timestamps_only' }
+    provenance: { readConsistency, cutoffSemantics: 'event_timestamps_in_current_snapshot_not_historical_commit_state', publicationCreditPolicy: 'pending_takeover_decision', publicationCreditPolicyConfirmed: false, invitationEvidenceStage: 'target_created_not_queue_acceptance_or_delivery', capturedAt: capturedAt.toISOString(), registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'browser_reported_registration_context_or_unknown', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_timestamps_and_curated_public_blog_context_only' }
   };
 };
 

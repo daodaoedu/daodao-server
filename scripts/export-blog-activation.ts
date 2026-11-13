@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   try {
     const result = await exportBlogActivationEvidence(db, { registeredSince: values['registered-since'], asOf: values['as-of'], instrumentedSince: values['instrumented-since'] });
     await writeFile(output, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
-    console.log('Private activation evidence written; source attribution remains unknown.');
+    console.log('Private activation evidence written; attribution is browser-reported context or unknown.');
   } finally { await db.$disconnect(); }
 }
 main().catch((error: unknown) => { console.error(error instanceof Error ? error.message : 'Activation export failed'); process.exitCode = 1; });
