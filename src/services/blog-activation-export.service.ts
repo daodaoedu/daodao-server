@@ -5,7 +5,7 @@ import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 type ReadDb = Pick<Prisma.TransactionClient, '$queryRaw'>;
 const exportOptions = z.object({ registeredSince: z.string().datetime({ offset: true }), asOf: z.string().datetime({ offset: true }), instrumentedSince: z.string().datetime({ offset: true }) }).strict();
 const invitationPayload = z.object({ enrollmentIds: z.array(z.number().int().positive()) });
-const joinedPayload = z.object({ cohortId: z.number().int().positive(), enrollmentId: z.number().int().positive(), role: z.enum(['owner', 'assistant', 'member']), isManager: z.boolean() });
+const joinedPayload = z.object({ cohortId: z.number().int().positive(), enrollmentId: z.number().int().positive(), role: z.enum(['owner', 'assistant', 'member']), isManager: z.boolean(), joinTransition:z.string().datetime({offset:true}).optional() });
 type RegistrationRow = { id: number; created_at: Date; is_leader: boolean; is_learner: boolean };
 type PublicationRow = { id: number; admin_id: number; cohort_id: number; organization_id: number; created_at: Date; cohort_created_at: Date };
 type EvidenceRow = { id: number; admin_id: number; cohort_id: number; organization_id: number; created_at: Date; action_type: string; new_value: unknown };
@@ -16,20 +16,24 @@ type NormalizedEvent = { eventId: string; occurredAt: string; leaderId: string; 
 type ActivationExportType = {
   input: {
     asOf: string;
+    capturedAt: string;
+    evidenceMode: 'observed';
     registrations: { leaderId: string; registeredAt: string; audience: 'leader' | 'learner' | 'unclassified'; source: 'unknown' }[];
     events: NormalizedEvent[];
     coverage: { publications: boolean; invitations: boolean; joins: boolean; participation: boolean };
   };
-  provenance: { registeredSince: string; instrumentedSince: string; classification: string; sourceAttribution: string; roleHistory: string; missingInvitationProvenance: boolean; missingParticipationProvenance: boolean; historicalCohorts: boolean; scope: string; privacy: string };
+  provenance: { publicationCreditPolicy: string; publicationCreditPolicyConfirmed: boolean; invitationEvidenceStage: string; capturedAt: string; registeredSince: string; instrumentedSince: string; classification: string; sourceAttribution: string; roleHistory: string; missingInvitationProvenance: boolean; missingParticipationProvenance: boolean; historicalCohorts: boolean; scope: string; privacy: string };
 };
 
 /** Read only opaque identifiers/timestamps from authoritative rows; no contacts, notes, tokens or images. */
 export const exportBlogActivationEvidence = async (db: ReadDb, rawOptions: unknown): Promise<ActivationExportType> => {
   const options = exportOptions.parse(rawOptions);
+  const capturedAt = new Date();
   const since = new Date(options.registeredSince);
   const asOf = new Date(options.asOf);
   const instrumentation = new Date(options.instrumentedSince);
   if (since > asOf || instrumentation > asOf) throw new Error('Invalid reporting period');
+  if (asOf > capturedAt) throw new Error('asOf exceeds actual capture time; future observation is unavailable');
   const registrations = await db.$queryRaw<RegistrationRow[]>`
     SELECT u.id, u.created_at,
            EXISTS(SELECT 1 FROM organization_members om JOIN organization o ON o.id=om.organization_id WHERE om.user_id=u.id AND o.status='active') AS is_leader,
@@ -86,7 +90,7 @@ export const exportBlogActivationEvidence = async (db: ReadDb, rawOptions: unkno
       for (const enrollmentId of new Set(parsed.data.enrollmentIds)) events.push({ ...scope, eventId: `invitation-${row.id}-${enrollmentId}`, kind: 'invited', enrollmentId: String(enrollmentId) });
     } else {
       const value = joinedPayload.parse(row.new_value);
-      events.push({ ...scope, eventId: `join-${row.id}`, kind: 'joined', enrollmentId: String(value.enrollmentId), participantId: String(row.admin_id), role: value.role, isManager: value.isManager });
+      events.push({ ...scope, ...(value.joinTransition ? {occurredAt:value.joinTransition} : {}), eventId: `join-${row.id}`, kind: 'joined', enrollmentId: String(value.enrollmentId), participantId: String(row.admin_id), role: value.role, isManager: value.isManager });
     }
   }
   let missingParticipationProvenance = false;
@@ -102,10 +106,12 @@ export const exportBlogActivationEvidence = async (db: ReadDb, rawOptions: unkno
   return {
     input: {
       asOf: options.asOf,
+      capturedAt: capturedAt.toISOString(),
+      evidenceMode: 'observed',
       registrations: registrations.map(row => ({ leaderId: String(row.id), registeredAt: row.created_at.toISOString(), audience: row.is_leader ? 'leader' : row.is_learner ? 'learner' : 'unclassified', source: 'unknown' })),
       events,
-      coverage: { publications: completeWindow, invitations: completeWindow && !missingInvitationProvenance, joins: completeWindow, participation: !missingParticipationProvenance }
+      coverage: { publications: false, invitations: completeWindow && !missingInvitationProvenance, joins: completeWindow, participation: !missingParticipationProvenance }
     },
-    provenance: { registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'unavailable', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_and_timestamps_only' }
+    provenance: { publicationCreditPolicy: 'pending_takeover_decision', publicationCreditPolicyConfirmed: false, invitationEvidenceStage: 'target_created_not_queue_acceptance_or_delivery', capturedAt: capturedAt.toISOString(), registeredSince: options.registeredSince, instrumentedSince: options.instrumentedSince, classification: 'current_active_organization_manage_permission', sourceAttribution: 'unavailable', roleHistory: 'registration_classification_current_participation_roles_snapshotted', missingInvitationProvenance, missingParticipationProvenance, historicalCohorts, scope: 'observed_platform_leaders_not_all_teachers', privacy: 'opaque_ids_and_timestamps_only' }
   };
 };

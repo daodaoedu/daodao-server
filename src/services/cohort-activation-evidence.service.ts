@@ -18,18 +18,19 @@ export const recordCohortPublication = async (db: AuditDb, actorId: number, coho
   `;
 };
 
-/** Bind a successful join to its enrollment and member role without recording tokens, email or content. */
+/** Deduplicate one persisted joined_at transition; exit/reinvite/rejoin keeps a new role/time proof. */
 export const recordCohortActivationJoin = async (db: AuditDb, participantId: number, cohortId: number, enrollmentId: number, invitationTokenUsed: boolean): Promise<void> => {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(538::int, ${cohortId}::int)`;
   await db.$executeRaw`
     INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, new_value)
     SELECT ${participantId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ACTIVATION_JOINED}, 'cohort_enrollment', ${String(enrollmentId)},
-           jsonb_build_object('version',1,'cohortId',c.id,'enrollmentId',ce.id,'role',ce.role,'invitationTokenUsed',${invitationTokenUsed}::boolean,
+           jsonb_build_object('version',2,'cohortId',c.id,'enrollmentId',ce.id,'joinTransition',to_char(ce.joined_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),'role',ce.role,'invitationTokenUsed',${invitationTokenUsed}::boolean,
              'isManager',EXISTS(SELECT 1 FROM organization_members om WHERE om.organization_id=p.organization_id AND om.user_id=${participantId}))
     FROM cohort_enrollments ce JOIN cohorts c ON c.id=ce.cohort_id JOIN programs p ON p.id=c.program_id
-    WHERE ce.id=${enrollmentId} AND ce.cohort_id=${cohortId} AND ce.user_id=${participantId} AND ce.status='joined' AND NOT EXISTS (
+    WHERE ce.id=${enrollmentId} AND ce.cohort_id=${cohortId} AND ce.user_id=${participantId} AND ce.status='joined' AND ce.joined_at IS NOT NULL AND NOT EXISTS (
       SELECT 1 FROM audit_logs WHERE action_type = ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ACTIVATION_JOINED}
         AND target_resource = 'cohort_enrollment' AND target_id = ${String(enrollmentId)}
+        AND new_value->>'joinTransition'=to_char(ce.joined_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
     )
   `;
 };

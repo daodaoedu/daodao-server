@@ -150,6 +150,15 @@ const join = async (token: string, userId: number, consent: boolean, now = new D
       const joined = await tx.cohort_enrollments.count({ where: { cohort_id: cohort.id, status: 'joined' } });
       if (joined >= cohort.capacity) throw new ConflictError('此期已額滿');
     }
+    if (!target.invitation) {
+      const existing = await tx.cohort_enrollments.findUnique({
+        where: { cohort_id_email: { cohort_id: cohort.id, email: email! } },
+        select: { id: true, cohort_id: true, user_id: true, status: true }
+      });
+      if (existing?.status === 'joined' && existing.user_id === userId) {
+        return { enrollmentId: existing.id, cohortId: existing.cohort_id, status: 'joined' as const, newlyJoined: false };
+      }
+    }
     const enrollment = target.invitation
       ? await tx.cohort_enrollments.update({
         where: { id: target.invitation.id },

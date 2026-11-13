@@ -102,6 +102,20 @@ describe('cohortJoinService', () => {
     expect(prismaMock.cohort_enrollments.upsert).not.toHaveBeenCalled();
   });
 
+  it('keeps the enrollment identity while persisting a new joined_at for an exited then reinvited member', async () => {
+    prismaMock.cohorts.findUnique.mockResolvedValue(null);
+    prismaMock.cohort_enrollments.findUnique
+      .mockResolvedValueOnce({ id:99,user_id:42,status:'invited',cohort } as never)
+      .mockResolvedValueOnce({ id:99,cohort_id:8,user_id:42,status:'invited' } as never);
+    prismaMock.cohort_enrollments.count.mockResolvedValue(0);
+    prismaMock.$queryRaw.mockResolvedValue([{id:8,capacity:2}] as never);
+    prismaMock.cohort_enrollments.update.mockResolvedValue({id:99,cohort_id:8,status:'joined'} as never);
+    const rejoinedAt=new Date('2026-08-20T00:00:00Z');
+    await expect(cohortJoinService.join(token,42,true,rejoinedAt)).resolves.toEqual({enrollmentId:99,cohortId:8,status:'joined'});
+    expect(prismaMock.cohort_enrollments.update).toHaveBeenCalledWith(expect.objectContaining({where:{id:99},data:expect.objectContaining({status:'joined',joined_at:rejoinedAt,exited_at:null})}));
+    expect(prismaMock.$executeRaw.mock.calls.flat()).toContain('lighthouse.cohort_activation_joined');
+  });
+
   it('does not emit another join-confirmation event when the same account retries an accepted invitation', async () => {
     prismaMock.cohorts.findUnique.mockResolvedValue(null);
     prismaMock.cohort_enrollments.findUnique
