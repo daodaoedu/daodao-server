@@ -53,6 +53,8 @@ describe('cohortInvitationService', () => {
       data: expect.objectContaining({ cohort_id: 8, email: 'good@example.com', status: 'invited' })
     }));
     expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prismaMock.$executeRaw.mock.calls.flat()).toContain('lighthouse.cohort_activation_invited');
+    expect(prismaMock.$executeRaw.mock.calls.flat()).toContain(JSON.stringify({ version: 1, enrollmentIds: [99] }));
     expect(prismaMock.$executeRaw.mock.calls.flat()).toEqual(expect.arrayContaining([
       42,
       'lighthouse.cohort_invitation_uploaded',
