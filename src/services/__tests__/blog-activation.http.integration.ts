@@ -3,6 +3,7 @@ require("../../../tests/integration/auth/__tests__/oauth-environment.cjs");
 import "../../config/openapi-registry";
 import express from "express";
 import http from "node:http";
+import { tmpdir } from "node:os";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
@@ -476,7 +477,7 @@ it("executes publication, targeted invitation, join and checkin through real HTT
  if(qaDirectory){
   const root=path.resolve(__dirname,'../../..');
   const output=path.join(qaDirectory,'export.json');await fs.rm(output,{force:true});
-  execFileSync(process.execPath,['-r','ts-node/register/transpile-only',path.join(root,'scripts/export-blog-activation.ts'),'--registered-since',new Date(Date.now()-86400000).toISOString(),'--as-of',new Date().toISOString(),'--instrumented-since',new Date(Date.now()-86400000).toISOString(),'--output',output],{cwd:root,env:{...process.env,BLOG_ACTIVATION_EXPORT_DATABASE_URL:process.env.DATABASE_URL},stdio:'pipe',timeout:30000});
+  execFileSync(process.execPath,['-r','ts-node/register/transpile-only',path.join(root,'scripts/export-blog-activation.ts'),'--registered-since',new Date(Date.now()-86400000).toISOString(),'--as-of',new Date().toISOString(),'--instrumented-since',new Date(Date.now()-86400000).toISOString(),'--output',output],{cwd:root,env:{...process.env,BLOG_ACTIVATION_EXPORT_DATABASE_URL:process.env.DATABASE_URL,BLOG_ACTIVATION_EVIDENCE_ROOT:qaDirectory},stdio:'pipe',timeout:30000});
   const cli=JSON.parse(await fs.readFile(output,'utf8'));
   expect(cli.input.registrations.find((row:{leaderId:string})=>row.leaderId===String(leader.id))).toMatchObject({source:'blog',sourceContext:{contextId:blogContext.contextId}});
   await fs.writeFile(path.join(qaDirectory,'export-ready.json'),JSON.stringify({privateExport:'export.json',contextId:blogContext.contextId,source:'blog',actualOperations:'published_invited_nonleader_participated',fixtureProtocolRelease:JSON.parse(readFileSync(path.join(__dirname,'fixtures/blog-source/blog-release.json'),'utf8')).id}),{mode:0o600});
@@ -694,8 +695,10 @@ it("keeps one operator snapshot when an older writer commits during the export",
 		commitGate = new Promise<void>((r) => (commitWriter = r)),
 		firstRead = new Promise<void>((r) => (readerReady = r)),
 		readGate = new Promise<void>((r) => (continueReader = r));
+	// Control event time independently of PG microsecond NOW vs JS millisecond observation.
+	const observedEventTime = new Date(Date.now() - 1000);
 	const writer = prisma.$transaction(async (tx) => {
-		await tx.$executeRaw`INSERT INTO audit_logs(admin_id,action_type,target_resource,target_id,new_value) VALUES(${leader.id},${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PUBLISHED},'cohort',${String(cohort.id)},'{}'::jsonb)`;
+		await tx.$executeRaw`INSERT INTO audit_logs(admin_id,action_type,target_resource,target_id,new_value,created_at) VALUES(${leader.id},${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_PUBLISHED},'cohort',${String(cohort.id)},'{}'::jsonb,${observedEventTime})`;
 		writerReady();
 		await commitGate;
 	});
@@ -787,4 +790,20 @@ it('serializes simultaneous registration context claims and rolls source evidenc
  await expect(prisma.$transaction(async(tx)=>{await recordBlogRegistrationSource(tx,actors[0],prepared);throw new Error('fixture-business-rollback');})).rejects.toThrow('fixture-business-rollback');
  const absent=await prisma.$queryRaw<Array<{id:bigint}>>`SELECT id FROM audit_logs WHERE action_type=${BLOG_REGISTRATION_SOURCE_ACTION} AND target_id=${rollback.contextId}`;
  expect(absent).toHaveLength(0);
+});
+
+it('refuses a CLI output outside the operator approved evidence root before writing private export', async () => {
+ const owned=await fs.mkdtemp(path.join(tmpdir(),'daodao538-cli-boundary-'));
+ const approved=path.join(owned,'approved');const outside=path.join(owned,'outside');await fs.mkdir(approved,{mode:0o700});await fs.mkdir(outside,{mode:0o700});
+ const output=path.join(outside,'export.json');const root=path.resolve(__dirname,'../../..');
+ try {
+  let rejected=false;
+  try {execFileSync(process.execPath,['-r','ts-node/register/transpile-only',path.join(root,'scripts/export-blog-activation.ts'),'--registered-since',new Date(Date.now()-86400000).toISOString(),'--as-of',new Date().toISOString(),'--instrumented-since',new Date(Date.now()-86400000).toISOString(),'--output',output],{cwd:root,env:{...process.env,BLOG_ACTIVATION_EVIDENCE_ROOT:approved,BLOG_ACTIVATION_EXPORT_DATABASE_URL:process.env.DATABASE_URL},stdio:'pipe',timeout:30000});}catch{rejected=true;}
+  expect(rejected).toBe(true);await expect(fs.stat(output)).rejects.toMatchObject({code:'ENOENT'});
+  const allowed=path.join(approved,'export.json');
+  const args=['-r','ts-node/register/transpile-only',path.join(root,'scripts/export-blog-activation.ts'),'--registered-since',new Date(Date.now()-86400000).toISOString(),'--as-of',new Date().toISOString(),'--instrumented-since',new Date(Date.now()-86400000).toISOString(),'--output',allowed];
+  const options={cwd:root,env:{...process.env,BLOG_ACTIVATION_EVIDENCE_ROOT:approved,BLOG_ACTIVATION_EXPORT_DATABASE_URL:process.env.DATABASE_URL},stdio:'pipe' as const,timeout:30000};
+  execFileSync(process.execPath,args,options);const bytes=await fs.readFile(allowed);expect((await fs.stat(allowed)).mode & 0o777).toBe(0o600);expect(JSON.parse(bytes.toString()).input.evidenceMode).toBe('observed');
+  expect(()=>execFileSync(process.execPath,args,options)).toThrow();expect(await fs.readFile(allowed)).toEqual(bytes);
+ } finally {await fs.rm(owned,{recursive:true,force:true});}
 });

@@ -1,5 +1,5 @@
-import { basename, dirname, join, resolve } from 'node:path';
-import { realpath, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
+import { resolvePrivateActivationOutput } from './private-activation-output';
 import { parseArgs } from 'node:util';
 import { PrismaClient } from '../generated/prisma';
 import { exportBlogActivationEvidence } from '../src/services/blog-activation-export.service';
@@ -9,8 +9,7 @@ async function main(): Promise<void> {
   const { values } = parseArgs({ options: { 'registered-since': { type: 'string' }, 'as-of': { type: 'string' }, 'instrumented-since': { type: 'string' }, output: { type: 'string' } } });
   const connection = process.env.BLOG_ACTIVATION_EXPORT_DATABASE_URL;
   if (!connection || !values.output) throw new Error('Explicit BLOG_ACTIVATION_EXPORT_DATABASE_URL and --output PRIVATE_JSON required');
-  const output = join(await realpath(dirname(resolve(values.output))), basename(values.output));
-  if (/(^|[\\/])(public|articles|images)([\\/]|$)/.test(output)) throw new Error('Activation export must not be a public article asset');
+  const output = await resolvePrivateActivationOutput(values.output, process.env.BLOG_ACTIVATION_EVIDENCE_ROOT);
   const db = new PrismaClient({ datasourceUrl: connection });
   try {
     const result = await exportBlogActivationEvidence(db, { registeredSince: values['registered-since'], asOf: values['as-of'], instrumentedSince: values['instrumented-since'] });
