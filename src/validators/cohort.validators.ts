@@ -67,7 +67,7 @@ export const cohortSessionSchema = cohortSessionInputSchema.extend({
 export const createCohortSchema = z.object({
   slug: z.string().trim().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).openapi({ example: '2026-summer' }),
   displayName: z.string().trim().min(1).max(100).openapi({ example: '2026 夏季期' }),
-  tagline: z.string().trim().min(1).max(80).optional().openapi({ description: '一句話簡介（≤80 字）', example: '一起學習、一起成長' }),
+  tagline: z.string().trim().min(1).max(100).optional().openapi({ description: '簡介（≤100 字）', example: '一起學習、一起成長' }),
   startDate: dateSchema,
   endDate: dateSchema,
   joinDeadline: dateSchema.nullable().optional().openapi({ description: '加入截止日；null 表示可加入至結束日' }),
@@ -108,7 +108,7 @@ export const createCohortSchema = z.object({
 export const updateCohortSchema = z.object({
   slug: z.string().trim().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
   displayName: z.string().trim().min(1).max(100).optional(),
-  tagline: z.string().trim().min(1).max(80).nullable().optional().openapi({ description: '一句話簡介' }),
+  tagline: z.string().trim().min(1).max(100).nullable().optional().openapi({ description: '簡介（≤100 字）' }),
   startDate: dateSchema.optional(),
   endDate: dateSchema.optional(),
   joinDeadline: dateSchema.nullable().optional(),
