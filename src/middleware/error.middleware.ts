@@ -21,6 +21,11 @@ export class AppError extends Error {
   }
 }
 
+/** Fail closed when a required service capability is not configured. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = '服務暫時無法使用') { super(message, 503); }
+}
+
 /**
  * 400 錯誤 - BAD_REQUEST
  */

@@ -1,3 +1,4 @@
+import { deriveSurveyCompletionKey, requireSurveyCompletionHmacKey } from './survey-completion-key';
 import { randomUUID, randomInt } from 'crypto';
 import { prisma } from '@/services/database/prisma.service';
 import type { Prisma } from '../../generated/prisma';
@@ -34,11 +35,13 @@ export async function isManagedSurvey(id: number): Promise<boolean> {
 export const managedSurveyService = {
   /** Create a zero-question managed draft. */
   async create(userId: number, body: ManagedSurveyCreate) {
+    requireSurveyCompletionHmacKey();
     const { questions, ...fields } = body;
     return prisma.surveys.create({ data: { ...fields, managed_version: 1, created_by: userId, questions: { create: questionWrites(questions) } }, include: includeQuestions });
   },
   /** Apply a full editor save, protecting all historical answer structures. */
   async update(id: number, body: ManagedSurveyUpdate) {
+    requireSurveyCompletionHmacKey();
     await assertGenericSurvey(id);
     return prisma.$transaction(async tx => {
       const survey = await lockSurvey(tx, id);
@@ -55,6 +58,7 @@ export const managedSurveyService = {
   },
   /** Serialize lifecycle changes with submissions so closed means no later accepted submissions. */
   async status(id: number, status: 'draft' | 'active' | 'closed' | 'archived') {
+    requireSurveyCompletionHmacKey();
     await assertGenericSurvey(id);
     return prisma.$transaction(async tx => {
       const survey = await lockSurvey(tx, id);
@@ -67,11 +71,12 @@ export const managedSurveyService = {
   async public(externalId: string, userId: number | null) {
     const survey = await prisma.surveys.findUnique({ where: { external_id: externalId }, include: includeQuestions });
     if (survey?.managed_version !== 1) return null;
+    const completionSecret = requireSurveyCompletionHmacKey();
     if (userId && !(await prisma.users.findUnique({ where: { id: userId }, select: { id: true } }))) userId = null;
     if (!survey.is_public && !userId) throw new UnauthorizedError('請先登入再填寫此問卷');
     const count = await prisma.survey_responses.count({ where: { survey_id: survey.id } });
     assertAvailable(survey, count);
-    const completed = userId ? await prisma.managed_survey_completions.findUnique({ where: { survey_id_user_id: { survey_id: survey.id, user_id: userId } } }) : null;
+    const completed = userId ? await prisma.managed_survey_completions.findUnique({ where: { survey_id_completion_key: { survey_id: survey.id, completion_key: deriveSurveyCompletionKey(survey.id, userId, completionSecret) } } }) : null;
     return { id: survey.id, external_id: survey.external_id, title: survey.title, description: survey.description, status: survey.status, managed_version: 1,
       is_public: survey.is_public, is_anonymous: survey.is_anonymous, logo_url: survey.logo_url, cover_url: survey.cover_url, thank_you_message: survey.thank_you_message,
       max_responses: survey.max_responses, has_responded: !!completed, questions: survey.questions };
@@ -80,16 +85,17 @@ export const managedSurveyService = {
   async submit(externalId: string, userId: number | null, answers: SurveyAnswerData[]) {
     const entry = await prisma.surveys.findUnique({ where: { external_id: externalId }, select: { id: true, managed_version: true } });
     if (entry?.managed_version !== 1) return null;
+    const completionSecret = requireSurveyCompletionHmacKey();
     await retryAnonymousCollision(() => prisma.$transaction(async tx => {
       const survey = await lockSurvey(tx, entry.id);
       if (userId && !(await tx.users.findUnique({ where: { id: userId }, select: { id: true } }))) userId = null;
       if (!survey.is_public && !userId) throw new UnauthorizedError('請先登入再填寫此問卷');
       const count = await tx.survey_responses.count({ where: { survey_id: survey.id } });
       assertAvailable(survey, count, true);
-      if (userId && await tx.managed_survey_completions.findUnique({ where: { survey_id_user_id: { survey_id: survey.id, user_id: userId } } })) throw new ConflictError('你已提交過此問卷');
+      if (userId && await tx.managed_survey_completions.findUnique({ where: { survey_id_completion_key: { survey_id: survey.id, completion_key: deriveSurveyCompletionKey(survey.id, userId, completionSecret) } } })) throw new ConflictError('你已提交過此問卷');
       const normalized = validateManagedAnswers(survey.questions, answers);
       const types = new Map(survey.questions.map(q => [q.id, q.question_type]));
-      if (userId) await tx.managed_survey_completions.create({ data: { survey_id: survey.id, user_id: userId } });
+      if (userId) await tx.managed_survey_completions.create({ data: { survey_id: survey.id, user_id: null, completion_key: deriveSurveyCompletionKey(survey.id, userId, completionSecret) } });
       // No exact answer timestamp, session token, or start time for anonymous answers.
       const completedAt = survey.is_anonymous ? new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z') : new Date();
       await tx.survey_responses.create({ data: { ...(survey.is_anonymous ? { id: randomInt(-2147483648, 0) } : {}), survey_id: survey.id, user_id: survey.is_anonymous ? null : userId, completed_at: completedAt,
@@ -99,6 +105,7 @@ export const managedSurveyService = {
   },
   /** Recompute managed survey analysis from saved valid answers; creator routes remain forbidden. */
   async analytics(id: number) {
+    requireSurveyCompletionHmacKey();
     await assertGenericSurvey(id);
     const survey = await prisma.surveys.findUnique({ where: { id }, include: includeQuestions });
     if (!survey) throw new NotFoundError('問卷不存在');
@@ -107,6 +114,7 @@ export const managedSurveyService = {
   },
   /** Delete a response under the same lock used by capacity checks; audit contains no answers or respondent id. */
   async deleteResponse(surveyId: number, responseId: number, actorId: number) {
+    requireSurveyCompletionHmacKey();
     await assertGenericSurvey(surveyId);
     await prisma.$transaction(async tx => {
       await lockSurvey(tx, surveyId);
@@ -119,10 +127,12 @@ export const managedSurveyService = {
   },
   /** List the authenticated administrator's three selectable image records. */
   async images(userId: number) {
+    requireSurveyCompletionHmacKey();
     return prisma.survey_image_library.findMany({ where: { created_by: userId }, orderBy: { created_at: 'desc' } });
   },
   /** Upload to R2 with a reserved survey-only namespace whose objects cannot be deleted via generic image API. */
   async uploadImage(userId: number, file: Express.Multer.File) {
+    requireSurveyCompletionHmacKey();
     if (!file || file.size > 8 * 1024 * 1024 || !isSupportedImage(file.buffer, file.mimetype)) throw new BadRequestError('請上傳8MB以內的PNG、JPEG或WebP圖片');
     return prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR NO KEY UPDATE`;
@@ -135,6 +145,7 @@ export const managedSurveyService = {
   },
   /** Forget a selectable library entry without deleting the underlying referenced object. */
   async removeImage(userId: number, imageId: number) {
+    requireSurveyCompletionHmacKey();
     const image = await prisma.survey_image_library.findFirst({ where: { id: imageId, created_by: userId } });
     if (!image) throw new NotFoundError('圖片不存在');
     await prisma.survey_image_library.delete({ where: { id: imageId } });

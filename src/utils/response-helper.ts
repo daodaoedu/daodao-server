@@ -91,6 +91,7 @@ export const createErrorFromAppError = (
   // Map AppError class names to standard error codes
   const errorCodeMap: Record<string, string> = {
     'GoneError': 'GONE',
+    'ServiceUnavailableError': 'SERVICE_UNAVAILABLE',
     'BadRequestError': 'BAD_REQUEST',
     'UnauthorizedError': 'UNAUTHORIZED',
     'ForbiddenError': 'FORBIDDEN',

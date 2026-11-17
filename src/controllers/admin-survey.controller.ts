@@ -1,3 +1,4 @@
+import { requireSurveyCompletionHmacKey } from '@/services/survey-completion-key'
 import { managedSurveyService, isManagedSurvey } from '@/services/managed-survey.service'
 import { managedSurveyCreateSchema, managedSurveyUpdateSchema } from '@/validators/managed-survey.validators'
 import { assertGenericSurvey, hasCohortFeedbackSchema } from '@/services/cohort-feedback.service'
@@ -194,6 +195,7 @@ export const adminSurveyController = {
   deleteSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
+    if (await isManagedSurvey(id)) requireSurveyCompletionHmacKey()
     const existing = await prisma.surveys.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('問卷不存在')
     await prisma.surveys.delete({ where: { id } })
@@ -203,6 +205,7 @@ export const adminSurveyController = {
   listResponses: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
+    if (await isManagedSurvey(id)) requireSurveyCompletionHmacKey()
     const { limit, offset } = listQuerySchema.pick({ limit: true, offset: true }).parse(req.query)
 
     const existing = await prisma.surveys.findUnique({ where: { id }, select: { id: true, is_anonymous: true, managed_version: true } })
@@ -237,6 +240,7 @@ export const adminSurveyController = {
   getResponse: asyncHandler(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id)
     await assertGenericSurvey(surveyId)
+    if (await isManagedSurvey(surveyId)) requireSurveyCompletionHmacKey()
     const responseId = parseResponseId(req.params.responseId)
 
     const response = await prisma.survey_responses.findFirst({

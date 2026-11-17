@@ -1,3 +1,4 @@
+import { requireSurveyCompletionHmacKey } from './survey-completion-key';
 import { managedSurveyService, isManagedSurvey } from './managed-survey.service';
 import { ForbiddenError } from '@/middleware/error.middleware';
 import { assertGenericSurvey, getCohortFeedbackMetadata, submitCohortFeedback, hasCohortFeedbackSchema } from './cohort-feedback.service';
@@ -440,6 +441,7 @@ export const surveyService = {
   async trackView(externalId: string) {
     const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true, managed_version: true } });
     if (survey) await assertGenericSurvey(survey.id);
+    if (survey?.managed_version === 1) requireSurveyCompletionHmacKey();
     const now = new Date();
     await prisma.surveys.updateMany({
       where: { external_id: externalId, status: 'active', ...(survey?.managed_version === 1 ? { AND: [

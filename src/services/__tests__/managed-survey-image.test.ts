@@ -8,6 +8,9 @@ import { uploadToR2Api, deleteFromR2Api } from '@/services/r2.service';
 const png = () => ({ size: 8, buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), mimetype: 'image/png' }) as Express.Multer.File;
 
 describe('managed survey image library', () => {
+  const beforeKey = process.env.SURVEY_COMPLETION_HMAC_KEY;
+  beforeAll(() => { process.env.SURVEY_COMPLETION_HMAC_KEY = '11'.repeat(32); });
+  afterAll(() => { if (beforeKey === undefined) delete process.env.SURVEY_COMPLETION_HMAC_KEY; else process.env.SURVEY_COMPLETION_HMAC_KEY = beforeKey; });
   beforeEach(() => jest.clearAllMocks());
   it('rejects forged content types and oversized images before uploading', async () => {
     expect(isSupportedImage(Buffer.from('text'), 'image/png')).toBe(false);

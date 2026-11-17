@@ -87,8 +87,8 @@ async function check(name, fn) { try { await fn(); console.log('PASS ' + name); 
         uploading = managedSurveyService.uploadImage(user.id, { size: 8, buffer: Buffer.from([137,80,78,71,13,10,26,10]), mimetype: 'image/png' });
         await entered;
         await client.query('SET statement_timeout = 750');
-        await client.query('INSERT INTO managed_survey_completions(survey_id,user_id) VALUES($1,$2)', [survey.id, user.id]);
-        assert.equal(await prisma.managed_survey_completions.count({ where: { survey_id: survey.id } }), 1);
+        await client.query('INSERT INTO survey_response_deletion_audits(survey_id,actor_id) VALUES($1,$2)', [survey.id, user.id]);
+        assert.equal(await prisma.survey_response_deletion_audits.count({ where: { survey_id: survey.id } }), 1);
       } finally {
         releaseUpload();
         if (uploading) await uploading;
