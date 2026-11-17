@@ -4,6 +4,7 @@
  */
 
 import { prisma } from './database/prisma.service';
+import { recordBlogRegistrationSource, prepareBlogRegistrationSource } from './blog-registration-source.service';
 import { anonymizeCohortEnrollments } from './cohort-anonymization.service';
 import { anonymizeCohortResourceAuthors } from './cohort-resource-author-anonymization.service';
 import { jwtService } from './jwt.service';
@@ -851,8 +852,9 @@ const getOneUser = async (
 const createUser = async (
   userData: CreateUserRequest,
   tempUserId: string,
-  opts?: { quizClaimToken?: string }
+  opts?: { quizClaimToken?: string; blogSourceContext?: unknown }
 ): Promise<ApiSuccessResponse<{ user: FormattedUserResponse; token: string }> & { quizClaimed?: boolean }> => {
+  const blogSourceContext = await prepareBlogRegistrationSource(opts?.blogSourceContext);
   // 將郵件發送資料從 transaction 中提取出來，避免 application-level deadlock
   // （createEmailLog 使用全域 prisma client，而非 tx，會因 FK 檢查等待 transaction commit 造成死鎖）
   const { response, emailData, newUserId, shouldSendWelcome } = await prisma.$transaction(async (tx) => {
@@ -995,6 +997,8 @@ const createUser = async (
         ON CONFLICT (user_id, tag_id) DO NOTHING
       `;
     }
+
+    await recordBlogRegistrationSource(tx, newUser, blogSourceContext);
 
     // 處理職位關聯
     if (positionList && positionList.length > 0) {

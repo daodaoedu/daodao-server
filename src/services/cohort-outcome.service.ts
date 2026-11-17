@@ -107,10 +107,12 @@ const get = async (programId: number, cohortId: number, actorId: number, now = n
       WHERE p.cohort_id = ${cohortId} AND p.deleted_at IS NULL
       GROUP BY 1 ORDER BY MIN(p.created_at), 1
     `),
-    prisma.$queryRaw<Array<{ user_id: number; nickname: string | null; avatar: string | null; practice_id: number; practice_title: string; practice_status: string | null; checkin_count: bigint; response_count: bigint; target_count: number | null; progress: number | null; last_checkin_at: Date | null; last_response_at: Date | null }>>(Prisma.sql`
+    prisma.$queryRaw<Array<{ user_id: number; nickname: string | null; avatar: string | null; practice_id: number; practice_title: string; practice_status: string | null; checkin_count: bigint; response_count: bigint; published_comment_count: bigint; target_count: number | null; progress: number | null; last_checkin_at: Date | null; last_response_at: Date | null }>>(Prisma.sql`
       SELECT p.user_id, u.nickname, ct.photo_url AS avatar, p.id AS practice_id, COALESCE(pt.title, p.title) AS practice_title, p.status AS practice_status,
              (SELECT COUNT(*) FROM practice_checkins pc WHERE pc.practice_id = p.id)::bigint AS checkin_count,
              (SELECT COUNT(*) FROM comments c JOIN practice_checkins pc ON pc.id = c.target_id WHERE c.target_type = 'checkin' AND pc.practice_id = p.id)::bigint AS response_count,
+             (SELECT COUNT(*) FROM comments c JOIN practice_checkins pc ON pc.id = c.target_id JOIN practices op ON op.id = pc.practice_id
+               WHERE c.target_type = 'checkin' AND c.user_id = p.user_id AND op.cohort_id = p.cohort_id AND op.deleted_at IS NULL AND op.user_id <> p.user_id)::bigint AS published_comment_count,
              CASE WHEN p.duration_days IS NOT NULL AND p.frequency_min_days IS NOT NULL
                   THEN CEIL(p.duration_days / 7.0 * p.frequency_min_days)::int ELSE NULL END AS target_count,
              p.progress_percentage::float AS progress,
@@ -155,7 +157,7 @@ const get = async (programId: number, cohortId: number, actorId: number, now = n
       return {
         userId: row.user_id, nickname: row.nickname, avatar: row.avatar, practiceId: row.practice_id, practiceTitle: row.practice_title, practiceStatus: row.practice_status ?? 'draft',
         completedCount: targetCount > 0 ? Math.min(checkinCount, targetCount) : checkinCount, targetCount,
-        progressPercentage: Math.max(0, Math.round(row.progress ?? 0)), checkinCount, responseCount: count(row.response_count), lastActivityAt
+        progressPercentage: Math.max(0, Math.round(row.progress ?? 0)), checkinCount, responseCount: count(row.response_count), publishedCommentCount: count(row.published_comment_count), lastActivityAt
       };
     }),
     generatedAt: now

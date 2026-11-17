@@ -59,7 +59,7 @@ const listCheckins = async (programId: number, cohortId: number, actorId: number
   const participant = await assertParticipant(cohortId, userId);
   const practice = await prisma.practices.findFirst({
     where: { id: practiceId, cohort_id: cohortId, user_id: userId, deleted_at: null },
-    select: { id: true, title: true, start_date: true, end_date: true, practice_templates: { select: { title: true } } }
+    select: { id: true, external_id: true, title: true, start_date: true, end_date: true, practice_templates: { select: { title: true } } }
   });
   if (!practice) throw new NotFoundError('找不到此參與者的實踐');
   const items = await prisma.practice_checkins.findMany({
@@ -69,7 +69,7 @@ const listCheckins = async (programId: number, cohortId: number, actorId: number
   });
   return {
     participant,
-    practice: { id: practice.id, title: practice.practice_templates?.title ?? practice.title, startDate: practice.start_date, endDate: practice.end_date },
+    practice: { id: practice.id, externalId: practice.external_id ?? null, title: practice.practice_templates?.title ?? practice.title, startDate: practice.start_date, endDate: practice.end_date },
     total: items.length,
     items: items.map(item => ({ id: item.id, checkinDate: item.checkin_date, mood: item.mood, note: item.note, imageUrls: item.image_urls, createdAt: item.created_at }))
   };

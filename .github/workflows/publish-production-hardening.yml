@@ -16,6 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # Keep Docker .Id equal to the config digest required by the release contract.
+      - name: Set up pinned Docker with classic image store
+        uses: docker/setup-docker-action@v5
+        with:
+          version: v29.9.3
+          daemon-config: |
+            {"features":{"containerd-snapshotter":false}}
       - name: Checkout trusted publisher
         uses: actions/checkout@v4
         with:
@@ -74,6 +81,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Keep Docker .Id equal to the config digest required by the release contract.
+      - name: Set up pinned Docker with classic image store
+        uses: docker/setup-docker-action@v5
+        with:
+          version: v29.9.3
+          daemon-config: |
+            {"features":{"containerd-snapshotter":false}}
       - name: Checkout trusted publisher
         uses: actions/checkout@v4
         with:

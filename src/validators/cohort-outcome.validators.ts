@@ -40,6 +40,7 @@ export const outcomeParticipantSchema = z.object({
   progressPercentage: z.number().int().min(0).openapi({ description: '完成率（practices.progress_percentage，可超過 100）' }),
   checkinCount: z.number().int().nonnegative(),
   responseCount: z.number().int().nonnegative().openapi({ description: '這位參與者打卡收到的留言與回應數' }),
+  publishedCommentCount: z.number().int().nonnegative().openapi({ description: '這位參與者在本場次其他成員打卡下發佈的留言數（以人計，同一人各實踐列相同）' }),
   lastActivityAt: z.date().nullable().openapi({ description: '最後一次打卡或收到回應的時間' })
 });
 

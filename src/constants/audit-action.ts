@@ -1,4 +1,8 @@
 export const LIGHTHOUSE_AUDIT_ACTIONS = {
+  COHORT_ACTIVATION_INVITED: 'lighthouse.cohort_activation_invited',
+  COHORT_ACTIVATION_PARTICIPATED: 'lighthouse.cohort_activation_participated',
+  COHORT_PUBLISHED: 'lighthouse.cohort_published',
+  COHORT_ACTIVATION_JOINED: 'lighthouse.cohort_activation_joined',
   ORGANIZATION_CREATED: 'lighthouse.organization_created',
   ORGANIZATION_STATUS_CHANGED: 'lighthouse.organization_status_changed',
   ORGANIZATION_MEMBER_ADDED: 'lighthouse.organization_member_added',

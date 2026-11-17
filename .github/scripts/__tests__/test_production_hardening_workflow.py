@@ -35,6 +35,35 @@ class ProductionHardeningWorkflowTest(unittest.TestCase):
             self.assertNotIn("environment", job)
             self.assertNotIn("permissions", job)
 
+    def test_classic_image_store_is_configured_before_any_docker_use(self):
+        # The release contract compares config digests with Docker image .Id.
+        # Containerd image stores instead expose a manifest/index digest there.
+        for name, job in self.workflow["jobs"].items():
+            with self.subTest(job=name):
+                steps = job["steps"]
+                setups = [
+                    (i, step)
+                    for i, step in enumerate(steps)
+                    if step.get("uses", "").startswith("docker/setup-docker-action@")
+                ]
+                self.assertEqual(len(setups), 1)
+                position, setup = setups[0]
+                self.assertEqual(setup["uses"], "docker/setup-docker-action@v5")
+                self.assertEqual(setup["with"]["version"], "v29.9.3")
+                config = json.loads(setup["with"]["daemon-config"])
+                self.assertIs(config["features"]["containerd-snapshotter"], False)
+                uses = [
+                    i
+                    for i, step in enumerate(steps)
+                    if (
+                        "docker " in step.get("run", "")
+                        or "production-hardening-release.py" in step.get("run", "")
+                        or step.get("uses", "").startswith("docker/login-action@")
+                    )
+                ]
+                self.assertTrue(uses)
+                self.assertLess(position, min(uses))
+
     def test_checkout_trust_and_frozen_definition(self):
         for name, job in self.workflow["jobs"].items():
             checkouts = [

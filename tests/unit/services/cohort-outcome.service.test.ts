@@ -30,7 +30,7 @@ describe('cohortOutcomeService', () => {
     prismaMock.$queryRaw
       .mockResolvedValueOnce([{ participants: 12n, activated: 9n, checkins: 40n, comments: 7n }] as never)
       .mockResolvedValueOnce([{ title: '晨間書寫', participants: 10n, started: 9n, completed: 3n, checkins: 40n, comments: 7n }] as never)
-      .mockResolvedValueOnce([{ user_id: 5, nickname: '小明', avatar: null, practice_id: 7, practice_title: '晨間書寫', practice_status: 'in_progress', checkin_count: 9n, response_count: 2n, target_count: 12, progress: 75.5, last_checkin_at: new Date('2026-08-20T00:00:00.000Z'), last_response_at: new Date('2026-08-21T00:00:00.000Z') }] as never)
+      .mockResolvedValueOnce([{ user_id: 5, nickname: '小明', avatar: null, practice_id: 7, practice_title: '晨間書寫', practice_status: 'in_progress', checkin_count: 9n, response_count: 2n, published_comment_count: 4n, target_count: 12, progress: 75.5, last_checkin_at: new Date('2026-08-20T00:00:00.000Z'), last_response_at: new Date('2026-08-21T00:00:00.000Z') }] as never)
       .mockResolvedValueOnce([{ used: 1n }] as never);
     prismaMock.cohort_outcome_summaries.findMany.mockResolvedValue([summaryRow(2, 'platform_ai'), { ...summaryRow(1), is_current: false }] as never);
     prismaMock.organization_ai_credentials.findUnique.mockResolvedValue({ status: 'verified', provider: 'openai', key_last4: 'ABCD' } as never);
@@ -40,7 +40,7 @@ describe('cohortOutcomeService', () => {
     expect(result.finalizedAt).toEqual(new Date('2026-09-01T00:00:00.000Z'));
     expect(result.overview).toEqual({ participants: 12, activatedPractices: 9, checkins: 40, comments: 7 });
     expect(result.practiceOutcomes).toEqual([{ title: '晨間書寫', participants: 10, started: 9, completed: 3, checkins: 40, comments: 7 }]);
-    expect(result.participantProgress[0]).toEqual(expect.objectContaining({ nickname: '小明', completedCount: 9, targetCount: 12, progressPercentage: 76, responseCount: 2, lastActivityAt: new Date('2026-08-21T00:00:00.000Z') }));
+    expect(result.participantProgress[0]).toEqual(expect.objectContaining({ nickname: '小明', completedCount: 9, targetCount: 12, progressPercentage: 76, responseCount: 2, publishedCommentCount: 4, lastActivityAt: new Date('2026-08-21T00:00:00.000Z') }));
     expect(result.summary.current).toEqual(expect.objectContaining({ version: 2, source: 'platform_ai' }));
     expect(result.summary.versions).toHaveLength(2);
     expect(result.ai).toEqual({ platformAvailable: true, ownKey: { status: 'verified', provider: 'openai', keyLast4: 'ABCD' }, platformDailyLimit: 5, platformUsedToday: 1 });

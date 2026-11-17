@@ -6,6 +6,7 @@
  */
 
 import { Prisma } from '../../generated/prisma';
+import { recordCohortParticipation } from './cohort-activation-evidence.service';
 import { prisma } from './database/prisma.service';
 import { canReadPrivateLighthousePractice } from './cohort-acl.service';
 import { loggerService } from './logging/logger.service';
@@ -197,6 +198,8 @@ export async function createCheckIn(
           }
         }
       });
+
+      if (practice.cohort_id) await recordCohortParticipation(tx, userId, practice.cohort_id, txCheckIn.id);
 
       // 更新實踐進度和狀態
       await tx.practices.update({

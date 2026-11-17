@@ -44368,6 +44368,11 @@ paths:
                         properties:
                           id:
                             type: integer
+                          externalId:
+                            type: string
+                            nullable: true
+                            format: uuid
+                            description: 實踐公開識別碼（UUID），用於連到參與者打卡頁
                           title:
                             type: string
                           startDate:
@@ -44380,6 +44385,7 @@ paths:
                             format: date-time
                         required:
                           - id
+                          - externalId
                           - title
                           - startDate
                           - endDate
@@ -45700,6 +45706,10 @@ paths:
                               type: integer
                               minimum: 0
                               description: 這位參與者打卡收到的留言與回應數
+                            publishedCommentCount:
+                              type: integer
+                              minimum: 0
+                              description: 這位參與者在本場次其他成員打卡下發佈的留言數（以人計，同一人各實踐列相同）
                             lastActivityAt:
                               type: string
                               nullable: true
@@ -45717,6 +45727,7 @@ paths:
                             - progressPercentage
                             - checkinCount
                             - responseCount
+                            - publishedCommentCount
                             - lastActivityAt
                       generatedAt:
                         type: string

@@ -75,7 +75,9 @@ const invite = async (programId: number, cohortId: number, actorId: number, inpu
     await tx.$executeRaw`
       INSERT INTO audit_logs (admin_id, action_type, target_resource, target_id, new_value)
       VALUES (${actorId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_INVITATION_UPLOADED}, 'cohort', ${String(cohort.id)},
-              ${JSON.stringify({ totalCount: emails.length, validCount: emails.length - errors, errorCount: errors })}::jsonb)
+              ${JSON.stringify({ totalCount: emails.length, validCount: emails.length - errors, errorCount: errors })}::jsonb),
+             (${actorId}, ${LIGHTHOUSE_AUDIT_ACTIONS.COHORT_ACTIVATION_INVITED}, 'cohort', ${String(cohort.id)},
+              ${JSON.stringify({ version: 1, enrollmentIds: items.flatMap(item => isInvitationSendable(item.state) && item.enrollmentId !== null ? [item.enrollmentId] : []) })}::jsonb)
     `;
     return items;
   });
