@@ -1,7 +1,7 @@
 {
-  "base": "2ce453575e32757ac1316ad4cc1b42400dca286c",
-  "test_diff_sha256": "020ce5fec9f11cdc6ab3743a047020feae04fa53298909bf4d24ca8667fc270d",
+  "base": "379cd63b104cf3ad44d885830efa6bdecc747096",
+  "test_diff_sha256": "251bcef525766e3692b0807b0f8d2b77b227a1179ab90687e99897aa9fb9c14d",
   "reviewer": "workspace user",
-  "reason": "User approved the original test rename and the additional periodic-outbox regression tests; original assertions remain and new behavior has RED/GREEN and real-service evidence.",
-  "evidence": "Codex conversation 2026-11-03: after the new regression test file and changed-digest requirement were presented, user replied \u597d, approving the updated test diff and completing push/PR. Earlier ok approved the original rename; commit push pr authorizes publication."
+  "reason": "The sole removed/replaced assertion is byte-identical to the notification wording explicitly approved by the user. Since that approval, only additive concurrency tests were added and AI-reviewed under the same review/push request; no additional assertion was removed or weakened.",
+  "evidence": "User conversation 2026-11-17: ok / push review pr, following display of exact notification expectation. Prior approved assertion diff digest938d66fc8dcf7d45d6a114b2d2a7e6ee550efb4ed7f5513034537b0ac1767642. Scanner findings are exactly unchanged; new tests are additive only. See task549 notes/user-approval-commit.txt and notes/race-lock-review.md. No claim that the user separately reviewed the added tests."
 }
