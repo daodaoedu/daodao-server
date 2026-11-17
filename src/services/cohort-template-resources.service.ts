@@ -40,6 +40,56 @@ export async function initializeCohortResources(tx: Tx, bindingId: number) {
   await tx.cohort_templates.update({ where: { id: bindingId }, data: { resources_initialized_at: new Date() } });
 }
 
+/**
+ * Before a Lighthouse cohort starts, its template-default snapshot follows the template (#544):
+ * replace default-sourced entries with the template's current resources and propagate to learners.
+ * Cohort-specific entries (no template source) are untouched; started cohorts stay frozen.
+ */
+export async function syncTemplateDefaultsForUnstartedCohorts(tx: Tx, templateId: number, currentDay: string) {
+  const bindings = await tx.cohort_templates.findMany({
+    where: {
+      template_id: templateId, unbound_at: null, resources_initialized_at: { not: null },
+      cohort: { deleted_at: null, start_date: { gt: new Date(`${currentDay}T00:00:00.000Z`) }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } }
+    },
+    select: { cohort_id: true },
+    orderBy: { cohort_id: 'asc' }
+  });
+  if (bindings.length === 0) return;
+  const sources = await tx.entity_resources.findMany({
+    where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null, resources: { deleted_at: null } },
+    include: { resources: true }, orderBy: [{ created_at: 'desc' }, { id: 'desc' }]
+  });
+  const now = new Date();
+  for (const { cohort_id } of bindings) {
+    const binding = await lockCohortResourceBinding(tx, cohort_id, templateId);
+    // Unreviewed legacy links would be misclassified by propagation; leave such bindings for the reviewed migration.
+    if ((await inspectLegacyCohortResourceLinks(tx, binding.id)).length) continue;
+    const stale = await tx.cohort_template_resources.findMany({
+      where: { cohort_template_id: binding.id, deleted_at: null, source_template_relation_id: { not: null } }, select: { id: true }
+    });
+    if (stale.length) {
+      const ids = stale.map(row => row.id);
+      await tx.cohort_template_resources.updateMany({ where: { id: { in: ids } }, data: { deleted_at: now, updated_at: now } });
+      await tx.entity_resources.updateMany({ where: { cohort_template_resource_id: { in: ids }, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
+    }
+    const last = await tx.cohort_template_resources.aggregate({ where: { cohort_template_id: binding.id, deleted_at: null }, _max: { sort_order: true } });
+    let order = (last._max.sort_order ?? -1) + 1;
+    for (const source of sources) {
+      const original = source.resources;
+      const resource = await tx.resources.create({ data: {
+        created_by: original.created_by, name: original.name, url: original.url,
+        description: original.description, type: original.type, cost: original.cost, level: original.level,
+        image_url: original.image_url, video_url: original.video_url,
+        major_category_id: original.major_category_id, sub_category_id: original.sub_category_id
+      } });
+      await tx.cohort_template_resources.create({ data: {
+        cohort_template_id: binding.id, resource_id: resource.id, source_template_relation_id: source.id, sort_order: order++
+      } });
+    }
+    await attachCohortResources(tx, binding.id);
+  }
+}
+
 /** Attach active shared sources without touching personal or unresolved legacy relations. Caller holds the binding lock. */
 export async function attachCohortResources(tx: Tx, bindingId: number, practiceIds?: number[]) {
   const binding = await tx.cohort_templates.findUniqueOrThrow({ where: { id: bindingId } });
