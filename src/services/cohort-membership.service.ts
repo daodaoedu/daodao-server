@@ -51,7 +51,10 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
     });
     if (!enrollment) throw new ForbiddenError('無權限移除此成員');
     if (enrollment.status !== 'joined' && enrollment.status !== 'invited') throw new ConflictError('此成員目前不在期內');
-    const detached = enrollment.user_id === null ? { count: 0 } : await detachCohortPractices(tx, cohortId, enrollment.user_id);
+    const detached = enrollment.user_id === null ? { count: 0 } : await tx.practices.updateMany({
+      where: { cohort_id: cohortId, user_id: enrollment.user_id, deleted_at: null },
+      data: { cohort_id: null, deleted_at: now }
+    });
     await tx.cohort_enrollments.update({ where: { id: enrollment.id }, data: { status: 'removed', exited_at: now } });
     await tx.cohort_stat_snapshots.deleteMany({ where: { cohort_id: cohortId } });
     await tx.$executeRaw`
@@ -63,7 +66,7 @@ const remove = async (programId: number, cohortId: number, enrollmentId: number,
     return { userId: enrollment.user_id, detachedPracticeCount: detached.count, cohortName: enrollment.cohort?.display_name };
   });
   if (result.userId !== null) {
-    await notificationEventService.createEvent({ type: NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, actorId, recipientId: result.userId, entityType: 'cohort', entityId: cohortId, payload: { ...(result.cohortName && { cohortName: result.cohortName }), message: `你已不再參與${result.cohortName ? `「${result.cohortName}」` : '此期'}，原有實踐已轉回個人實踐。` }, priority: 'P1' });
+    await notificationEventService.createEvent({ type: NOTIFICATION_TYPES.COHORT_MEMBER_REMOVED, actorId, recipientId: result.userId, entityType: 'cohort', entityId: cohortId, payload: { ...(result.cohortName && { cohortName: result.cohortName }), message: `你已不再參與${result.cohortName ? `「${result.cohortName}」` : '此期'}，本期實踐已從個人空間移除。` }, priority: 'P1' });
   }
   return { userId: result.userId, detachedPracticeCount: result.detachedPracticeCount };
 };
