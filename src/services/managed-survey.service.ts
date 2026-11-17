@@ -47,9 +47,10 @@ export const managedSurveyService = {
       const { questions, ...fields } = body;
       if (survey.status === 'active' && questions?.length === 0) throw new BadRequestError('進行中的問卷至少需要一題；請先關閉問卷');
       if (historicallyAnswered && ((body.is_anonymous !== undefined && body.is_anonymous !== survey.is_anonymous) || (body.is_public !== undefined && body.is_public !== survey.is_public))) throw new ConflictError('已有回應後無法變更回應對象或匿名設定');
-      if (historicallyAnswered && questions && !sameQuestionStructure(survey.questions, questions)) throw new ConflictError('已有回應後無法修改題目；請複製問卷');
-      if (questions && !historicallyAnswered) await tx.questions.deleteMany({ where: { survey_id: id } });
-      return tx.surveys.update({ where: { id }, data: { ...fields, ...(questions && !historicallyAnswered ? { questions: { create: questionWrites(questions) } } : {}) }, include: includeQuestions });
+      const questionsChanged = questions !== undefined && !sameQuestionStructure(survey.questions, questions);
+      if (historicallyAnswered && questionsChanged) throw new ConflictError('已有回應後無法修改題目；請複製問卷');
+      if (questions && questionsChanged) await tx.questions.deleteMany({ where: { survey_id: id } });
+      return tx.surveys.update({ where: { id }, data: { ...fields, ...(questions && questionsChanged ? { questions: { create: questionWrites(questions) } } : {}) }, include: includeQuestions });
     });
   },
   /** Serialize lifecycle changes with submissions so closed means no later accepted submissions. */
@@ -124,7 +125,7 @@ export const managedSurveyService = {
   async uploadImage(userId: number, file: Express.Multer.File) {
     if (!file || file.size > 8 * 1024 * 1024 || !isSupportedImage(file.buffer, file.mimetype)) throw new BadRequestError('請上傳8MB以內的PNG、JPEG或WebP圖片');
     return prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR NO KEY UPDATE`;
       if (await tx.survey_image_library.count({ where: { created_by: userId } }) >= 3) throw new ConflictError('圖片庫最多保留三張，請先移除一張');
       const user = await tx.users.findUnique({ where: { id: userId }, select: { external_id: true } });
       if (!user?.external_id) throw new UnauthorizedError('無法確認圖片擁有者');

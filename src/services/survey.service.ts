@@ -438,11 +438,14 @@ export const surveyService = {
   },
 
   async trackView(externalId: string) {
-    if ((await prisma.surveys.findUnique({ where: { external_id: externalId }, select: { managed_version: true } }))?.managed_version === 1) return;
-    const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true } });
+    const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true, managed_version: true } });
     if (survey) await assertGenericSurvey(survey.id);
+    const now = new Date();
     await prisma.surveys.updateMany({
-      where: { external_id: externalId, status: 'active' },
+      where: { external_id: externalId, status: 'active', ...(survey?.managed_version === 1 ? { AND: [
+        { OR: [{ start_time: null }, { start_time: { lte: now } }] },
+        { OR: [{ end_time: null }, { end_time: { gte: now } }] },
+      ] } : {}) },
       data: { view_count: { increment: 1 } },
     });
   },
