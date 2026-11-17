@@ -1,7 +1,7 @@
 {
-  "base": "2ce453575e32757ac1316ad4cc1b42400dca286c",
-  "test_diff_sha256": "020ce5fec9f11cdc6ab3743a047020feae04fa53298909bf4d24ca8667fc270d",
-  "reviewer": "workspace user",
-  "reason": "User approved the original test rename and the additional periodic-outbox regression tests; original assertions remain and new behavior has RED/GREEN and real-service evidence.",
-  "evidence": "Codex conversation 2026-11-03: after the new regression test file and changed-digest requirement were presented, user replied \u597d, approving the updated test diff and completing push/PR. Earlier ok approved the original rename; commit push pr authorizes publication."
+  "base": "2f434d121adac4dda9008c6425bfafce9d4f661e",
+  "test_diff_sha256": "f21edba1857cf1994f3b2df81b3907b6404c151e2dd3b604191e2ddba17bda0c",
+  "reviewer": "User explicit approval in Codex conversation",
+  "reason": "Retain peer403behavior; new approved organization-manager draft authorization requires membership lookup, so removing no-query implementation assertion is necessary. Actual PostgreSQL20 and existing39regressions preserve behavior boundaries.",
+  "evidence": "2026-11-17 user replied 好 commit push pr review after exact assertion removal and commit drafts were presented; verification report https://docs.google.com/document/d/1XuTKalm4z0_NX1dmuxkvVODR4DE2gKL3dHx83wMQFns/edit; base synchronized to 2f434d121adac4dda9008c6425bfafce9d4f661e with identical test_diff_sha256; upstream only organization-owner OAuth integration test changed, owned assertion diff unchanged."
 }

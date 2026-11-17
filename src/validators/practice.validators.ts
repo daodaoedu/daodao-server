@@ -779,6 +779,7 @@ export const practiceEntityResponseSchema = z.object({
   title: z.string().openapi({ description: '實踐活動標題', example: '每日閱讀 30 分鐘' }),
   isChallenge: z.boolean().optional().openapi({ description: '是否為共同挑戰實踐（名稱／期間／隱私由挑戰統一設定、不可複製）', example: false }),
   isCohortPractice: z.boolean().optional().openapi({ description: '由燈塔場次模板產生且仍屬於場次的實踐', example: false }),
+  isCopyRestricted: z.boolean().optional().openapi({ description: '是否禁止複製（仍屬於場次或由場次模板建立，包含已解除關聯者；只在詳情回傳）', example: false }),
   isCohortPrivacyLocked: z.boolean().optional().openapi({ description: '是否為燈塔場次實踐（隱私由場次統一設定，學員不可修改；只在詳情回傳）', example: false }),
   practiceAction: z.string().optional().openapi({ description: '實踐行動描述', example: '閱讀技術書籍或文章' }),
   startDate: z.string().optional().openapi({ description: '開始日期 (YYYY-MM-DD)', example: '2024-01-15', format: 'date' }),

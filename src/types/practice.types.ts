@@ -60,6 +60,8 @@ export interface PracticeResourceEntity {
 // Core practice entity interface - 基於 Prisma schema practices 表
 export interface PracticeEntity {
   isCohortPractice?: boolean;
+  /** 場次來源實踐不可複製，包含已解除場次關聯的實踐（只在詳情回傳） */
+  isCopyRestricted?: boolean;
   id: string;
   title: string;
   /** 是否為共同挑戰實踐（名稱／期間／隱私鎖定、不可複製；只在詳情回傳） */
