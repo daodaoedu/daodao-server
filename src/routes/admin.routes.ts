@@ -1,3 +1,7 @@
+import './managed-survey.openapi';
+import { uploadLimiter } from '@/middleware/rate-limit.middleware';
+import multer from 'multer';
+import { managedSurveyImageController } from '@/controllers/managed-survey-image.controller';
 /**
  * 管理員路由
  * 處理角色與權限管理的路由定義
@@ -1484,6 +1488,10 @@ router.post('/events/:id/remind', authenticateAny, requireAdmin, adminEventsCont
 
 // ===== 問卷管理路由 =====
 
+const surveyImageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } });
+router.get('/surveys/images', authenticateAny, requireAdmin, managedSurveyImageController.list as RequestHandler);
+router.post('/surveys/images', authenticateAny, requireAdmin, uploadLimiter, surveyImageUpload.single('file'), managedSurveyImageController.upload as RequestHandler);
+router.delete('/surveys/images/:imageId', authenticateAny, requireAdmin, managedSurveyImageController.remove as RequestHandler);
 router.get('/surveys', authenticateAny, requireAdmin, adminSurveyController.listSurveys as RequestHandler);
 router.post('/surveys', authenticateAny, requireAdmin, adminSurveyController.createSurvey as RequestHandler);
 router.get('/surveys/:id', authenticateAny, requireAdmin, adminSurveyController.getSurvey as RequestHandler);
