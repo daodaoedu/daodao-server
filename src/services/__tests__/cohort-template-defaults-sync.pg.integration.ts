@@ -78,6 +78,22 @@ describe('template default resources follow unstarted Lighthouse cohorts (#544)'
     expect(await prisma.entity_resources.count({ where: { entity_type: 'practice', entity_id: practice.id, resource_id: personal.id, deleted_at: null } })).toBe(1);
   });
 
+  it('keeps a coach edit on an unchanged default when the template adds or removes other defaults', async () => {
+    const { cohortId, templateId } = await setup(10);
+    await organizationTemplateService.update(org, templateId, owner, { resources: [{ name: '預設A' }, { name: '預設B' }] });
+    const current = await cohortResources.list(org, templateId, cohortId, owner);
+    await cohortResources.update(org, templateId, cohortId, owner, updateCohortTemplateResourcesSchema.parse({
+      resources: current.map(row => row.name === '預設A' ? { ...row, name: '預設A（教練改）', relevantDate: '2099-02-02' } : row)
+    }).resources);
+
+    await organizationTemplateService.update(org, templateId, owner, { resources: [{ name: '預設A' }, { name: '預設C' }] });
+
+    const listed = await cohortResources.list(org, templateId, cohortId, owner);
+    expect(listed.map(row => row.name).sort()).toEqual(['預設A（教練改）', '預設C']);
+    expect(listed.find(row => row.name === '預設A（教練改）')?.relevantDate).toBe('2099-02-02');
+    expect((await learnerShared(cohortId)).names).toEqual(['預設A（教練改）', '預設C']);
+  });
+
   it('leaves a started cohort snapshot unchanged when the template defaults change', async () => {
     const { cohortId, templateId } = await setup(10);
     await organizationTemplateService.update(org, templateId, owner, { resources: [{ name: '開始前' }] });

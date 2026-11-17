@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
-import { pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
+import { pickCoachLockedRelationIds, resourceContentKey } from '../utils/coach-resource-lock';
 import type { CohortTemplateResourceInput } from '../validators/cohort-template-resources.validators';
 import { assertCohortTemplateResourceAccess } from './cohort-template-resource-access.service';
 import { prisma } from './database/prisma.service';
@@ -42,8 +42,9 @@ export async function initializeCohortResources(tx: Tx, bindingId: number) {
 
 /**
  * Before a Lighthouse cohort starts, its template-default snapshot follows the template (#544):
- * replace default-sourced entries with the template's current resources and propagate to learners.
+ * add new template defaults, drop removed ones, keep unchanged ones (with coach edits), and propagate to learners.
  * Cohort-specific entries (no template source) are untouched; started cohorts stay frozen.
+ * Caller holds the template row lock so concurrent template saves apply in order.
  */
 export async function syncTemplateDefaultsForUnstartedCohorts(tx: Tx, templateId: number, currentDay: string) {
   const bindings = await tx.cohort_templates.findMany({
@@ -64,17 +65,27 @@ export async function syncTemplateDefaultsForUnstartedCohorts(tx: Tx, templateId
     const binding = await lockCohortResourceBinding(tx, cohort_id, templateId);
     // Unreviewed legacy links would be misclassified by propagation; leave such bindings for the reviewed migration.
     if ((await inspectLegacyCohortResourceLinks(tx, binding.id)).length) continue;
-    const stale = await tx.cohort_template_resources.findMany({
-      where: { cohort_template_id: binding.id, deleted_at: null, source_template_relation_id: { not: null } }, select: { id: true }
+    // Match by template content so a coach's date/name edits on an unchanged default survive the template's
+    // replace-all save (template relations are recreated on every change, so their ids cannot be compared).
+    const current = await tx.cohort_template_resources.findMany({
+      where: { cohort_template_id: binding.id, deleted_at: null, source_template_relation_id: { not: null } },
+      include: { source_template_relation: { include: { resources: { select: { name: true, url: true } } } } },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }]
     });
-    if (stale.length) {
-      const ids = stale.map(row => row.id);
-      await tx.cohort_template_resources.updateMany({ where: { id: { in: ids } }, data: { deleted_at: now, updated_at: now } });
-      await tx.entity_resources.updateMany({ where: { cohort_template_resource_id: { in: ids }, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
+    const unmatched = new Map<string, number[]>();
+    for (const row of current) {
+      const origin = row.source_template_relation?.resources;
+      const key = origin ? resourceContentKey(origin) : `orphan:${row.id}`;
+      unmatched.set(key, [...(unmatched.get(key) ?? []), row.id]);
     }
     const last = await tx.cohort_template_resources.aggregate({ where: { cohort_template_id: binding.id, deleted_at: null }, _max: { sort_order: true } });
     let order = (last._max.sort_order ?? -1) + 1;
     for (const source of sources) {
+      const kept = unmatched.get(resourceContentKey(source.resources))?.shift();
+      if (kept !== undefined) {
+        await tx.cohort_template_resources.update({ where: { id: kept }, data: { source_template_relation_id: source.id } });
+        continue;
+      }
       const original = source.resources;
       const resource = await tx.resources.create({ data: {
         created_by: original.created_by, name: original.name, url: original.url,
@@ -85,6 +96,11 @@ export async function syncTemplateDefaultsForUnstartedCohorts(tx: Tx, templateId
       await tx.cohort_template_resources.create({ data: {
         cohort_template_id: binding.id, resource_id: resource.id, source_template_relation_id: source.id, sort_order: order++
       } });
+    }
+    const removed = [...unmatched.values()].flat();
+    if (removed.length) {
+      await tx.cohort_template_resources.updateMany({ where: { id: { in: removed } }, data: { deleted_at: now, updated_at: now } });
+      await tx.entity_resources.updateMany({ where: { cohort_template_resource_id: { in: removed }, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
     }
     await attachCohortResources(tx, binding.id);
   }

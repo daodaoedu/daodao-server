@@ -8,6 +8,7 @@ import { writeLighthouseAudit } from '../utils/lighthouse-audit';
 import { assertTemplateReady, ORG_TEMPLATE_TITLE_MAX, type BindOrganizationTemplateInput, type CreateOrganizationTemplateInput, type OrganizationTemplateListQuery, type OrganizationTemplateResourceInput, type UpdateOrganizationTemplateInput } from '../validators/organization-template.validators';
 import { day, today } from './cohort-run-state';
 import { prisma } from './database/prisma.service';
+import type { Prisma } from '../../generated/prisma';
 
 const ENTITY_TYPE = 'practice_template';
 
@@ -136,10 +137,10 @@ const assertResourcesUnique = (resources: OrganizationTemplateResourceInput[]): 
 };
 
 /** 整批換掉模板資源：舊關聯軟刪除，新的重建（resources 本體保留，供既有草稿續用） */
-const replaceResources = async (templateId: number, userId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>): Promise<boolean> => {
+const replaceResources = async (templateId: number, userId: number, resources: Array<{ name: string; url?: string; dayNumber?: number | null }>, db: Prisma.TransactionClient | typeof prisma = prisma): Promise<boolean> => {
   // 前端每次存檔都會帶 resources（即使只改了標題），沒有這道比對就會每次重造一批
   // resources 列，孤兒資料越積越多、id 也無謂地換掉
-  const existing = await prisma.entity_resources.findMany({
+  const existing = await db.entity_resources.findMany({
     where: { entity_type: ENTITY_TYPE, entity_id: templateId, deleted_at: null },
     select: { dayNumber: true, resources: { select: { name: true, url: true } } },
     orderBy: { id: 'asc' }
@@ -150,10 +151,10 @@ const replaceResources = async (templateId: number, userId: number, resources: A
       && (row.dayNumber ?? null) === (resources[index]?.dayNumber ?? null));
   if (unchanged) return false;
 
-  await prisma.entity_resources.updateMany({ where: { entity_type: ENTITY_TYPE, entity_id: templateId, deleted_at: null }, data: { deleted_at: new Date() } });
+  await db.entity_resources.updateMany({ where: { entity_type: ENTITY_TYPE, entity_id: templateId, deleted_at: null }, data: { deleted_at: new Date() } });
   for (const resource of resources) {
-    const created = await prisma.resources.create({ data: { name: resource.name, url: resource.url || '', description: '', type: 'other', cost: 'free', created_by: userId } });
-    await prisma.entity_resources.create({ data: { resource_id: created.id, entity_type: ENTITY_TYPE, entity_id: templateId, created_by: userId, dayNumber: resource.dayNumber ?? null } });
+    const created = await db.resources.create({ data: { name: resource.name, url: resource.url || '', description: '', type: 'other', cost: 'free', created_by: userId } });
+    await db.entity_resources.create({ data: { resource_id: created.id, entity_type: ENTITY_TYPE, entity_id: templateId, created_by: userId, dayNumber: resource.dayNumber ?? null } });
   }
   return true;
 };
@@ -267,9 +268,13 @@ const update = async (organizationId: number, templateId: number, userId: number
     select
   });
   if (nextTitle !== undefined && nextTitle !== existing.title) await syncDraftPracticeTitles(templateId, nextTitle, today());
-  if (input.resources !== undefined && await replaceResources(templateId, userId, input.resources)) {
-    // 尚未開始的燈塔場次跟著模板預設資源更新；已開始的場次維持快照（daodao#544）
-    await prisma.$transaction(tx => syncTemplateDefaultsForUnstartedCohorts(tx, templateId, today()), { timeout: 30000 });
+  if (input.resources !== undefined) {
+    const resources = input.resources;
+    // 模板資源與尚未開始燈塔場次的同步同一個 transaction：同步失敗就整筆回滾，下次存檔仍會判定為有變更（daodao#544）
+    await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM practice_templates WHERE id = ${templateId} FOR UPDATE`;
+      if (await replaceResources(templateId, userId, resources, tx)) await syncTemplateDefaultsForUnstartedCohorts(tx, templateId, today());
+    }, { timeout: 30000 });
   }
   if (input.tags !== undefined) await replaceTags(templateId, userId, input.tags);
   return (await hydrate([row]))[0];
