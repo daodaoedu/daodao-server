@@ -181,4 +181,58 @@ describe('#549 concurrent join and administrator removal with PostgreSQL', () =>
       expect(notificationEventService.createEvent).toHaveBeenCalledTimes(1);
     } finally { await drain(f, name, 'cohort_enrollments', pending); }
   }, 20_000);
+
+  it.each(['exit', 'remove'] as const)('keeps the first %s outcome when voluntary exit and administrator removal overlap', async winner => {
+    const f = fixture = await seed(true);
+    await cohortJoinService.join(f.token, f.userId, true, now);
+    jest.clearAllMocks();
+    const name = `race549_${randomUUID().replace(/-/g, '')}`;
+    const pending: Promise<unknown>[] = [];
+    await gate.$executeRaw`SELECT pg_advisory_lock(549::int, ${f.cohortId}::int)`;
+    try {
+      await monitor.$executeRawUnsafe(`CREATE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(549, ${f.cohortId}); RETURN NEW; END $$`);
+      // The first service has already updated the actual practice. Its row is
+      // uncommitted until the second service's observed lock wait is confirmed.
+      const deletedCondition = winner === 'exit' ? 'NULL' : 'NOT NULL';
+      await monitor.$executeRawUnsafe(`CREATE TRIGGER ${name} AFTER UPDATE ON practices FOR EACH ROW WHEN (OLD.cohort_id = ${f.cohortId} AND NEW.cohort_id IS NULL AND NEW.deleted_at IS ${deletedCondition}) EXECUTE FUNCTION ${name}()`);
+      const runExit = () => cohortMembershipService.exit(f.cohortId, f.userId, now);
+      const runRemove = () => cohortMembershipService.remove(f.programId, f.cohortId, f.enrollmentId, f.actorId, now);
+      const first = winner === 'exit' ? runExit() : runRemove();
+      pending.push(first); void first.catch(() => undefined);
+      const firstPid = await gatedPid(f.cohortId);
+      const second = winner === 'exit' ? runRemove() : runExit();
+      pending.push(second);
+      const secondOutcome = second.then(value => ({ value }), (error: unknown) => ({ error }));
+      await blockedBy(firstPid);
+      await gate.$executeRaw`SELECT pg_advisory_unlock(549::int, ${f.cohortId}::int)`;
+      const firstResult = await first;
+      const losingResult = await secondOutcome;
+      const enrollment = await prisma.cohort_enrollments.findUniqueOrThrow({ where: { id: f.enrollmentId } });
+      const rows = await prisma.practices.findMany({ where: { user_id: f.userId, template_id: f.templateId } });
+      expect(rows).toHaveLength(1);
+      const audit = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint AS count FROM audit_logs WHERE admin_id = ${f.actorId}
+          AND action_type = 'lighthouse.cohort_member_removed' AND target_id = ${String(f.enrollmentId)}
+      `;
+      expect({
+        enrollmentStatus: enrollment.status,
+        exitedAt: enrollment.exited_at,
+        retainedRow: { cohortId: rows[0].cohort_id, deletedAt: rows[0].deleted_at },
+        visiblePracticeCount: await prisma.practices.count({ where: { user_id: f.userId, deleted_at: null } }),
+        removalAuditCount: Number(audit[0].count),
+        removalNotificationCount: jest.mocked(notificationEventService.createEvent).mock.calls.length,
+      }).toEqual({
+        enrollmentStatus: winner === 'exit' ? 'exited' : 'removed',
+        exitedAt: now,
+        retainedRow: { cohortId: null, deletedAt: winner === 'exit' ? null : now },
+        visiblePracticeCount: winner === 'exit' ? 1 : 0,
+        removalAuditCount: winner === 'exit' ? 0 : 1,
+        removalNotificationCount: winner === 'exit' ? 0 : 1,
+      });
+      expect(firstResult).toEqual(winner === 'exit'
+        ? { enrollmentId: f.enrollmentId, status: 'exited', detachedPracticeCount: 1 }
+        : { userId: f.userId, detachedPracticeCount: 1 });
+      expect(losingResult).toEqual({ error: expect.any(ConflictError) });
+    } finally { await drain(f, name, 'practices', pending); }
+  }, 20_000);
 });

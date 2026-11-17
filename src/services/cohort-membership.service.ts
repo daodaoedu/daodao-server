@@ -33,6 +33,8 @@ async function detachCohortPractices(tx: Prisma.TransactionClient, cohortId: num
 
 const exit = async (cohortId: number, userId: number, now = new Date()) => {
   const result = await prisma.$transaction(async tx => {
+    // Keep join, exit and removal in the same cohort-first lock order.
+    await tx.$queryRaw`SELECT id FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
     const enrollment = await tx.cohort_enrollments.findFirst({ where: { cohort_id: cohortId, user_id: userId }, select: { id: true, status: true } });
     if (!enrollment) throw new NotFoundError('找不到本期參與紀錄');
     if (enrollment.status !== 'joined') throw new ConflictError('目前狀態無法退出');
