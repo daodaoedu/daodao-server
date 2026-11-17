@@ -8,7 +8,9 @@
 import { Prisma } from '../../generated/prisma';
 import { recordCohortParticipation } from './cohort-activation-evidence.service';
 import { prisma } from './database/prisma.service';
-import { canReadPrivateLighthousePractice } from './cohort-acl.service';
+import { today as taipeiToday } from './cohort-run-state';
+import { isCoachResourceLockActive } from '../utils/coach-resource-lock';
+import { assertLighthouseCheckinAllowed, canReadPrivateLighthousePractice, isLighthouseCohort } from './cohort-acl.service';
 import { loggerService } from './logging/logger.service';
 import { AppError, ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
@@ -103,6 +105,8 @@ export async function createCheckIn(
 
     // 共同挑戰為固定時段：開始日前不可打卡，也不做提早打卡的日期位移
     assertChallengeCheckinAllowed(await isChallengeCohort(practice.cohort_id), practice.start_date, today);
+    // 燈塔場次實踐的期間由場次設定：開始日前不可打卡，也不位移開始日（daodao#544）
+    assertLighthouseCheckinAllowed(isCoachResourceLockActive(practice) && await isLighthouseCohort(practice.cohort_id), practice.start_date, taipeiToday());
 
     // 取得實踐配置用於進度計算（duration_days 為 null 時改用起訖日天數，見 resolveProgressDurationDays）
     const durationDays = resolveProgressDurationDays(practice, 14);
