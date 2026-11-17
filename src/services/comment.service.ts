@@ -733,7 +733,7 @@ export class CommentService implements CommentServiceInterface {
 
       case 'practice': {
         const practice = await prisma.practices.findUnique({
-          where: { id: internalId },
+          where: { id: internalId, deleted_at: null },
           select: { id: true, user_id: true }
         });
         if (practice) {
@@ -744,7 +744,7 @@ export class CommentService implements CommentServiceInterface {
 
       case 'checkin': {
         const checkin = await prisma.practice_checkins.findUnique({
-          where: { id: internalId },
+          where: { id: internalId, practices: { deleted_at: null } },
           select: { id: true, user_id: true }
         });
         if (checkin) {

@@ -1,7 +1,7 @@
 {
-  "base": "2ce453575e32757ac1316ad4cc1b42400dca286c",
-  "test_diff_sha256": "020ce5fec9f11cdc6ab3743a047020feae04fa53298909bf4d24ca8667fc270d",
+  "base": "379cd63b104cf3ad44d885830efa6bdecc747096",
+  "test_diff_sha256": "938d66fc8dcf7d45d6a114b2d2a7e6ee550efb4ed7f5513034537b0ac1767642",
   "reviewer": "workspace user",
-  "reason": "User approved the original test rename and the additional periodic-outbox regression tests; original assertions remain and new behavior has RED/GREEN and real-service evidence.",
-  "evidence": "Codex conversation 2026-11-03: after the new regression test file and changed-digest requirement were presented, user replied \u597d, approving the updated test diff and completing push/PR. Earlier ok approved the original rename; commit push pr authorizes publication."
+  "reason": "User approved exact notification assertion replacement displayed in preceding final: practices removed from personal space rather than converted to personal practices; full payload assertion retained.",
+  "evidence": "Conversation approval 2026-11-17: ok / push review pr; exact notification wording and Why/How displayed before approval. Task549 notes/user-approval-commit.txt records this approval."
 }
