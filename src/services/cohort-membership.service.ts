@@ -45,6 +45,8 @@ const exit = async (cohortId: number, userId: number, now = new Date()) => {
 };
 const remove = async (programId: number, cohortId: number, enrollmentId: number, actorId: number, now = new Date()) => {
   const result = await prisma.$transaction(async tx => {
+    // Join holds this row while creating practices. Read membership only after it commits.
+    await tx.$queryRaw`SELECT id FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
     const enrollment = await tx.cohort_enrollments.findFirst({
       where: { id: enrollmentId, cohort_id: cohortId, cohort: { program_id: programId, program: { organization: { status: 'active', organization_members: { some: { user_id: actorId } } } } } },
       select: { id: true, user_id: true, status: true, cohort: { select: { display_name: true } } }
