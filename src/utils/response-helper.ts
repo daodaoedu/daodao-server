@@ -90,6 +90,7 @@ export const createErrorFromAppError = (
 ): ApiErrorResponse => {
   // Map AppError class names to standard error codes
   const errorCodeMap: Record<string, string> = {
+    'GoneError': 'GONE',
     'BadRequestError': 'BAD_REQUEST',
     'UnauthorizedError': 'UNAUTHORIZED',
     'ForbiddenError': 'FORBIDDEN',
