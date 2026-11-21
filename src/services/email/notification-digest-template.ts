@@ -27,6 +27,7 @@ export interface NotificationDigestP1Event {
   entityTitle?: string;
   content?: string;
   connectMessage?: string;
+  chatNotificationKind?: 'mention' | 'general';
   url: string;
 }
 
@@ -55,7 +56,13 @@ export interface NotificationDigestData {
 
 // ─── 工具函式 ──────────────────────────────────────────────────────────────────
 
-function getEventLabel(type: string): string {
+function getEventLabel(type: string, chatNotificationKind?: 'mention' | 'general'): string {
+  if (type === NOTIFICATION_TYPES.CHAT_MESSAGE) {
+    return chatNotificationKind === 'mention'
+      ? '在群組聊天室提及了你'
+      : '在群組聊天室傳送了新訊息';
+  }
+
   const labels: Record<string, string> = {
     [NOTIFICATION_TYPES.CONNECT]:                   '想與你連結',
     [NOTIFICATION_TYPES.CONNECT_ACCEPTED]:          '接受了你的連結邀請',
@@ -114,7 +121,7 @@ function generateInteractionEventCard(event: NotificationDigestP1Event): string 
   const safeContent = event.content     ? escapeHtml(event.content)     : '';
   const safeMsg     = event.connectMessage ? escapeHtml(event.connectMessage) : '';
   const safeUrl     = sanitizeUrl(event.url);
-  const label       = getEventLabel(event.type);
+  const label       = getEventLabel(event.type, event.chatNotificationKind);
   const subtitle    = safeTitle
     ? `<span style="color: ${EMAIL_COLORS.textSecondary};">《${safeTitle}》</span>`
     : '';
@@ -133,7 +140,7 @@ function generateInteractionEventCard(event: NotificationDigestP1Event): string 
       </p>
       ${preview}
       <p style="margin: 10px 0 0 0;">
-        <a href="${safeUrl}" style="font-size: 13px; color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">前往查看 &rarr;</a>
+        <a href="${safeUrl}" style="font-size: 13px; color: ${EMAIL_COLORS.brandCyan}; text-decoration: underline;">${event.type === NOTIFICATION_TYPES.CHAT_MESSAGE ? '開啟聊天室' : '前往查看'} &rarr;</a>
       </p>
     </td>
   </tr>

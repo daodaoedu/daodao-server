@@ -37,6 +37,8 @@ export const chatSearchQuerySchema = z.object({
 export const createChatMessageSchema = z.object({
   body: z.string().trim().min(1).max(CHAT_MESSAGE_MAX_LENGTH).openapi({ description: '訊息內容', example: '大家好！' }),
   replyToMessageId: z.number().int().positive().optional().openapi({ description: '引用回覆的訊息 ID', example: 42 }),
+  mentionedUserIds: z.array(z.number().int().positive()).max(100).optional().openapi({ description: '被 @mention 的聊天室成員 ID 列表' }),
+  mentionAll: z.boolean().optional().openapi({ description: '是否 @all（僅聊天室管理員可用）' }),
 }).openapi({ description: '發送聊天訊息' });
 
 export const updateChatMessageSchema = z.object({
@@ -113,6 +115,7 @@ export const chatMemberPreviewSchema = z.object({
 }).openapi({ description: '成員預覽' });
 
 export const chatRoomDetailSchema = chatRoomSummarySchema.extend({
+  firstUnreadMessageId: z.number().int().nullable().openapi({ description: '第一則未讀訊息 ID；沒有未讀訊息時為 null' }),
   viewerRole: z.enum(['host', 'member']).openapi({ description: '當前使用者角色' }),
   viewerUserId: z.number().int().openapi({ description: '當前使用者的 users.id（與訊息 author.userId 同一種 id），用來判斷本人訊息' }),
   pinnedCount: z.number().int().nonnegative().openapi({ description: '置頂訊息數' }),

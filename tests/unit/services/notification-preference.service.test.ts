@@ -35,6 +35,7 @@ const ALL_TYPES = [
   'Comment',
   'CommentReply',
   'Mention',
+  'ChatMessage',
   'UserFollowed',
   'PracticeFollowed',
   'Connect',
@@ -101,7 +102,8 @@ describe('NotificationPreferenceService', () => {
 
       const result = await notificationPreferenceService.getPreferences(1);
 
-      const nonWeekly = result.data.filter(p => p.type !== 'WeeklyDigest');
+      const nonWeekly = result.data.filter(p => p.type !== 'WeeklyDigest' && p.type !== 'ChatMessage');
+      expect(result.data.filter(p => p.type === 'ChatMessage').map(p => p.isEnabled)).toEqual([true, true, false]);
       expect(nonWeekly.every(p => p.isEnabled === true)).toBe(true);
     });
 
@@ -212,7 +214,7 @@ describe('NotificationPreferenceService', () => {
 
       const result = await notificationPreferenceService.setGlobalEnabled(3, false);
 
-      expect(result.data.updated).toBe(ALL_TYPES.length * 2); // 32
+      expect(result.data.updated).toBe(ALL_TYPES.length * 2 - 1); // ChatMessage supports email and in-app only.
     });
 
     it('全部設定 is_enabled 為傳入值', async () => {

@@ -299,6 +299,10 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(typeof p.cohortName === 'string'      && { cohortName: p.cohortName }),
       ...(typeof p.message === 'string'         && { message: p.message }),
       ...(typeof p.entityTitle === 'string'     && { entityTitle: p.entityTitle }),
+      ...(p.chatNotificationKind === 'mention' || p.chatNotificationKind === 'general'
+        ? { chatNotificationKind: p.chatNotificationKind }
+        : {}),
+      ...(typeof p.chatRoomName === 'string'    && { chatRoomName:           p.chatRoomName }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
       ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
         checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,

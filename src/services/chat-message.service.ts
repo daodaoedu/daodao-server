@@ -13,6 +13,7 @@ import {
   CHAT_SEARCH_MAX,
 } from '../constants/chat';
 import { chatAclService, type RoomAccess } from './chat-acl.service';
+import { NOTIFICATION_TYPES } from '../constants/notification-type';
 
 /** 共用的訊息 select 子句 */
 const messageSelect = {
@@ -218,8 +219,14 @@ export const create = async (
   access: RoomAccess,
   userId: number,
   body: string,
-  replyToMessageId?: number
+  replyToMessageId?: number,
+  mentionedUserIds: number[] = [],
+  mentionAll = false
 ) => {
+  const hasAllToken = /(?:^|\s)@all(?=$|\s)/i.test(body);
+  if (mentionAll && !hasAllToken) throw new BadRequestError('@all 標記不存在於訊息內容');
+  if (hasAllToken && !access.isHost) throw new ForbiddenError('僅聊天室管理員可使用 @all');
+
   // 驗證引用訊息
   if (replyToMessageId) {
     const replyTarget = await prisma.chat_messages.findFirst({
@@ -230,24 +237,95 @@ export const create = async (
     if (replyTarget.kind === CHAT_MESSAGE_KINDS.SYSTEM) throw new BadRequestError('不可引用系統訊息');
   }
 
-  const now = new Date();
-  const msg = await prisma.chat_messages.create({
-    data: {
-      room_id: access.roomId,
-      sender_user_id: userId,
-      kind: CHAT_MESSAGE_KINDS.TEXT,
-      body,
-      reply_to_message_id: replyToMessageId ?? null,
-      created_at: now,
-      updated_at: now,
-    },
-    select: messageSelect,
-  });
+  const [enrolledMembers, cohort] = await Promise.all([
+    prisma.cohort_enrollments.findMany({
+      where: { cohort_id: access.cohortId, status: 'joined', user_id: { not: null } },
+      select: { user_id: true },
+    }),
+    prisma.cohorts.findUnique({
+      where: { id: access.cohortId },
+      select: {
+        display_name: true,
+        program: {
+          select: {
+            organization: {
+              select: { organization_members: { select: { user_id: true } } },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+  const memberIds = new Set<number>([
+    ...enrolledMembers.flatMap((member) => member.user_id === null ? [] : [member.user_id]),
+    ...(cohort?.program.organization.organization_members.map((member) => member.user_id) ?? []),
+  ]);
+  let safeMentionedUserIds: number[] = [];
+  if (mentionAll) {
+    safeMentionedUserIds = [...memberIds].filter((id) => id !== userId);
+  } else if (mentionedUserIds.length > 0) {
+    const requestedIds = [...new Set(mentionedUserIds)].filter(
+      (id) => id !== userId && memberIds.has(id)
+    );
+    const candidates = await prisma.users.findMany({
+      where: { id: { in: requestedIds } },
+      select: { id: true, nickname: true },
+    });
+    safeMentionedUserIds = candidates
+      .filter((candidate) => {
+        if (!candidate.nickname) return false;
+        const escapedName = candidate.nickname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`@${escapedName}(?=$|[\\s,!?.。、，！？])`).test(body);
+      })
+      .map((candidate) => candidate.id);
+  }
 
-  // 更新 last_message_at
-  await prisma.chat_rooms.update({
-    where: { id: access.roomId },
-    data: { last_message_at: now },
+  const hasMention = mentionAll || mentionedUserIds.length > 0;
+  const recipients = hasMention ? safeMentionedUserIds : [...memberIds].filter(id => id !== userId);
+  const msg = await prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const msg = await tx.chat_messages.create({
+      data: {
+        room_id: access.roomId,
+        sender_user_id: userId,
+        kind: CHAT_MESSAGE_KINDS.TEXT,
+        body,
+        metadata: safeMentionedUserIds.length > 0 || mentionAll
+          ? { mentionedUserIds: safeMentionedUserIds, mentionAll }
+          : undefined,
+        reply_to_message_id: replyToMessageId ?? null,
+        created_at: now,
+        updated_at: now,
+      },
+      select: messageSelect,
+    });
+
+    // 更新 last_message_at
+    await tx.chat_rooms.update({
+      where: { id: access.roomId },
+      data: { last_message_at: now },
+    });
+
+    if (recipients.length) {
+      const payload = {
+        chatNotificationKind: hasMention ? 'mention' : 'general',
+        chatRoomName: cohort?.display_name ?? '',
+        url: new URL(`/messages/${access.roomId}`, process.env.FRONTEND_URL ?? 'https://app.daodao.so').href,
+        actorName: msg.sender?.nickname ?? null,
+      };
+      await tx.notification_events.createMany({
+        data: recipients.map(recipient_id => ({
+          type: NOTIFICATION_TYPES.CHAT_MESSAGE,
+          actor_id: userId,
+          recipient_id,
+          entity_type: 'chat_message',
+          entity_id: msg.id,
+          priority: 'P1',
+          payload,
+        })),
+      });
+    }
+    return msg;
   });
 
   const hostIds = await chatAclService.listHostUserIds(access.cohortId);
