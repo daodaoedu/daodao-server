@@ -10968,6 +10968,18 @@
           "actor": {
             "$ref": "#/components/schemas/NotificationActor"
           },
+          "chatNotificationKind": {
+            "type": "string",
+            "enum": [
+              "mention",
+              "general"
+            ],
+            "description": "聊天室提及或一般新訊息"
+          },
+          "chatRoomName": {
+            "type": "string",
+            "description": "群組聊天室名稱"
+          },
           "entityTitle": {
             "type": "string",
             "description": "通知關聯內容的名稱",
@@ -36793,6 +36805,11 @@
                           "type": "string",
                           "description": "最近活動時間（ISO）"
                         },
+                        "firstUnreadMessageId": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "第一則未讀訊息 ID；沒有未讀訊息時為 null"
+                        },
                         "viewerRole": {
                           "type": "string",
                           "enum": [
@@ -36846,6 +36863,7 @@
                         "unreadCount",
                         "lastMessage",
                         "lastActivityAt",
+                        "firstUnreadMessageId",
                         "viewerRole",
                         "viewerUserId",
                         "pinnedCount",
@@ -38374,6 +38392,20 @@
                     "exclusiveMinimum": true,
                     "description": "引用回覆的訊息 ID",
                     "example": 42
+                  },
+                  "mentionedUserIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true
+                    },
+                    "maxItems": 100,
+                    "description": "被 @mention 的聊天室成員 ID 列表"
+                  },
+                  "mentionAll": {
+                    "type": "boolean",
+                    "description": "是否 @all（僅聊天室管理員可用）"
                   }
                 },
                 "required": [

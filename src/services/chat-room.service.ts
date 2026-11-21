@@ -295,6 +295,18 @@ export const getRoom = async (access: RoomAccess, userId: number) => {
       OR: [{ sender_user_id: null }, { sender_user_id: { not: userId } }],
     },
   });
+  const firstUnreadMessage = unreadCount > 0
+    ? await prisma.chat_messages.findFirst({
+        where: {
+          room_id: access.roomId,
+          deleted_at: null,
+          id: { gt: lastReadId },
+          OR: [{ sender_user_id: null }, { sender_user_id: { not: userId } }],
+        },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    : null;
 
   // 成員預覽（前 3 位）
   const memberPreviewRows = await prisma.cohort_enrollments.findMany({
@@ -318,6 +330,7 @@ export const getRoom = async (access: RoomAccess, userId: number) => {
     organizationName: room.cohort.program.organization.name,
     memberCount,
     unreadCount,
+    firstUnreadMessageId: firstUnreadMessage?.id ?? null,
     lastMessage: null as null, // detail 端點不重複帶 lastMessage
     lastActivityAt: (room.last_message_at ?? new Date()).toISOString(),
     viewerRole: access.isHost ? ('host' as const) : ('member' as const),

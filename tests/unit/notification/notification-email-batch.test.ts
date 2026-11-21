@@ -142,6 +142,23 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['mention', 'general'])('聊天室 %s 通知寄到對應聊天室且省略訊息內文', async (kind) => {
+    const url = 'https://app.daodao.so/messages/12';
+    const event = makeEvent({
+      type: 'ChatMessage',
+      payload: { chatNotificationKind: kind, actorName: '小島', chatRoomName: '讀書會', url, content: '私訊', message: '私訊' },
+    });
+    prismaMock.notification_events.findMany.mockResolvedValue([event] as never);
+    prismaMock.notification_preferences.findMany.mockResolvedValue([]);
+    prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as never);
+    await capturedEmailProcessor!(makeJob());
+    const template = jest.requireMock('@/services/email/notification-digest-template');
+    expect(template.generateNotificationDigestHtml.mock.calls[0][0].interactionEvents).toEqual([{
+      type: 'ChatMessage', actorName: '小島', entityTitle: '讀書會', chatNotificationKind: kind, url,
+    }]);
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+  });
+
   it('查詢的時間範圍精確覆蓋批次視窗（普通 4h，UTC 午夜 12h）', async () => {
     prismaMock.notification_events.findMany.mockResolvedValue([]);
 
@@ -234,6 +251,24 @@ describe('EmailWorker — 12.4 偏好設定即時生效', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it.each([
+    { chatEnabled: undefined, expectedEmails: 0 },
+    { chatEnabled: true, expectedEmails: 1 },
+  ])('聊天室偏好為 $chatEnabled 時尊重原有退訂或個別設定', async ({ chatEnabled, expectedEmails }) => {
+    const event = makeEvent({
+      type: 'ChatMessage',
+      payload: { actorName: '小島', chatRoomName: '讀書會', url: 'https://app.daodao.so/messages/12' },
+    });
+    prismaMock.notification_events.findMany.mockResolvedValue([event] as never);
+    prismaMock.notification_preferences.findMany.mockResolvedValue([
+      { notification_type: 'Comment', is_enabled: false },
+      ...(chatEnabled === undefined ? [] : [{ notification_type: 'ChatMessage', is_enabled: chatEnabled }]),
+    ] as never);
+    prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as never);
+    await capturedEmailProcessor!(makeJob());
+    expect(mockSendEmail).toHaveBeenCalledTimes(expectedEmails);
   });
 
   it('關閉 Reaction Email 偏好後，Reaction 事件不進入批次 Email', async () => {

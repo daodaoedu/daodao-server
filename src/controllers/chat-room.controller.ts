@@ -102,8 +102,8 @@ export const createMessage = asyncHandler(async (req: Request, res: Response) =>
   const userId = requireUserId(req);
   const { roomId } = req.params as unknown as ChatRoomIdParams;
   const access = await chatAclService.resolveRoomAccess(roomId, userId);
-  const { body, replyToMessageId } = req.body as CreateChatMessageInput;
-  const data = await chatMessageService.create(access, userId, body, replyToMessageId);
+  const { body, replyToMessageId, mentionedUserIds, mentionAll } = req.body as CreateChatMessageInput;
+  const data = await chatMessageService.create(access, userId, body, replyToMessageId, mentionedUserIds, mentionAll);
   res.status(201).json(createSuccessResponse(data));
 });
 
