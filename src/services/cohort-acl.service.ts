@@ -35,6 +35,30 @@ export const isLighthouseCohort = async (cohortId: number | null): Promise<boole
   return cohort?.program.kind === PROGRAM_KINDS.LIGHTHOUSE;
 };
 
+/** 已加入學員的燈塔草稿僅授予同組織管理者讀取例外，不授予同場學員。 */
+export const canReadLighthouseDraftPractice = async (
+  practice: { cohort_id: number | null; user_id: number; status: string | null },
+  requesterId: number | null | undefined
+): Promise<boolean> => {
+  if (requesterId == null || practice.cohort_id == null || practice.status !== 'draft') return false;
+  const cohort = await prisma.cohorts.findFirst({
+    where: {
+      id: practice.cohort_id,
+      deleted_at: null,
+      program: {
+        kind: PROGRAM_KINDS.LIGHTHOUSE,
+        organization: {
+          status: 'active',
+          organization_members: { some: { user_id: requesterId } }
+        }
+      },
+      cohort_enrollments: { some: { user_id: practice.user_id, status: 'joined' } }
+    },
+    select: { end_date: true }
+  });
+  return cohort !== null && getCohortContentState(cohort.end_date) !== 'gone';
+};
+
 /**
  * 私密燈塔實踐仍可由本場次已加入學員與所屬組織成員讀取。
  * 與 cohort feed 採相同成員條件；草稿與個人／共同挑戰實踐不走此橋接。
@@ -108,6 +132,7 @@ export const assertLighthouseCheckinAllowed = (isLockedCohortPractice: boolean, 
 export const cohortAclService = {
   getLighthouseCohortIdByPracticeId,
   isLighthouseCohort,
+  canReadLighthouseDraftPractice,
   canReadPrivateLighthousePractice,
   assertCohortPracticeUpdatable,
   assertLighthouseCheckinAllowed

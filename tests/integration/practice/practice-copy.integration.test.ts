@@ -60,6 +60,8 @@ describe('Practice Copy API Integration Tests', () => {
     id: 10,
     external_id: SOURCE_UUID,
     user_id: otherUserId,
+    cohort_id: null,
+    creation_source: 'self_created',
     title: '多益 860 衝刺計畫',
     practice_action: '每天聽寫一篇 TED Talk',
     duration_days: 30,

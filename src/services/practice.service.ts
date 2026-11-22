@@ -51,7 +51,7 @@ import {
 } from '../validators/practice-business.validators';
 import { enqueuePracticeEmail } from '../queues';
 import { assertChallengePracticeCopyable, assertChallengePracticeUpdatable, isChallengeCohort } from './challenge-acl.service';
-import { assertCohortPracticeUpdatable, isLighthouseCohort, canReadPrivateLighthousePractice } from './cohort-acl.service';
+import { assertCohortPracticeUpdatable, isLighthouseCohort, canReadPrivateLighthousePractice, canReadLighthouseDraftPractice } from './cohort-acl.service';
 import { privacyService } from './privacy.service';
 import { getViewCount } from './view-tracking.service';
 import { notificationEventService } from './notification-event.service';
@@ -382,6 +382,14 @@ export async function findById(id: number, userId?: number, viewerRole = ''): Pr
       throw new NotFoundError('實踐不存在');
     }
 
+    const isLighthouseDraft = practice.status === 'draft' && practice.cohort_id !== null
+      && await isLighthouseCohort(practice.cohort_id);
+    const canReadAsDraftManager = isLighthouseDraft && userId !== practice.user_id
+      && await canReadLighthouseDraftPractice(practice, userId);
+    if (isLighthouseDraft && userId !== practice.user_id && !canReadAsDraftManager) {
+      throw new ForbiddenError('此實踐為草稿');
+    }
+
     // 隱私控制：依 privacy_status 判斷存取權限
     const privacyStatus = practice.privacy_status ?? 'public';
     if (privacyStatus === 'delayed') {
@@ -396,7 +404,7 @@ export async function findById(id: number, userId?: number, viewerRole = ''): Pr
         privacyStatus,
       );
       const canReadWithinCohort = !canAccess && privacyStatus === 'private'
-        && await canReadPrivateLighthousePractice(practice, userId);
+        && (canReadAsDraftManager || await canReadPrivateLighthousePractice(practice, userId));
       if (!canAccess && !canReadWithinCohort) {
         if (privacyStatus === 'private') {
           throw new ForbiddenError('此實踐為私人');
@@ -456,6 +464,7 @@ export async function findById(id: number, userId?: number, viewerRole = ''): Pr
       // 燈塔場次實踐的隱私由場次統一設定，編輯頁據此不送 privacyStatus（否則 assertCohortPracticeUpdatable 會擋）
       isCohortPrivacyLocked: await isLighthouseCohort(practice.cohort_id),
       isCohortPractice: isCoachResourceLockActive(practice) && await isLighthouseCohort(practice.cohort_id),
+      isCopyRestricted: practice.cohort_id !== null || practice.creation_source === 'cohort_template',
       practiceAction: practice.practice_action || undefined,
       startDate: practice.start_date?.toISOString().split('T')[0],
       endDate: practice.end_date?.toISOString().split('T')[0],
@@ -2141,6 +2150,11 @@ export async function copyPractice(sourceId: number, userId: number): Promise<Ap
 
     // 共同挑戰實踐不可被複製（FR-CC-09），加入挑戰是唯一途徑
     assertChallengePracticeCopyable(await isChallengeCohort(source.cohort_id));
+
+    // Cohort-created practices cannot be copied, including after detaching from a cohort.
+    if (source.cohort_id !== null || source.creation_source === 'cohort_template') {
+      throw new ForbiddenError('場次實踐不可複製，請由場次頁面加入');
+    }
 
     const isSelf = source.user_id === userId;
     if (!isSelf) {

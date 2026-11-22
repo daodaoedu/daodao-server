@@ -10,7 +10,7 @@ import { recordCohortParticipation } from './cohort-activation-evidence.service'
 import { prisma } from './database/prisma.service';
 import { today as taipeiToday } from './cohort-run-state';
 import { isCoachResourceLockActive } from '../utils/coach-resource-lock';
-import { assertLighthouseCheckinAllowed, canReadPrivateLighthousePractice, isLighthouseCohort } from './cohort-acl.service';
+import { assertLighthouseCheckinAllowed, canReadPrivateLighthousePractice, canReadLighthouseDraftPractice, isLighthouseCohort } from './cohort-acl.service';
 import { loggerService } from './logging/logger.service';
 import { AppError, ConflictError, NotFoundError, ForbiddenError, InternalServerError, BadRequestError } from '../middleware/error.middleware';
 import {
@@ -456,7 +456,7 @@ export async function createCheckInWithImages(
  *
  * 存取規則：
  * - 不存在或已刪除的實踐：404
- * - 草稿狀態(draft)的實踐：僅擁有者可查看打卡紀錄，其他人 403
+ * - 草稿狀態(draft)的實踐：擁有者可讀；同組織管理者可讀保留期內已加入學員的燈塔草稿
  * - privacy_status = private：擁有者可看；燈塔同場已加入學員與組織成員在保留期限內亦可看，其他人 403
  * - privacy_status = delayed：實踐完成前僅擁有者可查看，其他人 403
  * - 其他情況：所有人皆可查看打卡紀錄
@@ -475,15 +475,17 @@ export async function getCheckIns(practiceId: number, params: CheckInQueryParams
 
     const isOwner = practice.user_id === requestUserId;
 
-    // 草稿狀態僅允許擁有者查看打卡紀錄
-    if (practice.status === 'draft' && !isOwner) {
+    const canReadAsDraftManager = practice.status === 'draft' && !isOwner
+      && await canReadLighthouseDraftPractice(practice, requestUserId);
+    if (practice.status === 'draft' && !isOwner && !canReadAsDraftManager) {
       throw new ForbiddenError('沒有權限查看此實踐的打卡紀錄');
     }
 
     // private 允許燈塔同場成員；delayed 未完成前仍僅擁有者可看
     if (!isOwner) {
       const privacyStatus = practice.privacy_status ?? 'public';
-      if (privacyStatus === 'private' && !await canReadPrivateLighthousePractice(practice, requestUserId)) {
+      if (privacyStatus === 'private' && !canReadAsDraftManager
+        && !await canReadPrivateLighthousePractice(practice, requestUserId)) {
         throw new ForbiddenError('此實踐為私人，無法查看打卡紀錄');
       }
       if (privacyStatus === 'delayed' && practice.status !== 'completed') {
