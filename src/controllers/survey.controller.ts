@@ -33,7 +33,7 @@ export const surveyController = {
   }),
 
   getPublic: asyncHandler(async (req: Request, res: Response) => {
-    const result = await surveyService.getPublic(req.params.externalId, req.user?.id ?? null);
+    const result = await surveyService.getPublic(req.params.externalId, req.user?.id ?? null, req.user?.isTemp === true);
     if (!result) throw new NotFoundError('問卷不存在或尚未開放');
     res.json(result);
   }),
@@ -49,7 +49,7 @@ export const surveyController = {
 
   submitResponse: asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.id ?? null;
-    const result = await surveyService.submitResponse(req.params.externalId, userId, req.body);
+    const result = await surveyService.submitResponse(req.params.externalId, userId, req.body, req.user?.isTemp === true);
     if (!result) throw new NotFoundError('問卷不存在或尚未開放');
     if (result === 'max_reached') throw new BadRequestError('問卷已達最大回應數');
     if (result === 'invalid_question') throw new BadRequestError('包含無效的問題 ID');
