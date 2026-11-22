@@ -142,7 +142,7 @@ export async function externalToInternalId(
       case 'practice': {
         // practices.id 已經是 int
         result = await prisma.practices.findUnique({
-          where: { external_id: externalId },
+          where: { external_id: externalId, deleted_at: null },
           select: { id: true }
         });
         break;
@@ -234,7 +234,7 @@ export async function externalToInternalId(
         }
 
         result = await prisma.practice_checkins.findUnique({
-          where: { id: numId },
+          where: { id: numId, practices: { deleted_at: null } },
           select: { id: true }
         });
         break;
@@ -545,7 +545,7 @@ export async function getTargetEntity(
 
       case 'practice': {
         const practice = await prisma.practices.findUnique({
-          where: { external_id: targetId },
+          where: { external_id: targetId, deleted_at: null },
           select: { id: true, user_id: true }
         });
         if (practice) {
@@ -556,7 +556,7 @@ export async function getTargetEntity(
 
       case 'checkin': {
         const checkin = await prisma.practice_checkins.findUnique({
-          where: { id: parseInt(targetId) },
+          where: { id: parseInt(targetId), practices: { deleted_at: null } },
           select: { id: true, user_id: true }
         });
         if (checkin) {
