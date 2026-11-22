@@ -10670,6 +10670,173 @@
         "maxItems": 5,
         "description": "增強安全性的多個圖片檔案批量驗證"
       },
+      "ManagedSurveyCreate": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 10000
+          },
+          "is_public": {
+            "type": "boolean",
+            "default": true
+          },
+          "is_anonymous": {
+            "type": "boolean",
+            "default": true
+          },
+          "max_responses": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 1000000
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxItems": 20,
+            "default": []
+          },
+          "cover_url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "thank_you_message": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 5000
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedSurveyQuestion"
+            },
+            "maxItems": 50,
+            "default": []
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "ManagedSurveyQuestion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "question_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "multiple_choice",
+              "single_choice",
+              "rating",
+              "text",
+              "yesno",
+              "scale",
+              "ranking"
+            ]
+          },
+          "input_type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "email",
+              "url",
+              "textarea"
+            ],
+            "default": "text"
+          },
+          "is_required": {
+            "type": "boolean",
+            "default": false
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "scale_min": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": -100,
+            "maximum": 100
+          },
+          "scale_max": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": -100,
+            "maximum": 100
+          },
+          "scale_min_label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "scale_max_label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true
+                },
+                "option_text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 0
+                }
+              },
+              "required": [
+                "option_text"
+              ]
+            },
+            "maxItems": 50,
+            "default": []
+          }
+        },
+        "required": [
+          "question_text",
+          "question_type"
+        ]
+      },
       "AssignMentorToMarathonRequest": {
         "type": "object",
         "properties": {
@@ -17654,6 +17821,780 @@
         },
         "description": "前台許願池列表查詢參數"
       },
+      "ManagedSurveyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "managed_version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ]
+          },
+          "is_public": {
+            "type": "boolean"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "cover_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "thank_you_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "max_responses": {
+            "type": "number",
+            "nullable": true
+          },
+          "has_responded": {
+            "type": "boolean"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "question_text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "question_type": {
+                  "type": "string",
+                  "enum": [
+                    "multiple_choice",
+                    "single_choice",
+                    "rating",
+                    "text",
+                    "yesno",
+                    "scale",
+                    "ranking"
+                  ]
+                },
+                "input_type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "email",
+                    "url",
+                    "textarea"
+                  ],
+                  "default": "text"
+                },
+                "is_required": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 0
+                },
+                "scale_min": {
+                  "type": "integer",
+                  "nullable": true,
+                  "minimum": -100,
+                  "maximum": 100
+                },
+                "scale_max": {
+                  "type": "integer",
+                  "nullable": true,
+                  "minimum": -100,
+                  "maximum": 100
+                },
+                "scale_min_label": {
+                  "type": "string",
+                  "nullable": true,
+                  "maxLength": 200
+                },
+                "scale_max_label": {
+                  "type": "string",
+                  "nullable": true,
+                  "maxLength": 200
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "option_text": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "option_text",
+                      "position"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "question_text",
+                "question_type",
+                "options"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "managed_version",
+          "title",
+          "description",
+          "status",
+          "is_public",
+          "is_anonymous",
+          "logo_url",
+          "cover_url",
+          "thank_you_message",
+          "max_responses",
+          "questions"
+        ]
+      },
+      "ManagedSurveyUpdate": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 10000
+          },
+          "max_responses": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 1000000
+          },
+          "cover_url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "logo_url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "thank_you_message": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 5000
+          },
+          "is_public": {
+            "type": "boolean"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxItems": 20
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedSurveyQuestion"
+            },
+            "maxItems": 50
+          }
+        }
+      },
+      "ManagedSurveyStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AdminSurveyListItemWire": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "closed",
+              "archived"
+            ]
+          },
+          "is_public": {
+            "type": "boolean"
+          },
+          "is_anonymous": {
+            "type": "boolean"
+          },
+          "managed_version": {
+            "type": "integer",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "response_count": {
+            "type": "integer"
+          },
+          "max_responses": {
+            "type": "integer",
+            "nullable": true
+          },
+          "structure_locked": {
+            "type": "boolean"
+          },
+          "creator": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "nickname": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "nickname"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "title",
+          "status",
+          "is_public",
+          "is_anonymous",
+          "managed_version",
+          "tags",
+          "view_count",
+          "created_at",
+          "response_count",
+          "max_responses",
+          "structure_locked",
+          "creator"
+        ]
+      },
+      "AdminSurveyDetailWire": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminSurveyListItemWire"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "cover_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "logo_url": {
+                "type": "string",
+                "nullable": true
+              },
+              "thank_you_message": {
+                "type": "string",
+                "nullable": true
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AdminSurveyQuestionWire"
+                }
+              }
+            },
+            "required": [
+              "description",
+              "cover_url",
+              "logo_url",
+              "thank_you_message",
+              "updated_at",
+              "questions"
+            ]
+          }
+        ]
+      },
+      "AdminSurveyQuestionWire": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "multiple_choice",
+              "single_choice",
+              "rating",
+              "text",
+              "yesno",
+              "scale",
+              "ranking"
+            ]
+          },
+          "is_required": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "input_type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "email",
+              "url",
+              "textarea"
+            ]
+          },
+          "scale_min": {
+            "type": "integer",
+            "nullable": true
+          },
+          "scale_max": {
+            "type": "integer",
+            "nullable": true
+          },
+          "scale_min_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "scale_max_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "option_text": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "option_text",
+                "position"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "question_text",
+          "question_type",
+          "is_required",
+          "position",
+          "input_type",
+          "scale_min",
+          "scale_max",
+          "scale_min_label",
+          "scale_max_label",
+          "options"
+        ]
+      },
+      "AdminSurveyResponseListItemWire": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "respondent_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answer_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "respondent_name",
+          "completed_at",
+          "answer_count"
+        ]
+      },
+      "AdminSurveyResponseDetailWire": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminSurveyResponseListItemWire"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "answers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "question_id": {
+                      "type": "integer"
+                    },
+                    "question_text": {
+                      "type": "string"
+                    },
+                    "question_type": {
+                      "type": "string"
+                    },
+                    "answer_text": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "selected_option_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
+                    },
+                    "selected_options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "rating_value": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "boolean_value": {
+                      "type": "boolean",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "question_id",
+                    "question_text",
+                    "question_type",
+                    "answer_text",
+                    "selected_option_ids",
+                    "selected_options",
+                    "rating_value",
+                    "boolean_value"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "answers"
+            ]
+          }
+        ]
+      },
+      "AdminSurveyAnalyticsWire": {
+        "type": "object",
+        "properties": {
+          "survey_id": {
+            "type": "integer"
+          },
+          "response_count": {
+            "type": "integer"
+          },
+          "view_count": {
+            "type": "integer"
+          },
+          "avg_duration_seconds": {
+            "type": "number",
+            "nullable": true
+          },
+          "drop_off": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "last_position": {
+                  "type": "integer"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "last_position",
+                "count"
+              ]
+            }
+          },
+          "per_question": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question_id": {
+                  "type": "integer"
+                },
+                "question_text": {
+                  "type": "string"
+                },
+                "question_type": {
+                  "type": "string"
+                },
+                "input_type": {
+                  "type": "string"
+                },
+                "answer_count": {
+                  "type": "integer"
+                },
+                "stats": {
+                  "type": "object",
+                  "properties": {
+                    "avg": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "min": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "max": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "distribution": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "type": "number"
+                          },
+                          "count": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "value",
+                          "count"
+                        ]
+                      }
+                    },
+                    "option_counts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "option_id": {
+                            "type": "integer"
+                          },
+                          "option_text": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer"
+                          },
+                          "percentage": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "option_id",
+                          "option_text",
+                          "count"
+                        ]
+                      }
+                    },
+                    "rank_counts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "option_id": {
+                            "type": "integer"
+                          },
+                          "option_text": {
+                            "type": "string"
+                          },
+                          "counts": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "average_rank": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "option_id",
+                          "option_text",
+                          "counts",
+                          "average_rank"
+                        ]
+                      }
+                    },
+                    "sample_answers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "true": {
+                      "type": "integer"
+                    },
+                    "false": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "question_id",
+                "question_text",
+                "question_type",
+                "answer_count",
+                "stats"
+              ]
+            }
+          }
+        },
+        "required": [
+          "survey_id",
+          "response_count",
+          "view_count",
+          "avg_duration_seconds",
+          "drop_off",
+          "per_question"
+        ]
+      },
+      "AdminSurveyImageWire": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "created_by": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "created_by",
+          "created_at"
+        ]
+      },
       "AdminUserListResponse": {
         "type": "object",
         "properties": {
@@ -22022,6 +22963,52 @@
             "example": "2026-09-01T08:00:00.000Z"
           }
         }
+      },
+      "ManagedSurveySubmission": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true
+                },
+                "answer_text": {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                "selected_option_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "maxItems": 50
+                },
+                "rating_value": {
+                  "type": "integer",
+                  "minimum": -100,
+                  "maximum": 100
+                },
+                "boolean_value": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "question_id"
+              ]
+            },
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "answers"
+        ]
       },
       "NameAvailabilityResponse": {
         "type": "object",
@@ -30124,6 +31111,1153 @@
           },
           "403": {
             "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys": {
+      "post": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "建立正式問卷草稿",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedSurveyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "草稿建立成功（managed_version=1）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ManagedSurveyResponse"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "搜尋及篩選問卷",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "closed",
+                "archived"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "minimum": 0,
+              "default": 0
+            },
+            "required": false,
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminSurveyListItemWire"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "limit",
+                        "offset",
+                        "hasMore"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/{id}": {
+      "put": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "儲存問卷（舊問卷保留舊欄位契約）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedSurveyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManagedSurveyResponse"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "meta": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "data",
+                        "timestamp"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "updated": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "updated"
+                          ]
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "meta": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "data",
+                        "timestamp"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "讀取問卷詳情（managed_version可為null，保留舊問卷）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSurveyDetailWire"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "刪除問卷/回應或移除庫項（不刪引用圖片）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "刪除成功，無回應內容"
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "發布、關閉、重開或封存問卷",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedSurveyStatus"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ManagedSurveyResponse"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "meta": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "data",
+                        "timestamp"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "active",
+                                "closed",
+                                "archived"
+                              ]
+                            },
+                            "updated_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "status",
+                            "updated_at"
+                          ]
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "meta": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "data",
+                        "timestamp"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/{id}/responses": {
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "讀取分頁回應者列表（匿名不回傳會員資料）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "nullable": true,
+              "minimum": 0,
+              "default": 0
+            },
+            "required": false,
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminSurveyResponseListItemWire"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "limit",
+                        "offset",
+                        "hasMore"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp",
+                    "pagination"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/{id}/responses/{responseId}": {
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "讀取逐題回應",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^-?[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "responseId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSurveyResponseDetailWire"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "刪除問卷/回應或移除庫項（不刪引用圖片）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^-?[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "responseId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "刪除成功，無回應內容"
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/{id}/analytics": {
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "從有效保存答案重算題目分析",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSurveyAnalyticsWire"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/images": {
+      "get": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "讀取目前管理員的三張圖片庫",
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminSurveyImageWire"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "上傳8MiB以內PNG/JPEG/WebP圖片",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdminSurveyImageWire"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
+          },
+          "429": {
+            "description": "圖片操作過於頻繁"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/surveys/images/{imageId}": {
+      "delete": {
+        "tags": [
+          "Admin Survey"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "刪除問卷/回應或移除庫項（不刪引用圖片）",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d*$"
+            },
+            "required": true,
+            "name": "imageId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "刪除成功，無回應內容"
+          },
+          "400": {
+            "description": "欄位或題目設定無效"
+          },
+          "401": {
+            "description": "需要登入"
+          },
+          "403": {
+            "description": "需要管理員權限；場次匿名回饋必須由獨立入口查看"
+          },
+          "404": {
+            "description": "問卷或回應不存在"
+          },
+          "409": {
+            "description": "已有歷史回應的題目/匿名設定不可更改；封存為終態"
           }
         }
       }
@@ -98047,7 +100181,7 @@
         ],
         "responses": {
           "200": {
-            "description": "問卷資料及新期末問卷填答資格",
+            "description": "問卷內容與填答資格；managed_version=1包含完整題型設定及品牌",
             "content": {
               "application/json": {
                 "schema": {
@@ -98061,14 +100195,15 @@
                       "description": "Indicates successful API response"
                     },
                     "data": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/SurveyResponse"
                         },
                         {
-                          "description": "The main response data"
+                          "$ref": "#/components/schemas/ManagedSurveyResponse"
                         }
-                      ]
+                      ],
+                      "description": "The main response data"
                     },
                     "timestamp": {
                       "type": "string",
@@ -98186,8 +100321,14 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "410": {
+            "description": "問卷已關閉、封存或額滿"
           }
         }
       }
@@ -98215,7 +100356,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubmitSurveyResponseRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ManagedSurveySubmission"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SubmitSurveyResponseRequest"
+                  }
+                ]
               }
             }
           }
@@ -98392,6 +100540,9 @@
           },
           "409": {
             "$ref": "#/components/responses/ConflictError"
+          },
+          "410": {
+            "description": "問卷已關閉或封存"
           }
         }
       }

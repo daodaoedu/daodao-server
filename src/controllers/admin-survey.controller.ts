@@ -1,13 +1,23 @@
+import { requireSurveyCompletionHmacKey } from '@/services/survey-completion-key'
+import { managedSurveyService, isManagedSurvey } from '@/services/managed-survey.service'
+import { managedSurveyCreateSchema, managedSurveyUpdateSchema } from '@/validators/managed-survey.validators'
 import { assertGenericSurvey, hasCohortFeedbackSchema } from '@/services/cohort-feedback.service'
 import { Request, Response } from 'express'
-import { asyncHandler, NotFoundError, BadRequestError } from '@/middleware/error.middleware'
+import { asyncHandler, NotFoundError, BadRequestError, UnauthorizedError } from '@/middleware/error.middleware'
 import { createSuccessResponse } from '@/utils/response-helper'
 import { prisma } from '@/services/database/prisma.service'
 import { z } from 'zod'
 
 function parseId(param: string): number {
-  const id = parseInt(param, 10)
+  const id = Number(param)
   if (!Number.isInteger(id) || id <= 0) throw new BadRequestError('無效的 ID')
+  return id
+}
+
+/** Anonymous managed responses use negative Int32 keys, disjoint from legacy SERIAL ids. */
+function parseResponseId(param: string): number {
+  const id = Number(param)
+  if (!Number.isSafeInteger(id) || id === 0 || id < -2147483648 || id > 2147483647) throw new BadRequestError('無效的回應 ID')
   return id
 }
 
@@ -70,7 +80,7 @@ export const adminSurveyController = {
         orderBy: { created_at: 'desc' },
         skip: offset,
         take: limit,
-        include: { _count: { select: { responses: true } } },
+        include: { _count: { select: { responses: true, managed_completions: true, response_deletion_audits: true } } },
       }),
       prisma.surveys.count({ where }),
     ])
@@ -92,10 +102,13 @@ export const adminSurveyController = {
         title: s.title,
         status: s.status,
         is_anonymous: s.is_anonymous,
+        is_public: s.is_public, managed_version: s.managed_version,
         tags: s.tags,
         view_count: s.view_count,
         created_at: s.created_at.toISOString(),
         response_count: s._count.responses,
+        max_responses: s.max_responses,
+        structure_locked: s._count.responses > 0 || s._count.managed_completions > 0 || s._count.response_deletion_audits > 0,
         creator: {
           id: creator?.id ?? null,
           email: creator?.contacts?.email ?? null,
@@ -105,8 +118,7 @@ export const adminSurveyController = {
     })
 
     res.json({
-      success: true,
-      data,
+      ...createSuccessResponse(data),
       pagination: { total, limit, offset, hasMore: offset + limit < total },
     })
   }),
@@ -118,7 +130,7 @@ export const adminSurveyController = {
       where: { id },
       include: {
         questions: questionWithOptions,
-        _count: { select: { responses: true } },
+        _count: { select: { responses: true, managed_completions: true, response_deletion_audits: true } },
       },
     })
     if (!survey) throw new NotFoundError('問卷不存在')
@@ -135,6 +147,7 @@ export const adminSurveyController = {
       description: survey.description,
       status: survey.status,
       is_anonymous: survey.is_anonymous,
+      is_public: survey.is_public, managed_version: survey.managed_version, logo_url: survey.logo_url, thank_you_message: survey.thank_you_message,
       max_responses: survey.max_responses,
       tags: survey.tags,
       cover_url: survey.cover_url,
@@ -142,6 +155,7 @@ export const adminSurveyController = {
       created_at: survey.created_at.toISOString(),
       updated_at: survey.updated_at.toISOString(),
       response_count: survey._count.responses,
+      structure_locked: survey._count.responses > 0 || survey._count.managed_completions > 0 || survey._count.response_deletion_audits > 0,
       creator: {
         id: creator?.id ?? null,
         email: creator?.contacts?.email ?? null,
@@ -150,6 +164,7 @@ export const adminSurveyController = {
       questions: survey.questions.map((q) => ({
         id: q.id,
         question_text: q.question_text,
+        input_type: q.input_type, scale_min: q.scale_min, scale_max: q.scale_max, scale_min_label: q.scale_min_label, scale_max_label: q.scale_max_label,
         question_type: q.question_type,
         is_required: q.is_required,
         position: q.position,
@@ -162,6 +177,7 @@ export const adminSurveyController = {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
     const { status } = updateStatusSchema.parse(req.body)
+    if (await isManagedSurvey(id)) { res.json(createSuccessResponse(await managedSurveyService.status(id, status))); return }
     const existing = await prisma.surveys.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('問卷不存在')
     const updated = await prisma.surveys.update({
@@ -179,6 +195,7 @@ export const adminSurveyController = {
   deleteSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
+    if (await isManagedSurvey(id)) requireSurveyCompletionHmacKey()
     const existing = await prisma.surveys.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('問卷不存在')
     await prisma.surveys.delete({ where: { id } })
@@ -188,30 +205,34 @@ export const adminSurveyController = {
   listResponses: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
+    if (await isManagedSurvey(id)) requireSurveyCompletionHmacKey()
     const { limit, offset } = listQuerySchema.pick({ limit: true, offset: true }).parse(req.query)
 
-    const existing = await prisma.surveys.findUnique({ where: { id }, select: { id: true } })
+    const existing = await prisma.surveys.findUnique({ where: { id }, select: { id: true, is_anonymous: true, managed_version: true } })
     if (!existing) throw new NotFoundError('問卷不存在')
 
     const [responses, total] = await Promise.all([
       prisma.survey_responses.findMany({
         where: { survey_id: id },
         include: { _count: { select: { answers: true } } },
-        orderBy: { completed_at: 'desc' },
+        orderBy: [{ completed_at: 'desc' }, { id: 'desc' }],
         skip: offset,
         take: limit,
       }),
       prisma.survey_responses.count({ where: { survey_id: id } }),
     ])
 
+    const respondentIds = responses.map(r => r.user_id).filter((id): id is number => id !== null)
+    const respondents = existing.managed_version === 1 && existing.is_anonymous ? [] : await prisma.users.findMany({ where: { id: { in: respondentIds } }, select: { id: true, nickname: true } })
+    const names = new Map(respondents.map(u => [u.id, u.nickname]))
     res.json({
-      success: true,
-      data: responses.map((r) => ({
+      ...createSuccessResponse(responses.map((r) => ({
         id: r.id,
-        user_id: r.user_id,
+        user_id: existing.managed_version === 1 && existing.is_anonymous ? null : r.user_id,
+        respondent_name: existing.managed_version === 1 && existing.is_anonymous ? null : names.get(r.user_id ?? 0) ?? null,
         completed_at: r.completed_at.toISOString(),
         answer_count: r._count.answers,
-      })),
+      }))),
       pagination: { total, limit, offset, hasMore: offset + limit < total },
     })
   }),
@@ -219,7 +240,8 @@ export const adminSurveyController = {
   getResponse: asyncHandler(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id)
     await assertGenericSurvey(surveyId)
-    const responseId = parseId(req.params.responseId)
+    if (await isManagedSurvey(surveyId)) requireSurveyCompletionHmacKey()
+    const responseId = parseResponseId(req.params.responseId)
 
     const response = await prisma.survey_responses.findFirst({
       where: { id: responseId, survey_id: surveyId },
@@ -228,12 +250,18 @@ export const adminSurveyController = {
 
     const answers = await prisma.survey_answers.findMany({
       where: { survey_response_id: responseId },
-      include: { question: { select: { question_text: true } } },
+      include: { question: { select: { question_text: true, options: true } } },
+      orderBy: { question: { position: 'asc' } },
     })
 
+    const survey = await prisma.surveys.findUnique({ where: { id: surveyId }, select: { is_anonymous: true, managed_version: true } })
+    const anonymous = survey?.managed_version === 1 && survey.is_anonymous
+    const respondent = !anonymous && response.user_id ? await prisma.users.findUnique({ where: { id: response.user_id }, select: { nickname: true } }) : null
     res.json(createSuccessResponse({
       id: response.id,
-      user_id: response.user_id,
+      answer_count: answers.length,
+      respondent_name: respondent?.nickname ?? null,
+      user_id: survey?.managed_version === 1 && survey.is_anonymous ? null : response.user_id,
       completed_at: response.completed_at.toISOString(),
       answers: answers.map((a) => ({
         question_id: a.question_id,
@@ -241,7 +269,7 @@ export const adminSurveyController = {
         question_type: a.question_type,
         answer_text: a.answer_text,
         selected_option_ids: a.selected_option_ids,
-        selected_options: [],
+        selected_options: a.selected_option_ids.map(id => a.question.options.find(o => o.id === id)?.option_text ?? ''),
         rating_value: a.rating_value,
         boolean_value: a.boolean_value,
       })),
@@ -251,7 +279,8 @@ export const adminSurveyController = {
   deleteResponse: asyncHandler(async (req: Request, res: Response) => {
     const surveyId = parseId(req.params.id)
     await assertGenericSurvey(surveyId)
-    const responseId = parseId(req.params.responseId)
+    const responseId = parseResponseId(req.params.responseId)
+    if (await isManagedSurvey(surveyId)) { const actorId = req.user?.id; if (!actorId) throw new UnauthorizedError('未登入'); await managedSurveyService.deleteResponse(surveyId, responseId, actorId); res.status(204).send(); return }
 
     const existing = await prisma.survey_responses.findFirst({
       where: { id: responseId, survey_id: surveyId },
@@ -264,38 +293,15 @@ export const adminSurveyController = {
   createSurvey: asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.id
     if (!userId) throw new BadRequestError('未登入')
-    const body = createSurveySchema.parse(req.body)
-
-    const survey = await prisma.surveys.create({
-      data: {
-        title: body.title,
-        description: body.description,
-        is_anonymous: body.is_anonymous,
-        max_responses: body.max_responses,
-        tags: body.tags,
-        cover_url: body.cover_url,
-        created_by: userId,
-        questions: {
-          create: body.questions.map((q) => ({
-            question_text: q.question_text,
-            question_type: q.question_type,
-            is_required: q.is_required,
-            position: q.position,
-            conditions: [],
-            options: q.options
-              ? { create: q.options.map((o) => ({ option_text: o.option_text, position: o.position })) }
-              : undefined,
-          })),
-        },
-      },
-      select: { id: true, external_id: true },
-    })
-    res.status(201).json(createSuccessResponse({ id: survey.id, external_id: survey.external_id }))
+    const body = managedSurveyCreateSchema.parse(req.body)
+    const survey = await managedSurveyService.create(userId, body)
+    res.status(201).json(createSuccessResponse(survey))
   }),
 
   updateSurvey: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
     await assertGenericSurvey(id)
+    if (await isManagedSurvey(id)) { res.json(createSuccessResponse(await managedSurveyService.update(id, managedSurveyUpdateSchema.parse(req.body)))); return }
     const body = updateSurveySchema.parse(req.body)
 
     const existing = await prisma.surveys.findUnique({ where: { id } })
@@ -318,6 +324,7 @@ export const adminSurveyController = {
 
   getAnalytics: asyncHandler(async (req: Request, res: Response) => {
     const id = parseId(req.params.id)
+    if (await isManagedSurvey(id)) { res.json(createSuccessResponse(await managedSurveyService.analytics(id))); return }
     await assertGenericSurvey(id)
 
     const survey = await prisma.surveys.findUnique({
