@@ -47,7 +47,7 @@ beforeEach(() => {
   db.cohort_enrollments.count.mockResolvedValue(1);
   db.cohort_enrollments.findFirst.mockResolvedValue({ id: 99, export_opt_in: true, cohort: cohort } as never);
   db.practices.findMany.mockResolvedValue([{
-    id: 900, external_id: token, title: '每日反思', practice_action: null, status: 'draft', creation_source: null,
+    id: 900, external_id: token, title: '每日反思', practice_action: null, status: 'draft', creation_source: null, template_id: 50,
     start_date: new Date('2026-07-01'), end_date: null, progress_percentage: 0, theme_color: null
   }] as never);
   db.practice_checkins.groupBy.mockResolvedValue([]);
@@ -113,7 +113,7 @@ it('maps populated member check-ins with user-scoped practices and serialized da
   const res = await request(app).get('/api/v1/cohorts/8').expect(200);
   expect(apiSuccessResponseSchema(cohortMemberHomeWireResponseSchema).safeParse(res.body).success).toBe(true);
   expect(res.body.data.practices[0]).toEqual(expect.objectContaining({
-    id: token, checkInCount: 3, lastCheckinAt: '2026-09-12T12:00:00.000Z'
+    id: token, templateId: 50, checkInCount: 3, lastCheckinAt: '2026-09-12T12:00:00.000Z'
   }));
   expect(db.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
     where: { cohort_id: 8, user_id: 42, deleted_at: null }

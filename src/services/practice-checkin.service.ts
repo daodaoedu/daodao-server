@@ -82,7 +82,7 @@ export async function createCheckIn(
   userId: number
 ): Promise<ApiSuccessResponse<CheckInResponseWithEncouragement>> {
   try {
-    // 驗證實踐存在且屬於使用者
+    // 驗證實踐存在且屬於使用者（已刪除的實踐在 external→internal ID 轉換時就回 404）
     const practice = await prismaClient.practices.findUnique({
       where: {
         id: practiceId,
@@ -92,6 +92,17 @@ export async function createCheckIn(
 
     if (!practice) {
       throw new NotFoundError('實踐不存在或沒有權限');
+    }
+
+    // 期內實踐只允許目前仍在期內的成員打卡；不信任前端傳入的 practice ID 作為授權依據
+    if (practice.cohort_id) {
+      const enrollment = await prismaClient.cohort_enrollments.findFirst({
+        where: { cohort_id: practice.cohort_id, user_id: userId, status: 'joined' },
+        select: { id: true }
+      });
+      if (!enrollment) {
+        throw new ForbiddenError('你已不是本期成員，無法打卡');
+      }
     }
 
     // 檢查狀態是否允許打卡
