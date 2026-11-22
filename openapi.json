@@ -15351,11 +15351,23 @@
               },
               "privacy_notice": {
                 "type": "string"
+              },
+              "organization_name": {
+                "type": "string",
+                "description": "問卷所屬組織顯示名稱",
+                "example": "島島阿學"
+              },
+              "cohort_name": {
+                "type": "string",
+                "description": "問卷所屬場次顯示名稱",
+                "example": "閱讀同行場次"
               }
             },
             "required": [
               "state",
-              "privacy_notice"
+              "privacy_notice",
+              "organization_name",
+              "cohort_name"
             ]
           }
         },

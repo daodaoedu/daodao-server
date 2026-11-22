@@ -58,6 +58,14 @@ async function main() {
     assert.equal((await getCohortFeedbackMetadata(surveyId, userIds[2])).state, 'ready');
     assert.equal((await surveyService.getPublic(externalId, userIds[2])).data.cohort_feedback.state, 'ready');
   });
+  await check('public feedback names follow the actual cohort and organization without exposing membership', async () => {
+    for (const userId of [null, userIds[9], userIds[2]]) {
+      const result = (await surveyService.getPublic(externalId, userId)).data.cohort_feedback;
+      assert.equal(result.organization_name, marker);
+      assert.equal(result.cohort_name, '期末回饋測試');
+      assert.deepEqual(Object.keys(result).sort(), ['cohort_name', 'organization_name', 'privacy_notice', 'state']);
+    }
+  });
   await check('anonymous and non-enrolled POST rejected without persisting answers', async () => {
     await expectStatus(surveyService.submitResponse(externalId, null, body), 401);
     await expectStatus(surveyService.submitResponse(externalId, userIds[9], body), 403);
