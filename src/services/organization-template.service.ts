@@ -1,4 +1,5 @@
 import { initializeCohortResources, lockCohortResourceBinding, syncTemplateDefaultsForUnstartedCohorts } from './cohort-template-resources.service';
+import { syncUnstartedCohortPracticeDates } from './cohort-draft.service';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError } from '../middleware/error.middleware';
@@ -373,6 +374,7 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
         update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
         select: { start_date: true }
       });
+      if (cohort.program.kind === 'lighthouse' && startDate !== undefined) await syncUnstartedCohortPracticeDates(tx, cohortId);
       if (cohort.program.kind === 'lighthouse') {
         const locked = await lockCohortResourceBinding(tx, cohortId, templateId);
         await initializeCohortResources(tx, locked.id);
