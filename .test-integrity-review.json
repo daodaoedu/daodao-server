@@ -1,7 +1,7 @@
 {
-  "base": "9b65e2771ecfa54fa7d974e769b3e9f5a699b9d4",
+  "base": "0d7270f532b412e44d7543c34e407d4edee1391e",
   "test_diff_sha256": "251bcef525766e3692b0807b0f8d2b77b227a1179ab90687e99897aa9fb9c14d",
   "reviewer": "workspace user",
-  "reason": "The sole removed/replaced notification assertion remains byte-identical to the wording explicitly approved in the conversation. This update binds that same unchanged approved assertion to the latest dev integration base under the subsequent user request to merge and accept; no new assertion removal or weakening.",
+  "reason": "The sole removed/replaced notification assertion is byte-identical to the one explicitly approved by the user. This rebind follows latest dev integration0d7270f under the user merge/acceptance request; only upstream code and additive regression tests changed. No additional assertion removal or weakening is represented as approved.",
   "evidence": "User conversation 2026-11-17: ok / push review pr, following display of exact notification expectation. Prior approved assertion diff digest938d66fc8dcf7d45d6a114b2d2a7e6ee550efb4ed7f5513034537b0ac1767642. Scanner findings are exactly unchanged; new tests are additive only. See task549 notes/user-approval-commit.txt and notes/race-lock-review.md. No claim that the user separately reviewed the added tests."
 }

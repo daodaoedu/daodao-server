@@ -9,7 +9,7 @@ const futureDay = new Date(Date.now() + 30 * 86_400_000);
 const pastDay = new Date(Date.now() - 30 * 86_400_000);
 
 describe('organizationTemplateService', () => {
-  beforeEach(() => { prismaMock.$transaction.mockImplementation(async (callback: unknown) => typeof callback === 'function' ? callback(prismaMock) : callback); prismaMock.entity_tags.findMany.mockResolvedValue([] as never); });
+  beforeEach(() => { prismaMock.$transaction.mockImplementation(async (callback: unknown) => typeof callback === 'function' ? callback(prismaMock) : callback); prismaMock.entity_tags.findMany.mockResolvedValue([] as never); prismaMock.cohort_templates.findMany.mockResolvedValue([] as never); });
   it('creates a template scoped to the organization', async () => {
     allow(); prismaMock.practice_templates.create.mockResolvedValue(template as never); prismaMock.entity_resources.findMany.mockResolvedValue([] as never);
     const result = await organizationTemplateService.create(3, 42, { title: '每日反思', practiceAction: '寫一段反思', durationDays: 30, frequencyMinDays: 1, frequencyMaxDays: 7, sessionDurationMinutes: 30, practiceTimePeriods: ['evening'], status: 'ready' });
