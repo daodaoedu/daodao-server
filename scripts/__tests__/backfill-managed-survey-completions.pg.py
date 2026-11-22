@@ -24,7 +24,7 @@ def run(apply=False, supplied_key=key, include_database=True):
     env.update({'SURVEY_COMPLETION_HMAC_KEY': supplied_key, 'NODE_ENV': 'test'})
     if include_database:
         env['DATABASE_URL'] = urlunparse(base._replace(path='/' + database))
-    command = ['pnpm', 'exec', 'ts-node', '--transpile-only', '-r', 'tsconfig-paths/register', 'scripts/backfill-managed-survey-completions.ts', '--migration', '../daodao-storage/migrate/sql/104_blind_managed_survey_completions.sql']
+    command = ['pnpm', 'exec', 'ts-node', '--transpile-only', '-r', 'tsconfig-paths/register', 'scripts/backfill-managed-survey-completions.ts', '--migration', '../daodao-storage/migrate/sql/105_blind_managed_survey_completions.sql']
     result = subprocess.run(command + (['--apply'] if apply else []), cwd=ROOT, env=env, capture_output=True, text=True, timeout=40)
     assert supplied_key not in result.stdout + result.stderr, 'Helper logged key material'
     return result
@@ -38,7 +38,7 @@ try:
     assert dry.returncode == 0 and not json.loads(dry.stdout)['applied']
     assert before == sql('SELECT jsonb_agg(to_jsonb(c) ORDER BY user_id) FROM managed_survey_completions c')
     assert sql("SELECT count(*) FROM information_schema.columns WHERE table_name='managed_survey_completions' AND column_name='completion_key'") == '0'
-    print('PASS dry-run preserves rows and migration103 primary-key/schema')
+    print('PASS dry-run preserves rows and migration104 primary-key/schema')
     applied = run(True)
     assert applied.returncode == 0
     rows = json.loads(sql('SELECT jsonb_agg(to_jsonb(c) ORDER BY completion_key) FROM managed_survey_completions c'))
@@ -48,7 +48,7 @@ try:
     assert answers == sql('SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM survey_answers a')
     again = run(True)
     assert again.returncode == 0 and json.loads(again.stdout)['blinded_rows'] == 0
-    print('PASS transactional blinding/migration104 preserves answers and same-key dedup on rerun')
+    print('PASS transactional blinding/migration105 preserves answers and same-key dedup on rerun')
     assert run(True, 'bad-key').returncode != 0
     assert run(True, include_database=False).returncode != 0
     print('PASS malformed key and missing explicit database fail closed without identity/key logs')
@@ -61,6 +61,6 @@ try:
     sql('ALTER TABLE surveys DROP COLUMN managed_version')
     assert run(True).returncode != 0
     assert before_bad == sql('SELECT jsonb_agg(to_jsonb(c)) FROM managed_survey_completions c')
-    print('PASS missing migration103 prerequisites are refused without data changes')
+    print('PASS missing migration104 prerequisites are refused without data changes')
 finally:
     subprocess.run(['docker', 'exec', container, 'dropdb', '-U', 'postgres', '--force', database], check=True)
