@@ -22,7 +22,7 @@ import {
 import { ReactionTargetTypeValue, ReactionTypeValue } from '../types/reaction.types';
 import { externalToInternalId, EntityType } from '../services/id-converter.service';
 import { prisma } from '../services/database/prisma.service';
-import { UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
+import { asyncHandler, UnauthorizedError, BadRequestError } from '../middleware/error.middleware';
 
 async function resolveTargetId(targetType: string, targetId: string): Promise<number> {
   if (targetType === 'comment' || targetType === 'checkin' || targetType === 'persona_answer') {
@@ -165,10 +165,11 @@ async function getReactionsBatch(req: Request, res: Response): Promise<void> {
   res.status(200).json(validatedResponse);
 }
 
+// Express 4 不會接住 async handler 的 rejection；未包裝時一個 404（例如實踐剛被刪除）就會讓整個 process 崩潰
 export const reactionController = {
-  upsertReaction,
-  removeReaction,
-  getReactions,
-  getReactionsList,
-  getReactionsBatch,
+  upsertReaction: asyncHandler(upsertReaction),
+  removeReaction: asyncHandler(removeReaction),
+  getReactions: asyncHandler(getReactions),
+  getReactionsList: asyncHandler(getReactionsList),
+  getReactionsBatch: asyncHandler(getReactionsBatch),
 };
