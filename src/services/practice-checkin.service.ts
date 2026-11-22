@@ -94,17 +94,6 @@ export async function createCheckIn(
       throw new NotFoundError('實踐不存在或沒有權限');
     }
 
-    // 期內實踐只允許目前仍在期內的成員打卡；不信任前端傳入的 practice ID 作為授權依據
-    if (practice.cohort_id) {
-      const enrollment = await prismaClient.cohort_enrollments.findFirst({
-        where: { cohort_id: practice.cohort_id, user_id: userId, status: 'joined' },
-        select: { id: true }
-      });
-      if (!enrollment) {
-        throw new ForbiddenError('你已不是本期成員，無法打卡');
-      }
-    }
-
     // 檢查狀態是否允許打卡
     if (!canCheckIn(practice.status as PracticeStatusType)) {
       throw new ConflictError('此實踐狀態不允許打卡');
@@ -129,6 +118,19 @@ export async function createCheckIn(
 
     // 使用交易確保資料一致性，避免 race condition
     const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
+      // 期內實踐只允許目前仍在期內的成員打卡，不信任前端傳入的 practice ID 作為授權依據（f2e#1194）。
+      // FOR SHARE 與移除成員（cohort-membership.service remove 更新 enrollment）互斥：
+      // 移除先提交 → 這裡讀不到 joined；這裡先鎖 → 移除等打卡提交後才執行。
+      if (practice.cohort_id) {
+        const joined = await tx.$queryRaw<{ id: number }[]>`
+          SELECT id FROM cohort_enrollments
+          WHERE cohort_id = ${practice.cohort_id} AND user_id = ${userId} AND status = 'joined'
+          FOR SHARE`;
+        if (joined.length === 0) {
+          throw new ForbiddenError('你已不是本期成員，無法打卡');
+        }
+      }
+
       // 在 transaction 內查詢打卡數量，確保原子性
       const currentCheckInCount = await tx.practice_checkins.count({
         where: {
