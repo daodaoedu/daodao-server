@@ -32,6 +32,7 @@ import {
 } from '../services/email/email-log.service';
 import { EMAIL_TYPES, EMAIL_STATUS } from '../types/email';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
+import { chatNotificationAccessService } from '../services/chat-notification-access.service';
 
 // ─── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -190,12 +191,18 @@ async function processNotificationEmailJob(job: Job<NotificationEmailJobData>): 
 
         // 5b. 過濾出使用者允許接收 email 的事件
         // 若 notification_preferences 中沒有記錄，預設 is_enabled = true
-        const allowedEvents = recipientEvents.filter((e) => {
+        const preferredEvents = recipientEvents.filter((e) => {
           const enabled = prefMap.get(e.type) ?? (e.type === NOTIFICATION_TYPES.CHAT_MESSAGE
             ? prefMap.get(NOTIFICATION_TYPES.COMMENT)
             : undefined);
           return enabled !== false; // undefined（未設定）視為 true
         });
+        // 聊天室通知送達前再確認收件人仍在聊天室內（建立事件後才被移除／退出者不寄）
+        const allowedEvents = await chatNotificationAccessService.dropInaccessibleChatNotifications(
+          recipientId,
+          preferredEvents,
+          NOTIFICATION_TYPES.CHAT_MESSAGE
+        );
 
         if (allowedEvents.length === 0) {
           loggerService.debug('[email-worker] All event types disabled for user', { recipientId });

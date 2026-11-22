@@ -41,6 +41,15 @@ jest.mock('@/services/email/notification-digest-template', () => ({
   generateNotificationDigestHtml: jest.fn().mockReturnValue('<html>digest</html>'),
 }));
 
+const mockDropInaccessible = jest.fn(
+  async (_userId: number, rows: unknown[], _chatType: string): Promise<unknown[]> => rows
+);
+jest.mock('@/services/chat-notification-access.service', () => ({
+  chatNotificationAccessService: {
+    dropInaccessibleChatNotifications: (...args: [number, unknown[], string]) => mockDropInaccessible(...args),
+  },
+}));
+
 jest.mock('@/services/notification-unsubscribe.service', () => ({
   generateUnsubscribeUrl:  jest.fn().mockReturnValue('https://daodao.cc/unsubscribe'),
   generateSettingsUrl:     jest.fn().mockReturnValue('https://daodao.cc/settings/notifications'),
@@ -157,6 +166,42 @@ describe('EmailWorker — 12.3 4 小時 Email 批次', () => {
       type: 'ChatMessage', actorName: '小島', entityTitle: '讀書會', chatNotificationKind: kind, url,
     }]);
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('建立事件後已被移出聊天室的成員，不寄聊天室通知（其他通知照寄）', async () => {
+    const chatEvent = makeEvent({
+      type: 'ChatMessage',
+      entity_type: 'chat_message',
+      entity_id: 555,
+      payload: { chatNotificationKind: 'general', actorName: '小島', chatRoomName: '讀書會', url: 'https://app.daodao.so/messages/12' },
+    });
+    const commentEvent = makeEvent({ type: 'Comment' });
+    prismaMock.notification_events.findMany.mockResolvedValue([chatEvent, commentEvent] as never);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 10, nickname: '用戶A' }] as never);
+    prismaMock.notification_preferences.findMany.mockResolvedValue([]);
+    prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as never);
+    mockDropInaccessible.mockImplementationOnce(async (_userId, rows) =>
+      (rows as Array<{ type: string }>).filter((row) => row.type !== 'ChatMessage')
+    );
+
+    await capturedEmailProcessor!(makeJob());
+
+    const template = jest.requireMock('@/services/email/notification-digest-template');
+    const sent = template.generateNotificationDigestHtml.mock.calls[0][0].interactionEvents;
+    expect(sent.map((e: { type: string }) => e.type)).toEqual(['Comment']);
+  });
+
+  it('移出聊天室後只剩聊天室通知時，不寄 Email', async () => {
+    const chatEvent = makeEvent({ type: 'ChatMessage', entity_type: 'chat_message', entity_id: 556 });
+    prismaMock.notification_events.findMany.mockResolvedValue([chatEvent] as never);
+    prismaMock.users.findMany.mockResolvedValue([{ id: 10, nickname: '用戶A' }] as never);
+    prismaMock.notification_preferences.findMany.mockResolvedValue([]);
+    prismaMock.users.findUnique.mockResolvedValue(makeRecipient() as never);
+    mockDropInaccessible.mockImplementationOnce(async () => []);
+
+    await capturedEmailProcessor!(makeJob());
+
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it('查詢的時間範圍精確覆蓋批次視窗（普通 4h，UTC 午夜 12h）', async () => {
