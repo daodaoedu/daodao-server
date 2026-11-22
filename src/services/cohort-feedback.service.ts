@@ -54,6 +54,11 @@ export async function createCohortFeedbackSurvey(cohortId: number, creatorId: nu
   });
 }
 
+/** Soft-deleted parents retire the public URL without removing historical feedback. */
+function assertPublicFeedbackParent(cohort: { deleted_at: Date | null; program: { deleted_at: Date | null } }): void {
+  if (cohort.deleted_at || cohort.program.deleted_at) throw new NotFoundError('問卷不存在或尚未開放');
+}
+
 /** 取得填答資格；完成紀錄只用來回答布林狀態，不回傳完成時間。 */
 export async function getCohortFeedbackMetadata(surveyId: number, userId: number | null): Promise<{ state: 'login_required' | 'ineligible' | 'ready' | 'completed'; privacy_notice: string; organization_name: string; cohort_name: string } | null> {
   if (!await hasCohortFeedbackSchema()) return null;
@@ -61,11 +66,12 @@ export async function getCohortFeedbackMetadata(surveyId: number, userId: number
     where: { survey_id: surveyId },
     select: {
       cohort_id: true,
-      cohort: { select: { display_name: true, program: { select: { organization: { select: { name: true } } } } } },
+      cohort: { select: { deleted_at: true, display_name: true, program: { select: { deleted_at: true, organization: { select: { name: true } } } } } },
     },
   });
   if (!feedback) return null;
   if (!isCohortFeedbackEnabled()) throw new NotFoundError('問卷尚未開放');
+  assertPublicFeedbackParent(feedback.cohort);
   let state: 'login_required' | 'ineligible' | 'ready' | 'completed' = 'login_required';
   if (userId !== null) {
     const enrolled = await prisma.cohort_enrollments.findFirst({ where: { cohort_id: feedback.cohort_id, user_id: userId, status: 'joined', cohort: { deleted_at: null } }, select: { id: true } });
@@ -86,9 +92,13 @@ export async function getCohortFeedbackMetadata(surveyId: number, userId: number
 /** 新期末問卷的提交；同一交易保證唯一完成紀錄及匿名答案同成同敗。 */
 export async function submitCohortFeedback(surveyId: number, userId: number | null, body: SubmitResponseBody): Promise<ApiSuccessResponse<{ completed: true }> | null> {
   if (!await hasCohortFeedbackSchema()) return null;
-  const feedback = await prisma.cohort_feedback_surveys.findUnique({ where: { survey_id: surveyId } });
+  const feedback = await prisma.cohort_feedback_surveys.findUnique({
+    where: { survey_id: surveyId },
+    select: { cohort_id: true, cohort: { select: { deleted_at: true, program: { select: { deleted_at: true } } } } },
+  });
   if (!feedback) return null;
   if (!isCohortFeedbackEnabled()) throw new NotFoundError('問卷尚未開放');
+  assertPublicFeedbackParent(feedback.cohort);
   if (userId === null) throw new UnauthorizedError('請先登入填寫問卷');
   const questions = await prisma.questions.findMany({ where: { survey_id: surveyId }, orderBy: { position: 'asc' }, select: { id: true, position: true, question_type: true, is_required: true } });
   const byId = new Map(questions.map(q => [q.id, q]));
@@ -111,6 +121,11 @@ export async function submitCohortFeedback(surveyId: number, userId: number | nu
   if (questions.some(q => q.is_required && !seen.has(q.id))) throw new BadRequestError('必填題目未作答');
   try {
     await prisma.$transaction(async tx => {
+      const available = await tx.cohorts.findFirst({
+        where: { id: feedback.cohort_id, deleted_at: null, program: { deleted_at: null } },
+        select: { id: true },
+      });
+      if (!available) throw new NotFoundError('問卷不存在或尚未開放');
       const enrollment = await tx.cohort_enrollments.findFirst({ where: { cohort_id: feedback.cohort_id, user_id: userId, status: 'joined', cohort: { deleted_at: null } }, select: { id: true } });
       if (!enrollment) throw new ForbiddenError('你不符合此場次的填答資格');
       await tx.cohort_feedback_completions.create({ data: { cohort_id: feedback.cohort_id, user_id: userId } });
