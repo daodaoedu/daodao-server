@@ -103,7 +103,48 @@ describe('f2e#1194 check-in racing an administrator removal with PostgreSQL', ()
     release();
     await removal;
 
-    await expect(checkIn).rejects.toMatchObject({ statusCode: 403 });
+    // Removal soft-deleted the practice, so the locked re-read finds nothing: same 404 as any later request.
+    await expect(checkIn).rejects.toMatchObject({ statusCode: 404 });
     expect(await prisma.practice_checkins.count({ where: { practice_id: f.practiceId } })).toBe(0);
+  });
+
+  it('lets a removal wait for an in-flight check-in that locked first, without deadlocking', async () => {
+    const f = fixture = await seed();
+    const name = `race1194_${randomUUID().replace(/-/g, '')}`;
+    // Pause the check-in after it has taken its locks and inserted the row, before it updates the practice.
+    await remover.$executeRaw`SELECT pg_advisory_lock(1194::int, ${f.practiceId}::int)`;
+    await monitor.$executeRawUnsafe(`CREATE FUNCTION ${name}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(1194, ${f.practiceId}); RETURN NEW; END $$`);
+    await monitor.$executeRawUnsafe(`CREATE TRIGGER ${name} AFTER INSERT ON practice_checkins FOR EACH ROW WHEN (NEW.practice_id = ${f.practiceId}) EXECUTE FUNCTION ${name}()`);
+    const pending: Promise<unknown>[] = [];
+    try {
+      const checkIn = createCheckIn(f.practiceId, { note: '先鎖住的打卡', mood: 'good', tags: ['閱讀'] } as never, f.userId);
+      pending.push(checkIn); void checkIn.catch(() => undefined);
+      await waitFor('the check-in paused by the advisory gate', async () => {
+        const rows = await monitor.$queryRaw<Array<{ pid: number }>>`
+          SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND classid = 1194::oid AND objid = ${f.practiceId}::oid`;
+        return rows[0]?.pid;
+      });
+      // Same order as cohortMembershipService.remove: practices first, then the enrollment.
+      const removal = prisma.$transaction(async tx => {
+        await tx.practices.updateMany({ where: { cohort_id: f.cohortId, user_id: f.userId, deleted_at: null }, data: { cohort_id: null, deleted_at: new Date() } });
+        await tx.cohort_enrollments.update({ where: { id: f.enrollmentId }, data: { status: 'removed', exited_at: new Date() } });
+      }, { timeout: 10_000 });
+      pending.push(removal); void removal.catch(() => undefined);
+      await waitFor('the removal waiting on the check-in row lock', async () => {
+        const rows = await monitor.$queryRaw<Array<{ count: bigint }>>`
+          SELECT count(*) AS count FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()`;
+        return Number(rows[0]?.count ?? 0) >= 2 ? true : undefined;
+      });
+      await remover.$executeRaw`SELECT pg_advisory_unlock(1194::int, ${f.practiceId}::int)`;
+      await expect(checkIn).resolves.toMatchObject({ success: true });
+      await expect(removal).resolves.toBeUndefined();
+      expect(await prisma.practice_checkins.count({ where: { practice_id: f.practiceId } })).toBe(1);
+      expect(await prisma.practices.findUniqueOrThrow({ where: { id: f.practiceId }, select: { deleted_at: true } })).toEqual({ deleted_at: expect.any(Date) });
+    } finally {
+      await remover.$executeRaw`SELECT pg_advisory_unlock_all()`;
+      await Promise.allSettled(pending);
+      await monitor.$executeRawUnsafe(`DROP TRIGGER IF EXISTS ${name} ON practice_checkins`);
+      await monitor.$executeRawUnsafe(`DROP FUNCTION IF EXISTS ${name}()`);
+    }
   });
 });

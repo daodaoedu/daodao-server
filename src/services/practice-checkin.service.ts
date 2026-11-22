@@ -82,7 +82,7 @@ export async function createCheckIn(
   userId: number
 ): Promise<ApiSuccessResponse<CheckInResponseWithEncouragement>> {
   try {
-    // 驗證實踐存在且屬於使用者（已刪除的實踐在 external→internal ID 轉換時就回 404）
+    // 驗證實踐存在、未刪除且屬於使用者。ID 轉換時已排除刪除的實踐，但移除成員可能在轉換後才提交，這裡再擋一次
     const practice = await prismaClient.practices.findUnique({
       where: {
         id: practiceId,
@@ -90,7 +90,7 @@ export async function createCheckIn(
       }
     });
 
-    if (!practice) {
+    if (!practice || practice.deleted_at !== null) {
       throw new NotFoundError('實踐不存在或沒有權限');
     }
 
@@ -119,15 +119,26 @@ export async function createCheckIn(
     // 使用交易確保資料一致性，避免 race condition
     const { checkIn, isFirstCheckIn, progressResult, newStatus, streakInfo, newCheckInCount } = await prismaClient.$transaction(async (tx) => {
       // 期內實踐只允許目前仍在期內的成員打卡，不信任前端傳入的 practice ID 作為授權依據（f2e#1194）。
-      // FOR SHARE 與移除成員（cohort-membership.service remove 更新 enrollment）互斥：
-      // 移除先提交 → 這裡讀不到 joined；這裡先鎖 → 移除等打卡提交後才執行。
+      // 鎖序與移除／退出成員（cohort-membership.service：先更新 practices 再更新 enrollment）相同，避免死結：
+      // 先 FOR UPDATE 鎖實踐並重讀狀態，再 FOR SHARE 鎖 enrollment。
+      // 移除先提交 → 這裡讀不到實踐或 joined；退出先提交 → 實踐已轉個人，照個人實踐打卡；這裡先鎖 → 對方等打卡提交。
+      // 個人實踐不會再被掛回期，不需要鎖。
       if (practice.cohort_id) {
-        const joined = await tx.$queryRaw<{ id: number }[]>`
-          SELECT id FROM cohort_enrollments
-          WHERE cohort_id = ${practice.cohort_id} AND user_id = ${userId} AND status = 'joined'
-          FOR SHARE`;
-        if (joined.length === 0) {
-          throw new ForbiddenError('你已不是本期成員，無法打卡');
+        const [lockedPractice] = await tx.$queryRaw<{ cohort_id: number | null }[]>`
+          SELECT cohort_id FROM practices
+          WHERE id = ${practiceId} AND user_id = ${userId} AND deleted_at IS NULL
+          FOR UPDATE`;
+        if (!lockedPractice) {
+          throw new NotFoundError('實踐不存在或沒有權限');
+        }
+        if (lockedPractice.cohort_id) {
+          const joined = await tx.$queryRaw<{ id: number }[]>`
+            SELECT id FROM cohort_enrollments
+            WHERE cohort_id = ${lockedPractice.cohort_id} AND user_id = ${userId} AND status = 'joined'
+            FOR SHARE`;
+          if (joined.length === 0) {
+            throw new ForbiddenError('你已不是本期成員，無法打卡');
+          }
         }
       }
 
