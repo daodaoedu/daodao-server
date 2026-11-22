@@ -69,7 +69,11 @@ registry.registerPath({
 });
 
 // Public routes (no auth required)
-router.get('/public/:externalId', optionalAuth, surveyController.getPublic as RequestHandler);
+router.get('/public/:externalId', (_req, res, next) => {
+  // A cached 410 survives reopening; successful eligibility also varies by member.
+  res.setHeader('Cache-Control', 'private, no-store');
+  next();
+}, optionalAuth, surveyController.getPublic as RequestHandler);
 router.post('/public/:externalId/responses', optionalAuth,
   asyncHandler(async (req, res, next) => {
     const survey = await prisma.surveys.findUnique({ where: { external_id: req.params.externalId }, select: { managed_version: true } });
