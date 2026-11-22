@@ -37168,8 +37168,8 @@ paths:
                 tagline:
                   type: string
                   minLength: 1
-                  maxLength: 80
-                  description: 一句話簡介（≤80 字）
+                  maxLength: 100
+                  description: 簡介（≤100 字）
                   example: 一起學習、一起成長
                 startDate:
                   type: string
@@ -38073,8 +38073,8 @@ paths:
                   type: string
                   nullable: true
                   minLength: 1
-                  maxLength: 80
-                  description: 一句話簡介
+                  maxLength: 100
+                  description: 簡介（≤100 字）
                 startDate:
                   type: string
                   pattern: ^\d{4}-\d{2}-\d{2}$
