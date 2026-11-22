@@ -18,6 +18,7 @@ const ALL_NOTIFICATION_TYPES = [
   NOTIFICATION_TYPES.COMMENT,
   NOTIFICATION_TYPES.COMMENT_REPLY,
   NOTIFICATION_TYPES.MENTION,
+  NOTIFICATION_TYPES.CHAT_MESSAGE,
   NOTIFICATION_TYPES.USER_FOLLOWED,
   NOTIFICATION_TYPES.PRACTICE_FOLLOWED,
   NOTIFICATION_TYPES.CONNECT,
@@ -59,6 +60,9 @@ export interface NotificationPreferenceItem {
  */
 function getDefaultEnabled(type: string, channel: string): boolean {
   if (type === NOTIFICATION_TYPES.WEEKLY_DIGEST && WEEKLY_DIGEST_DISABLED_CHANNELS.has(channel)) {
+    return false;
+  }
+  if (type === NOTIFICATION_TYPES.CHAT_MESSAGE && channel === 'N03') {
     return false;
   }
   return true;
@@ -109,9 +113,10 @@ async function getPreferences(userId: number): Promise<ApiSuccessResponse<Notifi
   const preferences: NotificationPreferenceItem[] = ALL_NOTIFICATION_TYPES.flatMap(type =>
     CHANNELS.map(channel => {
       const key = `${type}:${channel}`;
-      const isEnabled = dbMap.has(key)
-        ? dbMap.get(key)!
-        : getDefaultEnabled(type, channel);
+      const legacyEmailPreference = type === NOTIFICATION_TYPES.CHAT_MESSAGE && channel === 'N01'
+        ? dbMap.get(`${NOTIFICATION_TYPES.COMMENT}:N01`)
+        : undefined;
+      const isEnabled = dbMap.get(key) ?? legacyEmailPreference ?? getDefaultEnabled(type, channel);
       return { type, channel, isEnabled };
     })
   );
@@ -155,7 +160,7 @@ async function setGlobalEnabled(userId: number, isEnabled: boolean): Promise<Api
 
   // 取得所有 type × 受影響 channel 組合
   const upsertOps = ALL_NOTIFICATION_TYPES.flatMap(type =>
-    affectedChannels.map(channel =>
+    (type === NOTIFICATION_TYPES.CHAT_MESSAGE ? ['N01'] : affectedChannels).map(channel =>
       prisma.notification_preferences.upsert({
         where: {
           user_id_notification_type_channel: {

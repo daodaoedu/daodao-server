@@ -10,6 +10,7 @@
  */
 
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
+import { chatNotificationAccessService } from '../services/chat-notification-access.service';
 import { Worker, Job } from 'bullmq';
 import { getQueueConnection } from './connection';
 import { loggerService } from '../services/logging/logger.service';
@@ -69,8 +70,18 @@ async function processNotificationInAppJob(job: Job<NotificationInAppJobData>): 
 
     // 3. 對每位 recipient 逐一處理
     for (const [recipientId, recipientEvents] of byRecipient) {
-      const p1Events = recipientEvents.filter((e) => e.priority === 'P1');
-      const p2Events = recipientEvents.filter((e) => e.priority === 'P2');
+      // 聊天室通知送達前再確認收件人仍在聊天室內；已無權限的事件標記處理完、不建立通知
+      const deliverable = await chatNotificationAccessService.dropInaccessibleChatNotifications(
+        recipientId,
+        recipientEvents,
+        NOTIFICATION_TYPES.CHAT_MESSAGE
+      );
+      const deliverableIds = new Set(deliverable.map((e) => e.id));
+      for (const event of recipientEvents) {
+        if (!deliverableIds.has(event.id)) processedIds.push(event.id);
+      }
+      const p1Events = deliverable.filter((e) => e.priority === 'P1');
+      const p2Events = deliverable.filter((e) => e.priority === 'P2');
 
       // ── P1：每條事件各自寫一筆 notification ──────────────────────────────
       for (const event of p1Events) {

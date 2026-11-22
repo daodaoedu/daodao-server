@@ -71,6 +71,8 @@ export const notificationItemSchema = z.object({
   aggregation_count: z.number().openapi({ description: '聚合數量', example: 1 }),
   created_at:        z.string().openapi({ description: '建立時間（ISO 8601）', example: '2024-01-15T10:30:00.000Z' }),
   actor:             notificationActorSchema.nullable().openapi({ description: '發送者資訊' }),
+  chatNotificationKind: z.enum(['mention', 'general']).optional().openapi({ description: '聊天室提及或一般新訊息' }),
+  chatRoomName: z.string().optional().openapi({ description: '群組聊天室名稱' }),
   entityTitle: z.string().optional().openapi({ description: '通知關聯內容的名稱', example: '學習地圖' }),
   cohortName: z.string().optional().openapi({ description: '場次名稱；歷史資料可能缺少', example: '夏季期' }),
   message: z.string().optional().openapi({ description: '事件說明', example: '你收到「夏季期」的加入邀請。' }),

@@ -401,8 +401,16 @@ describe('Notification Email Batch Integration Tests', () => {
         .query({ token });
 
       expect(res.status).toBe(200);
-      // digest 退訂觸發 setGlobalEnabled → 18 types × 2 channels (N01, N03)。
-      expect(prismaMock.notification_preferences.upsert).toHaveBeenCalledTimes(36);
+      const writes = prismaMock.notification_preferences.upsert.mock.calls.map(([args]) => args);
+      const chatWrites = writes.filter(({ create }) => create.notification_type === 'ChatMessage');
+      expect(chatWrites.map(({ create }) => create.channel)).toEqual(['N01']);
+      expect(writes).toHaveLength(18 * 2 + 1);
+      for (const { create, update } of writes) {
+        expect(['N01', 'N03']).toContain(create.channel);
+        expect(create.user_id).toBe(20);
+        expect(create.is_enabled).toBe(false);
+        expect(update.is_enabled).toBe(false);
+      }
     });
 
     it('無效 token 回傳 400 HTML 頁面', async () => {

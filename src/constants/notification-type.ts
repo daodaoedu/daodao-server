@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = {
   COMMENT:       'Comment',
   COMMENT_REPLY: 'CommentReply',
   MENTION:       'Mention',
+  CHAT_MESSAGE:  'ChatMessage',
 
   // 追蹤
   USER_FOLLOWED:     'UserFollowed',

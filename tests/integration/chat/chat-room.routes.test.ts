@@ -106,7 +106,7 @@ const mockRoomList = {
 };
 
 const mockRoomDetail = {
-  ...mockRoomList.items[0], viewerRole: 'member' as const, viewerUserId: 7, pinnedCount: 1,
+  ...mockRoomList.items[0], firstUnreadMessageId: 101, viewerRole: 'member' as const, viewerUserId: 7, pinnedCount: 1,
   memberPreview: [{ nickname: '島民A', avatar: null }],
 };
 
@@ -330,7 +330,7 @@ describe('chat room routes', () => {
         .send({ body: '你好' });
       expect(res.status).toBe(201);
       expect(res.body.data.body).toBe('你好');
-      expect(messageService.create).toHaveBeenCalledWith(mockAccess, 7, '你好', undefined);
+      expect(messageService.create).toHaveBeenCalledWith(mockAccess, 7, '你好', undefined, undefined, undefined);
     });
 
     it('creates a message with replyToMessageId', async () => {
@@ -338,7 +338,7 @@ describe('chat room routes', () => {
         .post('/api/v1/chat-rooms/1/messages')
         .set(auth)
         .send({ body: '回覆你', replyToMessageId: 42 });
-      expect(messageService.create).toHaveBeenCalledWith(mockAccess, 7, '回覆你', 42);
+      expect(messageService.create).toHaveBeenCalledWith(mockAccess, 7, '回覆你', 42, undefined, undefined);
     });
 
     it('returns 400 for empty body', async () => {

@@ -10,6 +10,7 @@ import { notificationPreferenceService } from '../services/notification-preferen
 import { verifyUnsubscribeToken } from '../services/notification-unsubscribe.service';
 import { prisma } from '../services/database/prisma.service';
 import { NOTIFICATION_TYPES } from '../constants/notification-type';
+import { chatNotificationAccessService } from '../services/chat-notification-access.service';
 import { createSuccessResponse } from '../utils/response-helper';
 
 // ============================================================================
@@ -162,13 +163,32 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       })).toString('base64')
     : null;
 
-  // 查詢未讀通知數（不受 cursor 分頁影響，始終返回全量未讀數）
-  const unreadCount = await prisma.notifications.count({
-    where: { recipient_id: userId, is_read: false, type: { not: NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST } },
-  });
+  // 已被移出聊天室的成員不再看到該聊天室的通知（daodao#555）；cursor 仍依原始列計算，分頁不跳號
+  const visibleItems = await chatNotificationAccessService.dropInaccessibleChatNotifications(
+    userId,
+    items,
+    NOTIFICATION_TYPES.CHAT_MESSAGE
+  );
+
+  // 查詢未讀通知數（不受 cursor 分頁影響，始終返回全量未讀數；扣掉已無權讀取的聊天室通知）
+  const [rawUnreadCount, unreadChatRows] = await Promise.all([
+    prisma.notifications.count({
+      where: { recipient_id: userId, is_read: false, type: { not: NOTIFICATION_TYPES.COHORT_WEEKLY_DIGEST } },
+    }),
+    prisma.notifications.findMany({
+      where: { recipient_id: userId, is_read: false, type: NOTIFICATION_TYPES.CHAT_MESSAGE },
+      select: { type: true, entity_id: true },
+    }),
+  ]);
+  const visibleUnreadChatRows = await chatNotificationAccessService.dropInaccessibleChatNotifications(
+    userId,
+    unreadChatRows,
+    NOTIFICATION_TYPES.CHAT_MESSAGE
+  );
+  const unreadCount = rawUnreadCount - (unreadChatRows.length - visibleUnreadChatRows.length);
 
   // 對 payload 缺少 entity_external_id 的 practice 通知，批次補查 external_id
-  const missingExternalIdPracticeIds = items
+  const missingExternalIdPracticeIds = visibleItems
     .filter((row) => {
       const p = (row.payload ?? {}) as Record<string, unknown>;
       return row.entity_type === 'practice' && !p.entity_external_id;
@@ -187,7 +207,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   }
 
   // 對 payload 缺少 entity_external_id 的 comment 通知，補查對應 practice/checkin metadata
-  const missingExternalIdCommentIds = items
+  const missingExternalIdCommentIds = visibleItems
     .filter((row) => {
       const p = (row.payload ?? {}) as Record<string, unknown>;
       return row.entity_type === 'comment' && !p.entity_external_id;
@@ -259,7 +279,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   }
 
   /** 將 payload JSONB 展開為前端所需欄位 */
-  const notifications = items.map((row) => {
+  const notifications = visibleItems.map((row) => {
     const p = (row.payload ?? {}) as Record<string, unknown>;
     // 補查表以 entity_id 為 key，只能套用在同類型的通知上；否則其他類型（如 feedback）的 id
     // 撞到同頁 practice／comment 的 id 時會被換成別的實體（daodao#451）
@@ -299,6 +319,10 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       ...(typeof p.cohortName === 'string'      && { cohortName: p.cohortName }),
       ...(typeof p.message === 'string'         && { message: p.message }),
       ...(typeof p.entityTitle === 'string'     && { entityTitle: p.entityTitle }),
+      ...(p.chatNotificationKind === 'mention' || p.chatNotificationKind === 'general'
+        ? { chatNotificationKind: p.chatNotificationKind }
+        : {}),
+      ...(typeof p.chatRoomName === 'string'    && { chatRoomName:           p.chatRoomName }),
       ...(row.entity_type === 'buddy_request'   && { buddyRequestId:        row.entity_id }),
       ...((p.checkinId !== undefined || commentMetadata?.checkinId !== undefined) && {
         checkinId: (p.checkinId as number | undefined) ?? commentMetadata?.checkinId,
