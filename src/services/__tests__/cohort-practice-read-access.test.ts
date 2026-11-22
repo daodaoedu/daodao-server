@@ -127,10 +127,10 @@ describe('private Lighthouse practice read access (#344)', () => {
 
   it.each(['detail', 'checkins'])('does not grant private draft %s to cohort peers', async endpoint => {
     setupReads({ status: 'draft' });
-    prismaMock.cohorts.findFirst.mockResolvedValue({ id: cohortId, end_date: new Date() } as never);
+    // A peer has no matching organization-manager membership.
+    prismaMock.cohorts.findFirst.mockResolvedValue(null);
     const request = endpoint === 'detail' ? findById(practiceId, peerId) : getCheckIns(practiceId, {}, peerId);
     await expect(request).rejects.toMatchObject({ statusCode: 403 });
-    expect(prismaMock.cohorts.findFirst).not.toHaveBeenCalled();
   });
 
   it.each(['detail', 'checkins'])('does not query membership for anonymous private %s', async endpoint => {

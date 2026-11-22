@@ -1,3 +1,6 @@
+import { requireSurveyCompletionHmacKey } from './survey-completion-key';
+import { managedSurveyService, isManagedSurvey } from './managed-survey.service';
+import { ForbiddenError } from '@/middleware/error.middleware';
 import { assertGenericSurvey, getCohortFeedbackMetadata, submitCohortFeedback, hasCohortFeedbackSchema } from './cohort-feedback.service';
 import { prisma } from '@/services/database/prisma.service';
 import { createSuccessResponse } from '@/utils/response-helper';
@@ -94,7 +97,7 @@ export const surveyService = {
   async listMine(userId: number) {
     const feedbackSchemaReady = await hasCohortFeedbackSchema();
     const surveys = await prisma.surveys.findMany({
-      where: { created_by: userId, ...(feedbackSchemaReady ? { cohort_feedback: { is: null } } : {}) },
+      where: { created_by: userId, managed_version: null, ...(feedbackSchemaReady ? { cohort_feedback: { is: null } } : {}) },
       orderBy: { created_at: 'desc' },
       include: { _count: { select: { responses: true } } },
     });
@@ -113,6 +116,7 @@ export const surveyService = {
 
   async getById(id: number, userId: number) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const survey = await prisma.surveys.findFirst({
       where: { id, created_by: userId },
       include: { questions: questionWithOptions },
@@ -120,7 +124,9 @@ export const surveyService = {
     return survey ? createSuccessResponse(formatSurvey(survey)) : null;
   },
 
-  async getPublic(externalId: string, userId: number | null = null) {
+  async getPublic(externalId: string, userId: number | null = null, temporary = false) {
+    const managed = await managedSurveyService.public(externalId, temporary ? null : userId);
+    if (managed) return createSuccessResponse(managed);
     const now = new Date();
     const survey = await prisma.surveys.findFirst({
       where: {
@@ -139,6 +145,7 @@ export const surveyService = {
 
   async updateStatus(id: number, userId: number, body: UpdateSurveyStatusBody) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     const survey = await prisma.surveys.update({
@@ -149,7 +156,9 @@ export const surveyService = {
     return createSuccessResponse(formatSurvey(survey));
   },
 
-  async submitResponse(externalId: string, userId: number | null, body: SubmitResponseBody) {
+  async submitResponse(externalId: string, userId: number | null, body: SubmitResponseBody, temporary = false) {
+    const managed = await managedSurveyService.submit(externalId, temporary ? null : userId, body.answers);
+    if (managed) return createSuccessResponse(managed);
     const now = new Date();
     const survey = await prisma.surveys.findFirst({
       where: {
@@ -271,6 +280,7 @@ export const surveyService = {
 
   async getAnalytics(id: number, userId: number) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const survey = await prisma.surveys.findFirst({
       where: { id, created_by: userId },
       include: { questions: { include: { options: true }, orderBy: { position: 'asc' } } },
@@ -377,6 +387,7 @@ export const surveyService = {
 
   async delete(id: number, userId: number) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     await prisma.surveys.delete({ where: { id } });
@@ -385,6 +396,7 @@ export const surveyService = {
 
   async update(id: number, userId: number, body: UpdateSurveyBody) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const existing = await prisma.surveys.findFirst({ where: { id, created_by: userId } });
     if (!existing) return null;
     const survey = await prisma.surveys.update({
@@ -401,6 +413,7 @@ export const surveyService = {
   },
 
   async trackPartial(externalId: string, body: TrackPartialBody) {
+    if ((await prisma.surveys.findUnique({ where: { external_id: externalId }, select: { managed_version: true } }))?.managed_version === 1) return;
     const survey = await prisma.surveys.findFirst({
       where: { external_id: externalId, status: 'active' },
       select: { id: true },
@@ -416,6 +429,7 @@ export const surveyService = {
 
   async deleteResponse(surveyId: number, userId: number, responseId: number) {
     await assertGenericSurvey(surveyId);
+    if (await isManagedSurvey(surveyId)) throw new ForbiddenError('請從管理後台操作此問卷');
     const survey = await prisma.surveys.findFirst({ where: { id: surveyId, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const existing = await prisma.survey_responses.findFirst({ where: { id: responseId, survey_id: surveyId } });
@@ -425,16 +439,22 @@ export const surveyService = {
   },
 
   async trackView(externalId: string) {
-    const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true } });
+    const survey = await prisma.surveys.findFirst({ where: { external_id: externalId }, select: { id: true, managed_version: true } });
     if (survey) await assertGenericSurvey(survey.id);
+    if (survey?.managed_version === 1) requireSurveyCompletionHmacKey();
+    const now = new Date();
     await prisma.surveys.updateMany({
-      where: { external_id: externalId, status: 'active' },
+      where: { external_id: externalId, status: 'active', ...(survey?.managed_version === 1 ? { AND: [
+        { OR: [{ start_time: null }, { start_time: { lte: now } }] },
+        { OR: [{ end_time: null }, { end_time: { gte: now } }] },
+      ] } : {}) },
       data: { view_count: { increment: 1 } },
     });
   },
 
   async getResponse(surveyId: number, userId: number, responseId: number) {
     await assertGenericSurvey(surveyId);
+    if (await isManagedSurvey(surveyId)) throw new ForbiddenError('請從管理後台操作此問卷');
     const survey = await prisma.surveys.findFirst({ where: { id: surveyId, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const response = await prisma.survey_responses.findFirst({
@@ -460,6 +480,7 @@ export const surveyService = {
 
   async listResponses(id: number, userId: number) {
     await assertGenericSurvey(id);
+    if (await isManagedSurvey(id)) throw new ForbiddenError('請從管理後台操作此問卷');
     const survey = await prisma.surveys.findFirst({ where: { id, created_by: userId }, select: { id: true } });
     if (!survey) return null;
     const responses = await prisma.survey_responses.findMany({

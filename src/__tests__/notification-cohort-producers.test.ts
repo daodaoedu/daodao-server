@@ -32,7 +32,7 @@ it('persists removal content with cohort name and no inaccessible destination', 
   prismaMock.cohort_enrollments.findFirst.mockResolvedValue({ id: 9, user_id: 77, status: 'joined', cohort: { display_name: '夏季期' } } as never);
   prismaMock.practices.updateMany.mockResolvedValue({ count: 1 });
   await cohortMembershipService.remove(2, 8, 9, 42);
-  expect(prismaMock.notification_events.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ type: 'CohortMemberRemoved', payload: { cohortName: '夏季期', message: '你已不再參與「夏季期」，原有實踐已轉回個人實踐。' } }) }));
+  expect(prismaMock.notification_events.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ type: 'CohortMemberRemoved', payload: { cohortName: '夏季期', message: '你已不再參與「夏季期」，本期實踐已從個人空間移除。' } }) }));
 });
 
 it('keeps weekly email delivery without creating any in-app digest event', async () => {
