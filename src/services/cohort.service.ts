@@ -9,6 +9,8 @@ import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import type { CohortInteractionMode, CohortFeeType, CohortSignupMethod } from '../constants/cohort-setup';
 import { recordCohortPublication } from './cohort-activation-evidence.service';
 import { ensureRoom } from './chat-room.service';
+import { syncUnstartedCohortPracticeDates } from './cohort-draft.service';
+import { day } from './cohort-run-state';
 
 /** Prisma select 含新欄位與 sessions */
 const select = {
@@ -450,6 +452,8 @@ const update = async (programId: number, cohortId: number, input: UpdateCohortIn
         // modes 移除了 sync/physical → 清空 sessions
         await tx.cohort_sessions.deleteMany({ where: { cohort_id: cohortId } });
       }
+
+      if (day(startDate) !== day(current.start_date)) await syncUnstartedCohortPracticeDates(tx, cohortId);
 
       // D7：切換 isPrivate 時同交易 updateMany 實踐 privacy_status
       let affectedPracticeCount: number | undefined;

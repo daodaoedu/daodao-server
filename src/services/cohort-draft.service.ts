@@ -51,6 +51,50 @@ const resolvePeriod = (
   return { endDate: cohortEndDate, durationDays: inclusiveDays(startDate, cohortEndDate) };
 };
 
+/**
+ * 燈塔場次或模板綁定改開始日時，同步尚未開始的場次實踐期間（daodao#544）。
+ * 學員不能自行修改場次實踐的開始日與天數，若不跟著改，帶領人改期後學員會卡在舊日期無法打卡。
+ * 只動仍未開始（原開始日晚於今天）、沒有打卡的模板實踐；已開始的實踐維持原期間。
+ */
+export const syncUnstartedCohortPracticeDates = async (
+  tx: TransactionClient,
+  cohortId: number,
+  currentDay: string = today()
+): Promise<number> => {
+  const cohort = await tx.cohorts.findUnique({ where: { id: cohortId }, select: { start_date: true, program: { select: { kind: true } } } });
+  if (cohort?.program.kind !== 'lighthouse') return 0;
+  const bindings = await tx.cohort_templates.findMany({ where: { cohort_id: cohortId, unbound_at: null }, select: { template_id: true, start_date: true } });
+  let changed = 0;
+  for (const binding of bindings) {
+    const startDate = binding.start_date ?? cohort.start_date;
+    const practices = await tx.practices.findMany({
+      where: {
+        cohort_id: cohortId,
+        template_id: binding.template_id,
+        creation_source: 'cohort_template',
+        deleted_at: null,
+        status: { in: ['draft', 'not_started'] },
+        start_date: { gt: new Date(`${currentDay}T00:00:00.000Z`) },
+        practice_checkins: { none: {} }
+      },
+      select: { id: true, start_date: true, duration_days: true }
+    });
+    for (const practice of practices) {
+      if (practice.start_date && day(practice.start_date) === day(startDate)) continue;
+      await tx.practices.update({
+        where: { id: practice.id },
+        data: {
+          start_date: startDate,
+          end_date: practice.duration_days ? inclusiveEndDate(startDate, practice.duration_days) : null,
+          updated_at: new Date()
+        }
+      });
+      changed += 1;
+    }
+  }
+  return changed;
+};
+
 /** 把模板掛的資源複製到本次產生的草稿上（共用同一筆 resources，只加關聯） */
 const copyTemplateResources = async (
   tx: TransactionClient,
