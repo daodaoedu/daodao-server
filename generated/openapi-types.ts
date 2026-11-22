@@ -54208,6 +54208,16 @@ export interface components {
                 /** @enum {string} */
                 state: "login_required" | "ineligible" | "ready" | "completed";
                 privacy_notice: string;
+                /**
+                 * @description 問卷所屬組織顯示名稱
+                 * @example 島島阿學
+                 */
+                organization_name: string;
+                /**
+                 * @description 問卷所屬場次顯示名稱
+                 * @example 閱讀同行場次
+                 */
+                cohort_name: string;
             };
         };
         QuestionResponse: {

@@ -55,9 +55,15 @@ export async function createCohortFeedbackSurvey(cohortId: number, creatorId: nu
 }
 
 /** 取得填答資格；完成紀錄只用來回答布林狀態，不回傳完成時間。 */
-export async function getCohortFeedbackMetadata(surveyId: number, userId: number | null): Promise<{ state: 'login_required' | 'ineligible' | 'ready' | 'completed'; privacy_notice: string } | null> {
+export async function getCohortFeedbackMetadata(surveyId: number, userId: number | null): Promise<{ state: 'login_required' | 'ineligible' | 'ready' | 'completed'; privacy_notice: string; organization_name: string; cohort_name: string } | null> {
   if (!await hasCohortFeedbackSchema()) return null;
-  const feedback = await prisma.cohort_feedback_surveys.findUnique({ where: { survey_id: surveyId } });
+  const feedback = await prisma.cohort_feedback_surveys.findUnique({
+    where: { survey_id: surveyId },
+    select: {
+      cohort_id: true,
+      cohort: { select: { display_name: true, program: { select: { organization: { select: { name: true } } } } } },
+    },
+  });
   if (!feedback) return null;
   if (!isCohortFeedbackEnabled()) throw new NotFoundError('問卷尚未開放');
   let state: 'login_required' | 'ineligible' | 'ready' | 'completed' = 'login_required';
@@ -69,7 +75,12 @@ export async function getCohortFeedbackMetadata(surveyId: number, userId: number
       state = completion ? 'completed' : 'ready';
     }
   }
-  return { state, privacy_notice: FEEDBACK_PRIVACY_NOTICE };
+  return {
+    state,
+    privacy_notice: FEEDBACK_PRIVACY_NOTICE,
+    organization_name: feedback.cohort.program.organization.name,
+    cohort_name: feedback.cohort.display_name,
+  };
 }
 
 /** 新期末問卷的提交；同一交易保證唯一完成紀錄及匿名答案同成同敗。 */

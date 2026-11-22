@@ -102,7 +102,12 @@ export const surveyResponseSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   questions: z.array(questionResponseSchema),
-  cohort_feedback: z.object({ state: z.enum(['login_required', 'ineligible', 'ready', 'completed']), privacy_notice: z.string() }).optional(),
+  cohort_feedback: z.object({
+    state: z.enum(['login_required', 'ineligible', 'ready', 'completed']),
+    privacy_notice: z.string(),
+    organization_name: z.string().openapi({ description: '問卷所屬組織顯示名稱', example: '島島阿學' }),
+    cohort_name: z.string().openapi({ description: '問卷所屬場次顯示名稱', example: '閱讀同行場次' }),
+  }).optional(),
 }).openapi('SurveyResponse');
 
 export const surveyListItemSchema = z.object({
