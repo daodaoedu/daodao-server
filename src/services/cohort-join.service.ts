@@ -225,7 +225,7 @@ const getMemberHome = async (cohortId: number, userId: number) => {
   const practices = await prisma.practices.findMany({
     where: { cohort_id: cohortId, user_id: userId, deleted_at: null },
     select: {
-      id: true, external_id: true, title: true, practice_action: true, status: true, creation_source: true,
+      id: true, external_id: true, title: true, practice_action: true, status: true, creation_source: true, template_id: true,
       start_date: true, end_date: true, progress_percentage: true, theme_color: true
     },
     orderBy: { created_at: 'asc' }
@@ -264,6 +264,7 @@ const getMemberHome = async (cohortId: number, userId: number) => {
       practiceAction: practice.practice_action,
       status: practice.status ?? 'draft',
       creationSource: practice.creation_source,
+      templateId: practice.template_id,
       startDate: practice.start_date,
       endDate: practice.end_date,
       progressPercentage: practice.progress_percentage ? Number(practice.progress_percentage) : INITIAL_PROGRESS,

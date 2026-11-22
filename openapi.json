@@ -44410,6 +44410,11 @@
                                 "type": "string",
                                 "nullable": true
                               },
+                              "templateId": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "來源實踐模板 ID；共用打卡連結以 cohortId＋templateId 找出登入者自己的實踐"
+                              },
                               "startDate": {
                                 "type": "string",
                                 "nullable": true,
@@ -44443,6 +44448,7 @@
                               "practiceAction",
                               "status",
                               "creationSource",
+                              "templateId",
                               "startDate",
                               "endDate",
                               "progressPercentage",

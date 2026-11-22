@@ -58,6 +58,7 @@ export const cohortMemberHomeResponseSchema = z.object({
   practices: z.array(z.object({
     id: z.string().uuid(), title: z.string(), practiceAction: z.string().nullable(),
     status: z.enum(['draft', 'not_started', 'active', 'completed', 'archived']), creationSource: z.string().nullable(),
+    templateId: z.number().int().nullable().openapi({ description: '來源實踐模板 ID；共用打卡連結以 cohortId＋templateId 找出登入者自己的實踐' }),
     // 以下欄位讓前端能沿用「我的」那張實踐卡，不必自己刻一套簡化版
     startDate: z.date().nullable(), endDate: z.date().nullable(),
     progressPercentage: z.number(), checkInCount: z.number().int().nonnegative(),
