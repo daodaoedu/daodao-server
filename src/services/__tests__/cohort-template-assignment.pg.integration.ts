@@ -5,6 +5,7 @@ import { cohortTemplateResourcesService as cohortResources } from '../cohort-tem
 import { organizationTemplateService } from '../organization-template.service';
 import { ensureCohortDrafts } from '../cohort-draft.service';
 import { ConflictError } from '../../middleware/error.middleware';
+import { cohortService } from '../cohort.service';
 
 /**
  * daodao#544（2026-11-24 產品澄清）：
@@ -83,6 +84,13 @@ describe('Lighthouse cohort template assignment (#544)', () => {
 
       expect((await cohortResources.list(org, templateId, later.id, owner)).map(row => row.name)).toEqual(['新預設']);
     });
+    it('freezes resources of a duplicated cohort at duplication time', async () => {
+      const { cohortId, templateId } = await setup(10, [{ name: '複製時預設' }]);
+      const copy = await cohortService.duplicate(program, cohortId, owner);
+      await organizationTemplateService.update(org, templateId, owner, { resources: [{ name: '複製後才改' }] });
+
+      expect((await cohortResources.list(org, templateId, copy.id, owner)).map(row => row.name)).toEqual(['複製時預設']);
+    });
   });
 
   describe('assigning a template after learners joined', () => {
@@ -145,9 +153,28 @@ describe('Lighthouse cohort template assignment (#544)', () => {
       expect(after.bound_at).toEqual(before.bound_at);
       expect(after.start_date).toEqual(before.start_date);
     });
+    it('does not resurrect a practice of the same template that the learner soft-deleted', async () => {
+      const { cohortId, templateId } = await setup(10, []);
+      await prisma.practices.updateMany({ where: { cohort_id: cohortId, template_id: templateId, user_id: learner }, data: { deleted_at: new Date() } });
+
+      await organizationTemplateService.bind(org, templateId, cohortId, owner, true);
+      await prisma.cohorts.update({ where: { id: cohortId }, data: { start_date: day(-1) } });
+      await organizationTemplateService.bind(org, templateId, cohortId, owner, true);
+
+      expect(await prisma.practices.count({ where: { cohort_id: cohortId, template_id: templateId, user_id: learner, deleted_at: null } })).toBe(0);
+    });
   });
 
   describe('started cohorts keep existing bindings locked (FR-TPL-05)', () => {
+    it('keeps a started Challenge cohort locked against new templates (AC-05)', async () => {
+      const challenge = (await prisma.programs.create({ data: { organization_id: org, name: `${prefix}_c`, kind: 'challenge' } })).id;
+      const cohort = await prisma.cohorts.create({ data: { program_id: challenge, slug: randomUUID(), display_name: prefix, start_date: day(-1), end_date: day(20) } });
+      const template = await createTemplate([]);
+
+      await expect(organizationTemplateService.bind(org, template.id, cohort.id, owner, true)).rejects.toBeInstanceOf(ConflictError);
+      expect(await prisma.cohort_templates.count({ where: { cohort_id: cohort.id } })).toBe(0);
+    });
+
     it('rejects unbinding or moving the start date of an existing binding once the cohort started', async () => {
       const { cohortId, templateId } = await setup(10, []);
       await prisma.cohorts.update({ where: { id: cohortId }, data: { start_date: day(-1) } });

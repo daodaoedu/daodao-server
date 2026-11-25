@@ -364,38 +364,47 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   if (cohort.status === 'archived') throw new ConflictError('場次已封存，無法變更模板綁定');
   // 只有明確帶了 startDate 才動它，重新綁定時不會把既有的指定日洗掉
   const startDate = input.startDate === undefined ? undefined : input.startDate === null ? null : new Date(`${input.startDate}T00:00:00.000Z`);
-  // 已開始的場次不得解綁或修改既有綁定的開始日，但仍可新增模板（FR-TPL-05、daodao#544）
-  // 已開始場次重送相同綁定不改綁定本身，但仍走補建，讓指派時漏建實踐的學員能補上（daodao#544）
-  let keptBinding: { start_date: Date | null } | null = null;
-  if (isCohortStarted(cohort.start_date, today())) {
-    if (!bound) throw new ConflictError('場次已開始，無法解除模板綁定');
-    keptBinding = await prisma.cohort_templates.findFirst({ where: { cohort_id: cohortId, template_id: templateId, unbound_at: null }, select: { start_date: true } });
-    if (keptBinding) {
-      const current = keptBinding.start_date;
-      const unchanged = startDate === undefined || (current === null ? startDate === null : startDate !== null && day(current) === day(startDate));
-      if (!unchanged) throw new ConflictError('場次已開始，無法修改模板開始日');
-    }
+  const isLighthouse = cohort.program.kind === 'lighthouse';
+  // 已開始的場次不得解綁或修改既有綁定的開始日（FR-TPL-05）；燈塔場次仍可新增模板（daodao#544），其他類型維持整個鎖住
+  if (isCohortStarted(cohort.start_date, today()) && (!bound || !isLighthouse)) {
+    throw new ConflictError(bound ? '場次已開始，無法變更模板綁定' : '場次已開始，無法解除模板綁定');
   }
   if (bound) {
     const row = await prisma.$transaction(async tx => {
-      // 與學員加入／退出同樣先鎖場次，避免補建實踐時漏掉同時加入的學員
-      await tx.$queryRaw`SELECT id FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
-      const binding = keptBinding ?? await tx.cohort_templates.upsert({
+      // 與學員加入／退出同樣先鎖場次，再判斷已開始與既有綁定，避免與同時的指派互相覆蓋開始日
+      const [locked] = await tx.$queryRaw<Array<{ start_date: Date }>>`SELECT start_date FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
+      const started = locked ? isCohortStarted(locked.start_date, today()) : false;
+      if (started && !isLighthouse) throw new ConflictError('場次已開始，無法變更模板綁定');
+      // 已開始場次重送相同綁定不改綁定本身，但仍走補建，讓指派時漏建實踐的學員能補上（daodao#544）
+      const kept = started ? await tx.cohort_templates.findFirst({ where: { cohort_id: cohortId, template_id: templateId, unbound_at: null }, select: { start_date: true } }) : null;
+      if (kept) {
+        const current = kept.start_date;
+        const unchanged = startDate === undefined || (current === null ? startDate === null : startDate !== null && day(current) === day(startDate));
+        if (!unchanged) throw new ConflictError('場次已開始，無法修改模板開始日');
+      }
+      const binding = kept ?? await tx.cohort_templates.upsert({
         where: { cohort_id_template_id: { cohort_id: cohortId, template_id: templateId } },
         create: { cohort_id: cohortId, template_id: templateId, start_date: startDate ?? null },
         update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
         select: { start_date: true }
       });
-      if (cohort.program.kind === 'lighthouse' && startDate !== undefined && !keptBinding) await syncUnstartedCohortPracticeDates(tx, cohortId);
-      if (cohort.program.kind === 'lighthouse') {
-        const locked = await lockCohortResourceBinding(tx, cohortId, templateId);
-        await initializeCohortResources(tx, locked.id);
-        // 場次建立後才指派的模板，要替已加入的學員補建實踐（daodao#544）；只補這個模板，不重建學員刪掉的其他實踐
+      if (isLighthouse && startDate !== undefined && !kept) await syncUnstartedCohortPracticeDates(tx, cohortId);
+      if (isLighthouse) {
+        const lockedBinding = await lockCohortResourceBinding(tx, cohortId, templateId);
+        await initializeCohortResources(tx, lockedBinding.id);
+        // 場次建立後才指派的模板，要替已加入的學員補建實踐（daodao#544）。
+        // 只補從沒拿過這個模板實踐的學員：學員自己刪掉的（含軟刪除）不重建，也不碰其他模板的實踐
         const members = await tx.cohort_enrollments.findMany({ where: { cohort_id: cohortId, status: 'joined', role: 'member', user_id: { not: null } }, select: { user_id: true }, orderBy: { user_id: 'asc' } });
-        for (const { user_id } of members) await ensureCohortDrafts(tx, cohortId, user_id!, { templateIds: [templateId] });
+        const hadPractice = new Set((await tx.practices.findMany({
+          where: { cohort_id: cohortId, template_id: templateId, creation_source: 'cohort_template', user_id: { in: members.map(member => member.user_id!) } },
+          select: { user_id: true }
+        })).map(practice => practice.user_id));
+        for (const { user_id } of members) {
+          if (!hadPractice.has(user_id!)) await ensureCohortDrafts(tx, cohortId, user_id!, { templateIds: [templateId] });
+        }
       }
       return binding;
-    });
+    }, { timeout: 30000 });
     return { templateId, cohortId, bound, startDate: row.start_date };
   }
   const result = await prisma.cohort_templates.updateMany({ where: { cohort_id: cohortId, template_id: templateId, unbound_at: null }, data: { unbound_at: new Date() } });

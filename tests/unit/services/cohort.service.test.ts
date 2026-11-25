@@ -94,6 +94,8 @@ describe('cohortService', () => {
     prismaMock.cohorts.create.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
     prismaMock.cohorts.findUniqueOrThrow.mockResolvedValue({ ...row, id: 9, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft' } as never);
     prismaMock.cohort_templates.createMany.mockResolvedValue({ count: 1 } as never);
+    // 複製出的綁定在同一個 transaction 建立資源快照（daodao#544）；快照內容由 pg 整合測試驗證
+    prismaMock.cohort_templates.findUniqueOrThrow.mockResolvedValue({ id: 70, template_id: 5, resources_initialized_at: new Date() } as never);
     const copy = await cohortService.duplicate(2, 8, 42);
     expect(copy).toEqual(expect.objectContaining({ id: 9, slug: 'summer-copy', status: 'draft' }));
     expect(prismaMock.cohorts.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ program_id: 2, slug: 'summer-copy', display_name: '夏季期（副本）', status: 'draft', capacity: null }) }));
