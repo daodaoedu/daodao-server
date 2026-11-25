@@ -24,7 +24,7 @@ import {
   verifyEmailResponseSchema,
   appleSignInResponseSchema
 } from '../validators/auth.validators';
-import { setAuthCookie, clearAuthCookie, getAuthToken, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '../utils/cookie-config';
+import { setAuthCookie, clearAuthCookie, getAuthToken, getAuthCookieName, clearQuizClaimCookie, QUIZ_CLAIM_COOKIE_NAME } from '../utils/cookie-config';
 import { quizService } from '../services/quiz.service';
 import {
   validateOAuthState,
@@ -336,7 +336,7 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
       ip: req.ip,
       cookieDomain: process.env.COOKIE_DOMAIN,
       cookieNames: Object.keys(req.cookies ?? {}),
-      hasAuthTokenCookie: Boolean(req.cookies?.auth_token),
+      hasAuthTokenCookie: Boolean(req.cookies?.[getAuthCookieName()]),
       hasAuthorizationHeader: Boolean(req.get('Authorization')),
       secFetchSite: req.get('Sec-Fetch-Site'),
       secFetchMode: req.get('Sec-Fetch-Mode'),

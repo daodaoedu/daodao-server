@@ -62,6 +62,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env.dev
+    environment:
+      # dev 與正式站共用 .daodao.so，Auth Cookie 名稱必須分開（daodaoedu/daodao#526）
+      # f2e dev_product／feat_product 與 ai-backend dev 要設成同一個值
+      - AUTH_COOKIE_NAME=auth_token_dev
     volumes:
       - ./src:/app/src
       - ${DAODAO_LOG_ROOT:-/var/log/daodao-server}/dev:/app/logs

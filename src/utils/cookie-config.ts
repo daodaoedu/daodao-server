@@ -5,8 +5,25 @@
 
 import { Response, CookieOptions } from 'express';
 
-/** Auth Cookie 名稱 */
-export const AUTH_COOKIE_NAME = 'auth_token';
+/** Auth Cookie 預設名稱（正式站） */
+export const DEFAULT_AUTH_COOKIE_NAME = 'auth_token';
+
+const AUTH_COOKIE_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * 取得本環境的 Auth Cookie 名稱
+ * dev 與正式站共用 COOKIE_DOMAIN（.daodao.so），名稱必須依環境分開，
+ * 否則在一個環境登入會覆蓋另一個環境的 Cookie。
+ * 以 AUTH_COOKIE_NAME 環境變數設定，未設定時使用 auth_token。
+ */
+export const getAuthCookieName = (): string => {
+  const configured = process.env.AUTH_COOKIE_NAME?.trim();
+  if (!configured) return DEFAULT_AUTH_COOKIE_NAME;
+  if (!AUTH_COOKIE_NAME_PATTERN.test(configured)) {
+    throw new Error('AUTH_COOKIE_NAME may only contain letters, digits, "_" and "-"');
+  }
+  return configured;
+};
 
 /** Cookie 過期時間（7天，單位：毫秒） */
 export const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -55,12 +72,11 @@ export const setAuthCookie = (
   } = {}
 ): void => {
   const cookieOptions = getCookieOptions(options);
-  res.cookie(AUTH_COOKIE_NAME, token, cookieOptions);
+  res.cookie(getAuthCookieName(), token, cookieOptions);
 };
 
-/** 所有可能的認證相關 Cookie 名稱（向下相容） */
-const AUTH_COOKIE_NAMES = [
-  AUTH_COOKIE_NAME,  // 'auth_token' - 主要使用
+/** 舊版本可能使用的認證相關 Cookie 名稱（向下相容） */
+const LEGACY_AUTH_COOKIE_NAMES = [
   'access_token',    // 舊版本可能使用
   'refresh_token',   // 舊版本可能使用
   'session'          // Session cookie
@@ -76,8 +92,8 @@ export const clearAuthCookie = (res: Response): void => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { maxAge, ...clearOptions } = getCookieOptions();
 
-  // 清除所有可能的認證相關 cookies
-  for (const cookieName of AUTH_COOKIE_NAMES) {
+  // 只清本環境的 Auth Cookie：另一個環境的同網域 Cookie 不能動，否則會把對方登出
+  for (const cookieName of [getAuthCookieName(), ...LEGACY_AUTH_COOKIE_NAMES]) {
     res.clearCookie(cookieName, clearOptions);
   }
 };
@@ -93,7 +109,7 @@ export const getAuthToken = (req: {
   headers: { authorization?: string };
 }): string | undefined => {
   // 1. 優先從 Cookie 取
-  const cookieToken = req.cookies?.[AUTH_COOKIE_NAME];
+  const cookieToken = req.cookies?.[getAuthCookieName()];
   if (cookieToken) {
     return cookieToken;
   }
@@ -134,7 +150,8 @@ export const clearQuizClaimCookie = (res: Response): void => {
 };
 
 export const cookieUtils = {
-  AUTH_COOKIE_NAME,
+  DEFAULT_AUTH_COOKIE_NAME,
+  getAuthCookieName,
   COOKIE_MAX_AGE_MS,
   getCookieOptions,
   setAuthCookie,

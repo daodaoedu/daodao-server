@@ -13,7 +13,7 @@ import { prisma } from '../database/prisma.service';
 import { getUserType, getUserId, AnyUser } from '../../utils/user-type-detection';
 import { createOAuthState, encodeOAuthState, validateOAuthState, decodeOAuthState, getFinalRedirectUrl } from '../../utils/oauth-state';
 import { jwtService } from '../jwt.service';
-import { AUTH_COOKIE_NAME } from '../../utils/cookie-config';
+import { getAuthCookieName } from '../../utils/cookie-config';
 import { isValidRedirectUri, validateRedirectParam, isCustomScheme } from '../../utils/redirect-validation';
 import { oauthNonceService } from './oauth-nonce.service';
 import { redisOAuthStateStore } from './oauth-redis-state-store.service';
@@ -347,7 +347,7 @@ export const authenticateGoogleCallback = isOAuthConfigured()
 
         if (!user) {
           // 檢查是否已登入（e.g. 瀏覽器 back-forward cache 重觸發同一個 state/nonce）
-          const authToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+          const authToken = req.cookies?.[getAuthCookieName()] as string | undefined;
           if (authToken) {
             const decoded = jwtService.verifyToken(authToken);
             if (!('error' in decoded) && decoded.id) {
