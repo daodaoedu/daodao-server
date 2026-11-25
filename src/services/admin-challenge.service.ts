@@ -28,7 +28,7 @@ import { DURATION_DAYS_MAX } from '../validators/practice.validators';
 import { challengeOrganizationService } from './challenge-organization.service';
 import { deriveRunStatus } from './challenge.service';
 import { prisma } from './database/prisma.service';
-import { organizationTemplateInternals } from './organization-template.service';
+import { organizationTemplateInternals, snapshotLegacyBindings } from './organization-template.service';
 
 const { select: templateSelect, map: mapTemplate, loadResources, replaceResources } = organizationTemplateInternals;
 
@@ -434,7 +434,11 @@ const updateTemplate = async (templateId: number, input: AdminUpdateTemplateInpu
     },
     select: templateSelect
   });
-  if (input.resources !== undefined) await replaceResources(templateId, actorId, input.resources);
+  if (input.resources !== undefined) {
+    // 官方組織模板也可能綁在燈塔場次：替換前先替尚未建快照的舊綁定補建（daodao#544）
+    await snapshotLegacyBindings(templateId);
+    await replaceResources(templateId, actorId, input.resources);
+  }
   return mapTemplate(row, (await loadResources([templateId])).get(templateId) ?? []);
 };
 

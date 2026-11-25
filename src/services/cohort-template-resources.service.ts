@@ -2,7 +2,7 @@ import type { Prisma } from '../../generated/prisma';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { PROGRAM_KINDS } from '../constants/program-kind';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/error.middleware';
-import { pickCoachLockedRelationIds, resourceContentKey } from '../utils/coach-resource-lock';
+import { pickCoachLockedRelationIds } from '../utils/coach-resource-lock';
 import type { CohortTemplateResourceInput } from '../validators/cohort-template-resources.validators';
 import { assertCohortTemplateResourceAccess } from './cohort-template-resource-access.service';
 import { prisma } from './database/prisma.service';
@@ -38,72 +38,6 @@ export async function initializeCohortResources(tx: Tx, bindingId: number) {
     } });
   }
   await tx.cohort_templates.update({ where: { id: bindingId }, data: { resources_initialized_at: new Date() } });
-}
-
-/**
- * Before a Lighthouse cohort starts, its template-default snapshot follows the template (#544):
- * add new template defaults, drop removed ones, keep unchanged ones (with coach edits), and propagate to learners.
- * Cohort-specific entries (no template source) are untouched; started cohorts stay frozen.
- * Caller holds the template row lock so concurrent template saves apply in order.
- */
-export async function syncTemplateDefaultsForUnstartedCohorts(tx: Tx, templateId: number, currentDay: string) {
-  const bindings = await tx.cohort_templates.findMany({
-    where: {
-      template_id: templateId, unbound_at: null, resources_initialized_at: { not: null },
-      cohort: { deleted_at: null, start_date: { gt: new Date(`${currentDay}T00:00:00.000Z`) }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } }
-    },
-    select: { cohort_id: true },
-    orderBy: { cohort_id: 'asc' }
-  });
-  if (bindings.length === 0) return;
-  const sources = await tx.entity_resources.findMany({
-    where: { entity_type: 'practice_template', entity_id: templateId, deleted_at: null, resources: { deleted_at: null } },
-    include: { resources: true }, orderBy: [{ created_at: 'desc' }, { id: 'desc' }]
-  });
-  const now = new Date();
-  for (const { cohort_id } of bindings) {
-    const binding = await lockCohortResourceBinding(tx, cohort_id, templateId);
-    // Unreviewed legacy links would be misclassified by propagation; leave such bindings for the reviewed migration.
-    if ((await inspectLegacyCohortResourceLinks(tx, binding.id)).length) continue;
-    // Match by template content so a coach's date/name edits on an unchanged default survive the template's
-    // replace-all save (template relations are recreated on every change, so their ids cannot be compared).
-    const current = await tx.cohort_template_resources.findMany({
-      where: { cohort_template_id: binding.id, deleted_at: null, source_template_relation_id: { not: null } },
-      include: { source_template_relation: { include: { resources: { select: { name: true, url: true } } } } },
-      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }]
-    });
-    const unmatched = new Map<string, number[]>();
-    for (const row of current) {
-      const origin = row.source_template_relation?.resources;
-      const key = origin ? resourceContentKey(origin) : `orphan:${row.id}`;
-      unmatched.set(key, [...(unmatched.get(key) ?? []), row.id]);
-    }
-    const last = await tx.cohort_template_resources.aggregate({ where: { cohort_template_id: binding.id, deleted_at: null }, _max: { sort_order: true } });
-    let order = (last._max.sort_order ?? -1) + 1;
-    for (const source of sources) {
-      const kept = unmatched.get(resourceContentKey(source.resources))?.shift();
-      if (kept !== undefined) {
-        await tx.cohort_template_resources.update({ where: { id: kept }, data: { source_template_relation_id: source.id } });
-        continue;
-      }
-      const original = source.resources;
-      const resource = await tx.resources.create({ data: {
-        created_by: original.created_by, name: original.name, url: original.url,
-        description: original.description, type: original.type, cost: original.cost, level: original.level,
-        image_url: original.image_url, video_url: original.video_url,
-        major_category_id: original.major_category_id, sub_category_id: original.sub_category_id
-      } });
-      await tx.cohort_template_resources.create({ data: {
-        cohort_template_id: binding.id, resource_id: resource.id, source_template_relation_id: source.id, sort_order: order++
-      } });
-    }
-    const removed = [...unmatched.values()].flat();
-    if (removed.length) {
-      await tx.cohort_template_resources.updateMany({ where: { id: { in: removed } }, data: { deleted_at: now, updated_at: now } });
-      await tx.entity_resources.updateMany({ where: { cohort_template_resource_id: { in: removed }, deleted_at: null }, data: { deleted_at: now, updated_at: now } });
-    }
-    await attachCohortResources(tx, binding.id);
-  }
 }
 
 /** Attach active shared sources without touching personal or unresolved legacy relations. Caller holds the binding lock. */

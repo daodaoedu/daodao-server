@@ -163,7 +163,7 @@ export const ensureCohortDrafts = async (
   tx: TransactionClient,
   cohortId: number,
   userId: number,
-  options: { status?: CohortPracticeInitialStatus; now?: Date } = {}
+  options: { status?: CohortPracticeInitialStatus; now?: Date; templateIds?: number[] } = {}
 ): Promise<number> => {
   const requestedStatus = options.status ?? 'draft';
   const now = options.now ?? new Date();
@@ -173,7 +173,7 @@ export const ensureCohortDrafts = async (
       select: { start_date: true, end_date: true, is_private: true, program: { select: { kind: true } } },
     }),
     tx.cohort_templates.findMany({
-      where: { cohort_id: cohortId, unbound_at: null },
+      where: { cohort_id: cohortId, unbound_at: null, ...(options.templateIds && { template_id: { in: options.templateIds } }) },
       select: {
         template_id: true,
         start_date: true,

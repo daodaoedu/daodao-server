@@ -1,5 +1,5 @@
-import { initializeCohortResources, lockCohortResourceBinding, syncTemplateDefaultsForUnstartedCohorts } from './cohort-template-resources.service';
-import { syncUnstartedCohortPracticeDates } from './cohort-draft.service';
+import { initializeCohortResources, lockCohortResourceBinding } from './cohort-template-resources.service';
+import { ensureCohortDrafts, syncUnstartedCohortPracticeDates } from './cohort-draft.service';
 import { LIGHTHOUSE_AUDIT_ACTIONS } from '../constants/audit-action';
 import { ACTIVE_PROGRAM_WHERE } from '../constants/archive-state';
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableEntityError } from '../middleware/error.middleware';
@@ -235,6 +235,29 @@ const syncDraftPracticeTitles = async (templateId: number, title: string, curren
   });
 };
 
+/**
+ * 快照機制上線前指派、還沒建快照的燈塔綁定，在模板資源被替換前先用目前（替換前）的資源補建，
+ * 否則之後首次讀取會抓到改過的資源（daodao#544 指派即凍結）。所有會替換模板資源的路徑都要先呼叫。
+ * 每筆獨立 transaction、且不可在持有模板列 FOR UPDATE 時呼叫：學員加入會先鎖綁定、再因實踐外鍵對模板列取共享鎖，
+ * 反過來等就會互鎖。補建冪等；綁定剛好被解除就略過。
+ */
+export const snapshotLegacyBindings = async (templateId: number): Promise<void> => {
+  const pending = await prisma.cohort_templates.findMany({
+    where: { template_id: templateId, unbound_at: null, resources_initialized_at: null, cohort: { deleted_at: null, program: { kind: 'lighthouse' } } },
+    select: { cohort_id: true },
+    orderBy: { cohort_id: 'asc' }
+  });
+  for (const { cohort_id } of pending) {
+    await prisma.$transaction(async tx => {
+      const binding = await lockCohortResourceBinding(tx, cohort_id, templateId).catch((error: unknown) => {
+        if (error instanceof NotFoundError) return null;
+        throw error;
+      });
+      if (binding) await initializeCohortResources(tx, binding.id);
+    });
+  }
+};
+
 const update = async (organizationId: number, templateId: number, userId: number, input: UpdateOrganizationTemplateInput) => {
   await assertOrganization(organizationId, userId);
   const existing = await getOwnedTemplate(organizationId, templateId);
@@ -271,10 +294,11 @@ const update = async (organizationId: number, templateId: number, userId: number
   if (nextTitle !== undefined && nextTitle !== existing.title) await syncDraftPracticeTitles(templateId, nextTitle, today());
   if (input.resources !== undefined) {
     const resources = input.resources;
-    // 模板資源與尚未開始燈塔場次的同步同一個 transaction：同步失敗就整筆回滾，下次存檔仍會判定為有變更（daodao#544）
+    // 已指派場次在指派當下建立資源快照，之後模板資源異動一律不回寫（daodao#544，2026-11-24 產品澄清）
+    await snapshotLegacyBindings(templateId);
     await prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM practice_templates WHERE id = ${templateId} FOR UPDATE`;
-      if (await replaceResources(templateId, userId, resources, tx)) await syncTemplateDefaultsForUnstartedCohorts(tx, templateId, today());
+      await replaceResources(templateId, userId, resources, tx);
     }, { timeout: 30000 });
   }
   if (input.tags !== undefined) await replaceTags(templateId, userId, input.tags);
@@ -362,25 +386,52 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   if (!template || !cohort) throw new NotFoundError('找不到同組織的模板或期');
   if (template.archived_at) throw new ConflictError('模板已封存，請先從封存區恢復');
   if (cohort.status === 'archived') throw new ConflictError('場次已封存，無法變更模板綁定');
-  // 已開始的場次不得綁定／解綁／修改開始日（FR-TPL-05）
-  if (isCohortStarted(cohort.start_date, today())) throw new ConflictError('場次已開始，無法變更模板綁定');
   // 只有明確帶了 startDate 才動它，重新綁定時不會把既有的指定日洗掉
   const startDate = input.startDate === undefined ? undefined : input.startDate === null ? null : new Date(`${input.startDate}T00:00:00.000Z`);
+  const isLighthouse = cohort.program.kind === 'lighthouse';
+  // 已開始的場次不得解綁或修改既有綁定的開始日（FR-TPL-05）；燈塔場次仍可新增模板（daodao#544），其他類型維持整個鎖住
+  if (isCohortStarted(cohort.start_date, today()) && (!bound || !isLighthouse)) {
+    throw new ConflictError(bound ? '場次已開始，無法變更模板綁定' : '場次已開始，無法解除模板綁定');
+  }
   if (bound) {
     const row = await prisma.$transaction(async tx => {
-      const binding = await tx.cohort_templates.upsert({
+      // 與學員加入／退出同樣先鎖場次，再判斷已開始與既有綁定，避免與同時的指派互相覆蓋開始日
+      const [locked] = await tx.$queryRaw<Array<{ start_date: Date; status: string }>>`SELECT start_date, status FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
+      if (locked?.status === 'archived') throw new ConflictError('場次已封存，無法變更模板綁定');
+      const started = locked ? isCohortStarted(locked.start_date, today()) : false;
+      if (started && !isLighthouse) throw new ConflictError('場次已開始，無法變更模板綁定');
+      // 已開始場次重送相同綁定不改綁定本身，但仍走補建，讓指派時漏建實踐的學員能補上（daodao#544）
+      const kept = started ? await tx.cohort_templates.findFirst({ where: { cohort_id: cohortId, template_id: templateId, unbound_at: null }, select: { start_date: true } }) : null;
+      if (kept) {
+        const current = kept.start_date;
+        const unchanged = startDate === undefined || (current === null ? startDate === null : startDate !== null && day(current) === day(startDate));
+        if (!unchanged) throw new ConflictError('場次已開始，無法修改模板開始日');
+      }
+      // 已開始場次新增的模板沒指定開始日時從今天開始：沿用場次開始日會讓實踐一加入就落在過去，甚至直接結束（daodao#544）
+      const effectiveStart = started && !kept && !startDate ? new Date(`${today()}T00:00:00.000Z`) : startDate;
+      const binding = kept ?? await tx.cohort_templates.upsert({
         where: { cohort_id_template_id: { cohort_id: cohortId, template_id: templateId } },
-        create: { cohort_id: cohortId, template_id: templateId, start_date: startDate ?? null },
-        update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
+        create: { cohort_id: cohortId, template_id: templateId, start_date: effectiveStart ?? null },
+        update: { unbound_at: null, bound_at: new Date(), ...(effectiveStart !== undefined && { start_date: effectiveStart }) },
         select: { start_date: true }
       });
-      if (cohort.program.kind === 'lighthouse' && startDate !== undefined) await syncUnstartedCohortPracticeDates(tx, cohortId);
-      if (cohort.program.kind === 'lighthouse') {
-        const locked = await lockCohortResourceBinding(tx, cohortId, templateId);
-        await initializeCohortResources(tx, locked.id);
+      if (isLighthouse && startDate !== undefined && !kept) await syncUnstartedCohortPracticeDates(tx, cohortId);
+      if (isLighthouse) {
+        const lockedBinding = await lockCohortResourceBinding(tx, cohortId, templateId);
+        await initializeCohortResources(tx, lockedBinding.id);
+        // 場次建立後才指派的模板，要替已加入的學員補建實踐（daodao#544）。
+        // 只補從沒拿過這個模板實踐的學員：學員自己刪掉的（含軟刪除）不重建，也不碰其他模板的實踐
+        const members = await tx.cohort_enrollments.findMany({ where: { cohort_id: cohortId, status: 'joined', role: 'member', user_id: { not: null } }, select: { user_id: true }, orderBy: { user_id: 'asc' } });
+        const hadPractice = new Set((await tx.practices.findMany({
+          where: { cohort_id: cohortId, template_id: templateId, creation_source: 'cohort_template', user_id: { in: members.map(member => member.user_id!) } },
+          select: { user_id: true }
+        })).map(practice => practice.user_id));
+        for (const { user_id } of members) {
+          if (!hadPractice.has(user_id!)) await ensureCohortDrafts(tx, cohortId, user_id!, { templateIds: [templateId] });
+        }
       }
       return binding;
-    });
+    }, { timeout: 30000 });
     return { templateId, cohortId, bound, startDate: row.start_date };
   }
   const result = await prisma.cohort_templates.updateMany({ where: { cohort_id: cohortId, template_id: templateId, unbound_at: null }, data: { unbound_at: new Date() } });

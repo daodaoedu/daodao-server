@@ -10,6 +10,7 @@ import type { CohortInteractionMode, CohortFeeType, CohortSignupMethod } from '.
 import { recordCohortPublication } from './cohort-activation-evidence.service';
 import { ensureRoom } from './chat-room.service';
 import { syncUnstartedCohortPracticeDates } from './cohort-draft.service';
+import { initializeCohortResources } from './cohort-template-resources.service';
 import { day } from './cohort-run-state';
 
 /** Prisma select 含新欄位與 sessions */
@@ -515,6 +516,7 @@ const duplicate = async (programId: number, cohortId: number, actorId: number): 
   const source = await getOwned(programId, cohortId, actorId);
   const bindings = await prisma.cohort_templates.findMany({ where: { cohort_id: cohortId, unbound_at: null }, select: { template_id: true, start_date: true } });
   const sessions = await prisma.cohort_sessions.findMany({ where: { cohort_id: cohortId }, select: { session_date: true, start_time: true, end_time: true, position: true, recurrence_group_id: true, recurrence_rule: true }, orderBy: { position: 'asc' } });
+  const isLighthouse = (await prisma.programs.findUnique({ where: { id: programId }, select: { kind: true } }))?.kind === 'lighthouse';
 
   const data = {
     program_id: programId,
@@ -545,7 +547,12 @@ const duplicate = async (programId: number, cohortId: number, actorId: number): 
     try {
       return map(await prisma.$transaction(async tx => {
         const created = await tx.cohorts.create({ data: { ...data, slug: copySlug(source.slug, attempt) }, select });
-        if (bindings.length > 0) await tx.cohort_templates.createMany({ data: bindings.map(binding => ({ cohort_id: created.id, template_id: binding.template_id, start_date: binding.start_date })) });
+        if (bindings.length > 0) {
+          await tx.cohort_templates.createMany({ data: bindings.map(binding => ({ cohort_id: created.id, template_id: binding.template_id, start_date: binding.start_date })) });
+          // 複製出的綁定等同在此刻指派：當下就建立資源快照，之後模板資源異動不回寫（daodao#544）
+          const copied = await tx.cohort_templates.findMany({ where: { cohort_id: created.id }, select: { id: true }, orderBy: { template_id: 'asc' } });
+          if (isLighthouse) for (const binding of copied) await initializeCohortResources(tx, binding.id);
+        }
         if (sessions.length > 0) {
           await tx.cohort_sessions.createMany({
             data: sessions.map(s => ({
@@ -569,7 +576,7 @@ const duplicate = async (programId: number, cohortId: number, actorId: number): 
         await ensureRoom(tx, created.id);
         // 重新 select 含 sessions
         return await tx.cohorts.findUniqueOrThrow({ where: { id: created.id }, select });
-      }) as CohortRow);
+      }, { timeout: 30000 }) as CohortRow);
     } catch (error) {
       if (!isCode(error, 'P2002')) throw error;
     }
