@@ -201,13 +201,25 @@ describe('organizationTemplateService', () => {
     expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
   });
 
-  it('locks bindings once the cohort has started', async () => {
+  it('locks existing bindings once the cohort has started', async () => {
     allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never);
     prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'published', start_date: pastDay } as never);
+    prismaMock.cohort_templates.findFirst.mockResolvedValue({ start_date: new Date('2026-09-01T00:00:00.000Z') } as never);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, false)).rejects.toBeInstanceOf(ConflictError);
     await expect(organizationTemplateService.bind(3, 5, 8, 42, true, { startDate: '2026-10-01' })).rejects.toBeInstanceOf(ConflictError);
+    // 重送相同綁定不算變更
+    await expect(organizationTemplateService.bind(3, 5, 8, 42, true, { startDate: '2026-09-01' })).resolves.toEqual(expect.objectContaining({ bound: true }));
     expect(prismaMock.cohort_templates.upsert).not.toHaveBeenCalled();
     expect(prismaMock.cohort_templates.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('still allows adding a new template to a started cohort (daodao#544)', async () => {
+    allow(); prismaMock.practice_templates.findFirst.mockResolvedValue({ id: 5, archived_at: null } as never);
+    prismaMock.cohorts.findFirst.mockResolvedValue({ id: 8, program: { kind: 'challenge' }, status: 'published', start_date: pastDay } as never);
+    prismaMock.cohort_templates.findFirst.mockResolvedValue(null as never);
+    prismaMock.cohort_templates.upsert.mockResolvedValue({ start_date: null } as never);
+    await expect(organizationTemplateService.bind(3, 5, 8, 42, true)).resolves.toEqual({ templateId: 5, cohortId: 8, bound: true, startDate: null });
+    expect(prismaMock.cohort_templates.upsert).toHaveBeenCalled();
   });
 
   it('marks bindings to started cohorts as locked and computes the end date from duration', async () => {
