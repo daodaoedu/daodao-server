@@ -11213,6 +11213,8 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "draft" | "not_started" | "active" | "completed" | "archived";
                                     creationSource: string | null;
+                                    /** @description 來源實踐模板 ID；共用打卡連結以 cohortId＋templateId 找出登入者自己的實踐 */
+                                    templateId: number | null;
                                     /** Format: date-time */
                                     startDate: string | null;
                                     /** Format: date-time */
@@ -57003,6 +57005,11 @@ export interface components {
              * @example 123e4567-e89b-12d3-a456-426614174000
              */
             id: string;
+            /**
+             * @description 由燈塔場次模板產生且仍屬於場次的實踐；前端據此不顯示草稿、打卡前先啟用（daodao#544）
+             * @example false
+             */
+            isCohortPractice?: boolean;
             /**
              * @description 實踐項目標題
              * @example 學習React Hooks

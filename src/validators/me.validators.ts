@@ -232,6 +232,7 @@ export const myPracticeItemSchema = z.object({
     description: "實踐項目的外部UUID",
     example: "123e4567-e89b-12d3-a456-426614174000"
   }),
+  isCohortPractice: z.boolean().optional().openapi({ description: '由燈塔場次模板產生且仍屬於場次的實踐；前端據此不顯示草稿、打卡前先啟用（daodao#544）', example: false }),
   title: z.string().openapi({
     description: "實踐項目標題",
     example: "學習React Hooks"

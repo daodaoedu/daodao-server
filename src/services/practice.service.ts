@@ -236,6 +236,12 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
 
     // 取得統計數據、標籤和資源
     const practiceIds: number[] = practices.map(p => p.id);
+    // 列表也標出燈塔場次實踐，前端據此不顯示「草稿」、打卡前先啟用（daodao#544；與詳情 isCohortPractice 同規則）
+    const lockedCohortIds = [...new Set(practices.filter(isCoachResourceLockActive).map(practice => practice.cohort_id as number))];
+    const lighthouseCohortIds = new Set(lockedCohortIds.length === 0 ? [] : (await prismaClient.cohorts.findMany({
+      where: { id: { in: lockedCohortIds }, program: { kind: PROGRAM_KINDS.LIGHTHOUSE } },
+      select: { id: true }
+    })).map(cohort => cohort.id));
     const [comments, allTags, checkInCounts, lastCheckInDates, resourcesByPracticeId, viewCounts, reactionCounts] = await Promise.all([
       getCommentCounts(practices, params.commentViewer),
       // 批量查詢標籤
@@ -282,6 +288,7 @@ export async function findAll(params: PracticeQueryParams): Promise<PaginatedApi
     const practiceEntities: PracticeEntity[] = practices.map(practice => ({
       id: practice.external_id || '',
       title: practice.title,
+      isCohortPractice: isCoachResourceLockActive(practice) && lighthouseCohortIds.has(practice.cohort_id as number),
       practiceAction: practice.practice_action || undefined,
       startDate: practice.start_date?.toISOString().split('T')[0],
       endDate: practice.end_date?.toISOString().split('T')[0],

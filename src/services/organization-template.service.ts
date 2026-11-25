@@ -382,10 +382,12 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
         const unchanged = startDate === undefined || (current === null ? startDate === null : startDate !== null && day(current) === day(startDate));
         if (!unchanged) throw new ConflictError('場次已開始，無法修改模板開始日');
       }
+      // 已開始場次新增的模板沒指定開始日時從今天開始：沿用場次開始日會讓實踐一加入就落在過去，甚至直接結束（daodao#544）
+      const effectiveStart = started && !kept && !startDate ? new Date(`${today()}T00:00:00.000Z`) : startDate;
       const binding = kept ?? await tx.cohort_templates.upsert({
         where: { cohort_id_template_id: { cohort_id: cohortId, template_id: templateId } },
-        create: { cohort_id: cohortId, template_id: templateId, start_date: startDate ?? null },
-        update: { unbound_at: null, bound_at: new Date(), ...(startDate !== undefined && { start_date: startDate }) },
+        create: { cohort_id: cohortId, template_id: templateId, start_date: effectiveStart ?? null },
+        update: { unbound_at: null, bound_at: new Date(), ...(effectiveStart !== undefined && { start_date: effectiveStart }) },
         select: { start_date: true }
       });
       if (isLighthouse && startDate !== undefined && !kept) await syncUnstartedCohortPracticeDates(tx, cohortId);

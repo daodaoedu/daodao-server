@@ -61,6 +61,8 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
     const practices: MyPracticeItem[] = result.data.map(practice => ({
       id: practice.id,
       title: practice.title,
+      // 燈塔場次實踐：前端「我的」列表據此不顯示草稿、打卡前先啟用（daodao#544）
+      isCohortPractice: practice.isCohortPractice,
       practiceAction: practice.practiceAction,
       startDate: practice.startDate,
       endDate: practice.endDate,

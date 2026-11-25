@@ -6,6 +6,7 @@ import { organizationTemplateService } from '../organization-template.service';
 import { ensureCohortDrafts } from '../cohort-draft.service';
 import { ConflictError } from '../../middleware/error.middleware';
 import { cohortService } from '../cohort.service';
+import { meService } from '../me.service';
 
 /**
  * daodao#544（2026-11-24 產品澄清）：
@@ -119,6 +120,19 @@ describe('Lighthouse cohort template assignment (#544)', () => {
       expect(names).toEqual(['開始後加入']);
     });
 
+    it('starts a template added to a started cohort today when no start date is given', async () => {
+      const { cohortId } = await setup(10, []);
+      await prisma.cohorts.update({ where: { id: cohortId }, data: { start_date: day(-20) } });
+      const late = await createTemplate([]);
+
+      const result = await organizationTemplateService.bind(org, late.id, cohortId, owner, true);
+
+      const todayTaipei = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+      expect(result.startDate?.toISOString().slice(0, 10)).toBe(todayTaipei);
+      const { practice } = await learnerShared(cohortId, late.id);
+      expect(practice.start_date?.toISOString().slice(0, 10)).toBe(todayTaipei);
+    });
+
     it('does not recreate a practice the learner deleted for another template', async () => {
       const { cohortId, templateId } = await setup(10, []);
       await prisma.practices.updateMany({ where: { cohort_id: cohortId, template_id: templateId, user_id: learner }, data: { deleted_at: new Date() } });
@@ -162,6 +176,19 @@ describe('Lighthouse cohort template assignment (#544)', () => {
       await organizationTemplateService.bind(org, templateId, cohortId, owner, true);
 
       expect(await prisma.practices.count({ where: { cohort_id: cohortId, template_id: templateId, user_id: learner, deleted_at: null } })).toBe(0);
+    });
+  });
+
+  describe('learner practice list', () => {
+    it('marks Lighthouse cohort practices so the list does not show them as drafts', async () => {
+      const { cohortId, templateId } = await setup(10, []);
+      const personal = await prisma.practices.create({ data: { user_id: learner, title: `${prefix}_personal`, status: 'draft' } });
+      const cohortPractice = await prisma.practices.findFirstOrThrow({ where: { cohort_id: cohortId, template_id: templateId, user_id: learner } });
+
+      const list = await meService.getMyPractices(learner, { page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' });
+
+      expect(list.data.find(row => row.id === cohortPractice.external_id)?.isCohortPractice).toBe(true);
+      expect(list.data.find(row => row.id === personal.external_id)?.isCohortPractice).toBe(false);
     });
   });
 
