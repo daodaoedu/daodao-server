@@ -76,6 +76,17 @@ describe('Lighthouse cohort template assignment (#544)', () => {
       expect(await cohortResources.list(org, templateId, cohortId, owner)).toEqual([]);
     });
 
+    it('freezes legacy bindings that were never snapshotted before the template resources change', async () => {
+      const template = await createTemplate([{ name: '舊綁定原資源' }]);
+      const cohort = await prisma.cohorts.create({ data: { program_id: program, slug: randomUUID(), display_name: prefix, start_date: day(10), end_date: day(40) } });
+      // 快照機制上線前建立的綁定：resources_initialized_at 為 null
+      await prisma.cohort_templates.create({ data: { cohort_id: cohort.id, template_id: template.id } });
+
+      await organizationTemplateService.update(org, template.id, owner, { resources: [{ name: '之後才改' }] });
+
+      expect((await cohortResources.list(org, template.id, cohort.id, owner)).map(row => row.name)).toEqual(['舊綁定原資源']);
+    });
+
     it('gives a newly assigned cohort the template defaults as they are at assignment', async () => {
       const { templateId } = await setup(10, [{ name: '舊預設' }]);
       await organizationTemplateService.update(org, templateId, owner, { resources: [{ name: '新預設' }] });

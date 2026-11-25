@@ -274,6 +274,16 @@ const update = async (organizationId: number, templateId: number, userId: number
     // 已指派場次在指派當下建立資源快照，之後模板資源異動一律不回寫（daodao#544，2026-11-24 產品澄清）
     await prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM practice_templates WHERE id = ${templateId} FOR UPDATE`;
+      // 快照機制上線前指派、還沒建快照的燈塔綁定，先用替換前的資源補建，否則之後首次讀取會抓到改過的資源
+      const pending = await tx.cohort_templates.findMany({
+        where: { template_id: templateId, unbound_at: null, resources_initialized_at: null, cohort: { deleted_at: null, program: { kind: 'lighthouse' } } },
+        select: { cohort_id: true },
+        orderBy: { cohort_id: 'asc' }
+      });
+      for (const { cohort_id } of pending) {
+        const binding = await lockCohortResourceBinding(tx, cohort_id, templateId);
+        await initializeCohortResources(tx, binding.id);
+      }
       await replaceResources(templateId, userId, resources, tx);
     }, { timeout: 30000 });
   }
