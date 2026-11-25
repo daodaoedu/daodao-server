@@ -3,8 +3,9 @@
  * Tests cookie configuration utilities
  */
 
+import type { Response } from 'express';
 import {
-  AUTH_COOKIE_NAME,
+  getAuthCookieName,
   COOKIE_MAX_AGE_MS,
   getCookieOptions,
   setAuthCookie,
@@ -19,6 +20,7 @@ describe('Cookie Config', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.AUTH_COOKIE_NAME;
   });
 
   afterAll(() => {
@@ -26,8 +28,8 @@ describe('Cookie Config', () => {
   });
 
   describe('Constants', () => {
-    it('should export AUTH_COOKIE_NAME as auth_token', () => {
-      expect(AUTH_COOKIE_NAME).toBe('auth_token');
+    it('should use auth_token when AUTH_COOKIE_NAME is not set', () => {
+      expect(getAuthCookieName()).toBe('auth_token');
     });
 
     it('should export COOKIE_MAX_AGE_MS as 7 days in milliseconds', () => {
@@ -108,7 +110,7 @@ describe('Cookie Config', () => {
       setAuthCookie(mockRes as any, token);
 
       expect(mockRes.cookie).toHaveBeenCalledWith(
-        AUTH_COOKIE_NAME,
+        'auth_token',
         token,
         expect.objectContaining({
           httpOnly: true,
@@ -129,7 +131,7 @@ describe('Cookie Config', () => {
       setAuthCookie(mockRes as any, token, { maxAge: customMaxAge });
 
       expect(mockRes.cookie).toHaveBeenCalledWith(
-        AUTH_COOKIE_NAME,
+        'auth_token',
         token,
         expect.objectContaining({
           maxAge: customMaxAge
@@ -147,7 +149,7 @@ describe('Cookie Config', () => {
       clearAuthCookie(mockRes as any);
 
       expect(mockRes.clearCookie).toHaveBeenCalledWith(
-        AUTH_COOKIE_NAME,
+        'auth_token',
         expect.objectContaining({
           httpOnly: true,
           secure: true,
@@ -179,7 +181,7 @@ describe('Cookie Config', () => {
       clearAuthCookie(mockRes as any);
 
       expect(mockRes.clearCookie).toHaveBeenCalledWith(
-        AUTH_COOKIE_NAME,
+        'auth_token',
         expect.objectContaining({
           domain: '.daodao.so'
         })
@@ -191,7 +193,7 @@ describe('Cookie Config', () => {
     it('should return token from cookie when present', () => {
       const mockReq = {
         cookies: {
-          [AUTH_COOKIE_NAME]: 'cookie-token'
+          auth_token: 'cookie-token'
         },
         headers: {
           authorization: 'Bearer header-token'
@@ -253,7 +255,7 @@ describe('Cookie Config', () => {
     it('should prioritize cookie over Authorization header', () => {
       const mockReq = {
         cookies: {
-          [AUTH_COOKIE_NAME]: 'priority-cookie-token'
+          auth_token: 'priority-cookie-token'
         },
         headers: {
           authorization: 'Bearer fallback-header-token'
@@ -268,7 +270,7 @@ describe('Cookie Config', () => {
     it('should handle empty cookie value', () => {
       const mockReq = {
         cookies: {
-          [AUTH_COOKIE_NAME]: ''
+          auth_token: ''
         },
         headers: {
           authorization: 'Bearer header-token'
@@ -279,6 +281,67 @@ describe('Cookie Config', () => {
 
       // Empty string is falsy, should fall back to header
       expect(token).toBe('header-token');
+    });
+  });
+
+  // daodaoedu/daodao#526：dev 與正式站共用 .daodao.so，Auth Cookie 名稱依環境分開
+  describe('environment-scoped auth cookie name', () => {
+    beforeEach(() => {
+      process.env.AUTH_COOKIE_NAME = 'auth_token_dev';
+      process.env.COOKIE_DOMAIN = '.daodao.so';
+    });
+
+    it('sets the login cookie under the configured name', () => {
+      const mockRes = { cookie: jest.fn() };
+
+      setAuthCookie(mockRes as unknown as Response, 'dev-token');
+
+      expect(mockRes.cookie).toHaveBeenCalledTimes(1);
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        'auth_token_dev',
+        'dev-token',
+        expect.objectContaining({ domain: '.daodao.so' })
+      );
+    });
+
+    it('reads only the configured cookie and ignores the other environment cookie', () => {
+      const token = getAuthToken({
+        cookies: { auth_token: 'prod-token', auth_token_dev: 'dev-token' },
+        headers: {}
+      });
+
+      expect(token).toBe('dev-token');
+    });
+
+    it('treats a request carrying only the other environment cookie as logged out', () => {
+      const token = getAuthToken({
+        cookies: { auth_token: 'prod-token' },
+        headers: {}
+      });
+
+      expect(token).toBeUndefined();
+    });
+
+    it('logout clears the configured cookie but leaves the other environment cookie alone', () => {
+      const mockRes = { clearCookie: jest.fn() };
+
+      clearAuthCookie(mockRes as unknown as Response);
+
+      const cleared = mockRes.clearCookie.mock.calls.map(([name]) => name);
+      expect(cleared).toContain('auth_token_dev');
+      expect(cleared).not.toContain('auth_token');
+    });
+
+    it('rejects a cookie name with characters that would break the Cookie header', () => {
+      process.env.AUTH_COOKIE_NAME = 'auth token;';
+
+      expect(() => getAuthCookieName()).toThrow('AUTH_COOKIE_NAME');
+    });
+
+    it('falls back to auth_token when the variable is blank', () => {
+      process.env.AUTH_COOKIE_NAME = '   ';
+
+      expect(getAuthCookieName()).toBe('auth_token');
     });
   });
 });
