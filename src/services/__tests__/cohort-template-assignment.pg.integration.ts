@@ -1,4 +1,8 @@
 jest.mock('@/queues', () => ({ enqueuePracticeEmail: jest.fn() }));
+const mockOfficialOrg = { id: 0 };
+jest.mock('../challenge-organization.service', () => ({
+  challengeOrganizationService: { getOrganizationId: async () => mockOfficialOrg.id, getActiveOrganizationId: async () => mockOfficialOrg.id }
+}));
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../database/prisma.service';
 import { cohortTemplateResourcesService as cohortResources } from '../cohort-template-resources.service';
@@ -7,6 +11,7 @@ import { ensureCohortDrafts } from '../cohort-draft.service';
 import { ConflictError } from '../../middleware/error.middleware';
 import { cohortService } from '../cohort.service';
 import { meService } from '../me.service';
+import { adminChallengeService } from '../admin-challenge.service';
 
 /**
  * daodao#544（2026-11-24 產品澄清）：
@@ -85,6 +90,17 @@ describe('Lighthouse cohort template assignment (#544)', () => {
       await organizationTemplateService.update(org, template.id, owner, { resources: [{ name: '之後才改' }] });
 
       expect((await cohortResources.list(org, template.id, cohort.id, owner)).map(row => row.name)).toEqual(['舊綁定原資源']);
+    });
+
+    it('freezes legacy bindings when the official-organization template is edited from the admin challenge path', async () => {
+      mockOfficialOrg.id = org;
+      const template = await createTemplate([{ name: '後台改前' }]);
+      const cohort = await prisma.cohorts.create({ data: { program_id: program, slug: randomUUID(), display_name: prefix, start_date: day(10), end_date: day(40) } });
+      await prisma.cohort_templates.create({ data: { cohort_id: cohort.id, template_id: template.id } });
+
+      await adminChallengeService.updateTemplate(template.id, { resources: [{ name: '後台改後' }] }, owner);
+
+      expect((await cohortResources.list(org, template.id, cohort.id, owner)).map(row => row.name)).toEqual(['後台改前']);
     });
 
     it('gives a newly assigned cohort the template defaults as they are at assignment', async () => {

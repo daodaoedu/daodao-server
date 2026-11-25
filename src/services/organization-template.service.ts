@@ -235,6 +235,29 @@ const syncDraftPracticeTitles = async (templateId: number, title: string, curren
   });
 };
 
+/**
+ * 快照機制上線前指派、還沒建快照的燈塔綁定，在模板資源被替換前先用目前（替換前）的資源補建，
+ * 否則之後首次讀取會抓到改過的資源（daodao#544 指派即凍結）。所有會替換模板資源的路徑都要先呼叫。
+ * 每筆獨立 transaction、且不可在持有模板列 FOR UPDATE 時呼叫：學員加入會先鎖綁定、再因實踐外鍵對模板列取共享鎖，
+ * 反過來等就會互鎖。補建冪等；綁定剛好被解除就略過。
+ */
+export const snapshotLegacyBindings = async (templateId: number): Promise<void> => {
+  const pending = await prisma.cohort_templates.findMany({
+    where: { template_id: templateId, unbound_at: null, resources_initialized_at: null, cohort: { deleted_at: null, program: { kind: 'lighthouse' } } },
+    select: { cohort_id: true },
+    orderBy: { cohort_id: 'asc' }
+  });
+  for (const { cohort_id } of pending) {
+    await prisma.$transaction(async tx => {
+      const binding = await lockCohortResourceBinding(tx, cohort_id, templateId).catch((error: unknown) => {
+        if (error instanceof NotFoundError) return null;
+        throw error;
+      });
+      if (binding) await initializeCohortResources(tx, binding.id);
+    });
+  }
+};
+
 const update = async (organizationId: number, templateId: number, userId: number, input: UpdateOrganizationTemplateInput) => {
   await assertOrganization(organizationId, userId);
   const existing = await getOwnedTemplate(organizationId, templateId);
@@ -272,24 +295,7 @@ const update = async (organizationId: number, templateId: number, userId: number
   if (input.resources !== undefined) {
     const resources = input.resources;
     // 已指派場次在指派當下建立資源快照，之後模板資源異動一律不回寫（daodao#544，2026-11-24 產品澄清）
-    // 快照機制上線前指派、還沒建快照的燈塔綁定，先用替換前的資源補建，否則之後首次讀取會抓到改過的資源。
-    // 每筆獨立 transaction、且在鎖模板列之前：學員加入會先鎖綁定再因實踐外鍵對模板列取共享鎖，
-    // 若這裡先持有模板 FOR UPDATE 再等綁定就會互鎖。補建冪等，替換前完成即可
-    const pending = await prisma.cohort_templates.findMany({
-      where: { template_id: templateId, unbound_at: null, resources_initialized_at: null, cohort: { deleted_at: null, program: { kind: 'lighthouse' } } },
-      select: { cohort_id: true },
-      orderBy: { cohort_id: 'asc' }
-    });
-    for (const { cohort_id } of pending) {
-      await prisma.$transaction(async tx => {
-        // 綁定剛好被解除時略過，不讓模板存檔失敗
-        const binding = await lockCohortResourceBinding(tx, cohort_id, templateId).catch((error: unknown) => {
-          if (error instanceof NotFoundError) return null;
-          throw error;
-        });
-        if (binding) await initializeCohortResources(tx, binding.id);
-      });
-    }
+    await snapshotLegacyBindings(templateId);
     await prisma.$transaction(async tx => {
       await tx.$queryRaw`SELECT id FROM practice_templates WHERE id = ${templateId} FOR UPDATE`;
       await replaceResources(templateId, userId, resources, tx);
@@ -390,7 +396,8 @@ const bind = async (organizationId: number, templateId: number, cohortId: number
   if (bound) {
     const row = await prisma.$transaction(async tx => {
       // 與學員加入／退出同樣先鎖場次，再判斷已開始與既有綁定，避免與同時的指派互相覆蓋開始日
-      const [locked] = await tx.$queryRaw<Array<{ start_date: Date }>>`SELECT start_date FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
+      const [locked] = await tx.$queryRaw<Array<{ start_date: Date; status: string }>>`SELECT start_date, status FROM cohorts WHERE id = ${cohortId} FOR UPDATE`;
+      if (locked?.status === 'archived') throw new ConflictError('場次已封存，無法變更模板綁定');
       const started = locked ? isCohortStarted(locked.start_date, today()) : false;
       if (started && !isLighthouse) throw new ConflictError('場次已開始，無法變更模板綁定');
       // 已開始場次重送相同綁定不改綁定本身，但仍走補建，讓指派時漏建實踐的學員能補上（daodao#544）
