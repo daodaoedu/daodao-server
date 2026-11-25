@@ -25,6 +25,7 @@ import { emailService } from './services/email/email.service';
 import redis from './services/database/redis.service';
 import { loggerService } from './services/logging/logger.service';
 import { validateFutureLetterEncryptionConfig } from './config/future-letter-encryption.config';
+import { getAuthCookieName } from './utils/cookie-config';
 // BullMQ
 import {
   getRawConnection,
@@ -122,6 +123,8 @@ const PORT = process.env.PORT || 3000;
 
 // Private letter data must never fall back to an implicit or development key.
 validateFutureLetterEncryptionConfig();
+// AUTH_COOKIE_NAME 設錯時在啟動就失敗，不要等到每個需登入請求才回 500（daodaoedu/daodao#526）
+getAuthCookieName();
 
 // 安全中間件
 app.use(helmet({
@@ -218,7 +221,7 @@ app.use(globalLimiter);
 app.use(speedLimiter);
 
 // Session 配置
-// 與 auth_token cookie 一致：以 COOKIE_DOMAIN 是否設定判斷是否為已部署環境
+// 與登入 cookie 一致：以 COOKIE_DOMAIN 是否設定判斷是否為已部署環境
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
   throw new Error('SESSION_SECRET environment variable is required');
