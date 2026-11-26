@@ -24,6 +24,7 @@ import {
   createPaginatedResponse
 } from '../utils/response-helper';
 import { calculatePagination } from '../utils/pagination-helper';
+import { PROGRAM_KINDS } from '../constants/program-kind';
 import { z } from 'zod';
 import {
   MePracticesQueryParams,
@@ -35,6 +36,36 @@ import {
   myPreferencesApiResponseSchema,
   updatePreferencesApiResponseSchema
 } from '../validators/me.validators';
+
+type PracticeCohortFields = Pick<MyPracticeItem, 'cohortId' | 'cohortStartDate' | 'cohortEndDate' | 'isChallenge'>;
+
+const NO_COHORT: PracticeCohortFields = { cohortId: null, cohortStartDate: null, cohortEndDate: null, isChallenge: false };
+
+const toDateString = (date: Date): string => date.toISOString().split('T')[0];
+
+/**
+ * 首頁 Your Day 依所屬 cohort 決定實踐的顯示期間與打卡入口（daodao#569）：
+ * 一次查出這批實踐的 cohort 起訖日與 program 種類，以 external_id 對照。
+ */
+const getPracticeCohortFields = async (externalIds: string[]): Promise<Map<string, PracticeCohortFields>> => {
+  if (externalIds.length === 0) return new Map();
+  const rows = await prisma.practices.findMany({
+    where: { external_id: { in: externalIds }, cohort_id: { not: null } },
+    select: {
+      external_id: true,
+      cohort_id: true,
+      cohorts: { select: { start_date: true, end_date: true, program: { select: { kind: true } } } }
+    }
+  });
+  return new Map(rows
+    .filter(row => row.external_id && row.cohort_id !== null && row.cohorts)
+    .map(row => [row.external_id as string, {
+      cohortId: row.cohort_id,
+      cohortStartDate: toDateString(row.cohorts!.start_date),
+      cohortEndDate: toDateString(row.cohorts!.end_date),
+      isChallenge: row.cohorts!.program.kind === PROGRAM_KINDS.CHALLENGE
+    }]));
+};
 
 /**
  * Get user's practices with filtering and pagination
@@ -55,6 +86,8 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
     if (!result.success || !result.data) {
       throw new Error('Failed to fetch practices');
     }
+
+    const cohortFieldsByPracticeId = await getPracticeCohortFields(result.data.map(practice => practice.id));
 
     // Transform to match MyPracticeItem interface（排除 user、checkIns 與 stats 中尚未實作的欄位，
     // 只帶出有真實資料的 viewCount / commentCount）
@@ -84,7 +117,8 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       updatedAt: practice.updatedAt,
       tags: practice.tags,
       viewCount: practice.stats.viewCount,
-      commentCount: practice.stats.commentCount
+      commentCount: practice.stats.commentCount,
+      ...(cohortFieldsByPracticeId.get(practice.id) ?? NO_COHORT)
     }));
 
     loggerService.info('User practices retrieved', { 

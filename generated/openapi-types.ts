@@ -57132,6 +57132,26 @@ export interface components {
              * @example 3
              */
             commentCount: number;
+            /**
+             * @description 所屬 cohort（燈塔場次或共同挑戰）ID；個人實踐為 null（daodao#569）
+             * @example 12
+             */
+            cohortId: number | null;
+            /**
+             * @description 所屬 cohort 開始日（YYYY-MM-DD）；個人實踐為 null
+             * @example 2024-01-15
+             */
+            cohortStartDate: string | null;
+            /**
+             * @description 所屬 cohort 結束日（YYYY-MM-DD）；個人實踐為 null
+             * @example 2024-02-15
+             */
+            cohortEndDate: string | null;
+            /**
+             * @description 所屬 cohort 是否為共同挑戰；首頁據此改用實踐自身日期判斷顯示期間
+             * @example false
+             */
+            isChallenge: boolean;
         };
         /** @description 學習足跡項目 */
         MyLearningFootprintItem: {

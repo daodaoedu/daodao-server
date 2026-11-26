@@ -32,7 +32,11 @@ const mockPractice = {
   updatedAt: '2024-01-20T15:45:00.000Z',
   tags: ['閱讀', '學習'],
   viewCount: 24,
-  commentCount: 3
+  commentCount: 3,
+  cohortId: null,
+  cohortStartDate: null,
+  cohortEndDate: null,
+  isChallenge: false
 };
 
 const mockStats = {
