@@ -11,6 +11,14 @@ export type MyPracticeItem = Omit<PracticeEntity, 'user' | 'stats' | 'checkIns'>
   viewCount: number;
   /** 留言數 */
   commentCount: number;
+  /** 所屬 cohort（燈塔場次或共同挑戰）；個人實踐為 null（daodao#569） */
+  cohortId: number | null;
+  /** 所屬 cohort 開始日（YYYY-MM-DD）；個人實踐為 null */
+  cohortStartDate: string | null;
+  /** 所屬 cohort 結束日（YYYY-MM-DD）；個人實踐為 null */
+  cohortEndDate: string | null;
+  /** 所屬 cohort 是否為共同挑戰（program.kind = challenge） */
+  isChallenge: boolean;
 };
 
 export interface MyPracticesResponse {
