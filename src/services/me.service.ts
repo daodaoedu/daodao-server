@@ -47,24 +47,27 @@ const toDateString = (date: Date): string => date.toISOString().split('T')[0];
  * 首頁 Your Day 依所屬 cohort 決定實踐的顯示期間與打卡入口（daodao#569）：
  * 一次查出這批實踐的 cohort 起訖日與 program 種類，以 external_id 對照。
  */
-const getPracticeCohortFields = async (externalIds: string[]): Promise<Map<string, PracticeCohortFields>> => {
+const getPracticeCohortFields = async (userId: number, practiceIds: string[]): Promise<Map<string, PracticeCohortFields>> => {
+  // external_id 為 null 的舊資料在列表中是空字串，不能拿去查 UUID 欄位
+  const externalIds = practiceIds.filter(id => id.length > 0);
   if (externalIds.length === 0) return new Map();
   const rows = await prisma.practices.findMany({
-    where: { external_id: { in: externalIds }, cohort_id: { not: null } },
+    where: { user_id: userId, external_id: { in: externalIds }, cohort_id: { not: null } },
     select: {
       external_id: true,
       cohort_id: true,
       cohorts: { select: { start_date: true, end_date: true, program: { select: { kind: true } } } }
     }
   });
-  return new Map(rows
-    .filter(row => row.external_id && row.cohort_id !== null && row.cohorts)
-    .map(row => [row.external_id as string, {
-      cohortId: row.cohort_id,
-      cohortStartDate: toDateString(row.cohorts!.start_date),
-      cohortEndDate: toDateString(row.cohorts!.end_date),
-      isChallenge: row.cohorts!.program.kind === PROGRAM_KINDS.CHALLENGE
-    }]));
+  return new Map(rows.flatMap(({ external_id: externalId, cohort_id: cohortId, cohorts: cohort }): [string, PracticeCohortFields][] =>
+    externalId && cohortId !== null && cohort
+      ? [[externalId, {
+        cohortId,
+        cohortStartDate: toDateString(cohort.start_date),
+        cohortEndDate: toDateString(cohort.end_date),
+        isChallenge: cohort.program.kind === PROGRAM_KINDS.CHALLENGE
+      }]]
+      : []));
 };
 
 /**
@@ -87,7 +90,7 @@ const getMyPractices = async (userId: number, params: MePracticesQueryParams): P
       throw new Error('Failed to fetch practices');
     }
 
-    const cohortFieldsByPracticeId = await getPracticeCohortFields(result.data.map(practice => practice.id));
+    const cohortFieldsByPracticeId = await getPracticeCohortFields(userId, result.data.map(practice => practice.id));
 
     // Transform to match MyPracticeItem interface（排除 user、checkIns 與 stats 中尚未實作的欄位，
     // 只帶出有真實資料的 viewCount / commentCount）

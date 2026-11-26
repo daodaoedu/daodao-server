@@ -10,8 +10,9 @@ const mockFindUserPractices = jest.fn();
 jest.mock('../practice.service', () => ({ findUserPractices: (...args: unknown[]) => mockFindUserPractices(...args) }));
 
 import { meService } from '../me.service';
+import type { MyPracticeItem } from '../../types/me.types';
 
-const practice = (id: string) => ({
+const practice = (id: string): Record<string, unknown> => ({
   id,
   title: `實踐 ${id}`,
   startDate: '2026-11-20',
@@ -27,11 +28,11 @@ type CohortRow = { external_id: string; cohort_id: number; cohorts: { start_date
 
 /** 模擬 DB：只回傳 where.external_id.in 內、且有 cohort 的實踐 */
 const givenCohortRows = (rows: CohortRow[]): void => {
-  prismaMock.practices.findMany.mockImplementation((async (args: { where: { external_id: { in: string[] } } }) =>
+  prismaMock.practices.findMany.mockImplementation((async (args: { where: { external_id: { in: string[] } } }): Promise<CohortRow[]> =>
     rows.filter(row => args.where.external_id.in.includes(row.external_id))) as never);
 };
 
-const listMyPractices = async (ids: string[]) => {
+const listMyPractices = async (ids: string[]): Promise<Record<string, MyPracticeItem>> => {
   mockFindUserPractices.mockResolvedValue({ success: true, data: ids.map(practice), pagination: { totalItems: ids.length } });
   const res = await meService.getMyPractices(7, { page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'desc' } as never);
   return Object.fromEntries(res.data.map(item => [item.id, item]));
@@ -78,6 +79,17 @@ describe('getMyPractices cohort fields (daodao#569)', () => {
 
     expect(mine).toMatchObject({ cohortId: null, cohortStartDate: null, cohortEndDate: null, isChallenge: false });
     expect(lh.cohortId).toBe(12);
+  });
+
+  it('keeps legacy practices without external id and only looks up the user own ids', async () => {
+    givenCohortRows([]);
+
+    const result = await listMyPractices(['', 'mine']);
+
+    expect(result['']).toMatchObject({ cohortId: null, isChallenge: false });
+    expect(prismaMock.practices.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ user_id: 7, external_id: { in: ['mine'] } })
+    }));
   });
 
   it('skips the cohort lookup when the user has no practices', async () => {
