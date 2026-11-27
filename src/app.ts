@@ -49,6 +49,7 @@ import quizRoutes from './routes/quiz.routes';
 import userStatsRoutes from './routes/user-stats-routes';
 // 引入管理員路由（角色、權限管理）
 import adminRoutes from './routes/admin.routes';
+import { publicFeatureFlagsRouter, adminFeatureFlagsRouter } from './routes/feature-flags.routes';
 // 引入日誌中間件
 import { requestLogger, errorLogger, logApplicationEvent } from './middleware/logging.middleware';
 // 引入回應增強中間件
@@ -277,6 +278,8 @@ export function setupTypescriptRoutes(app: express.Application) {
   console.log('📈 v1 使用者統計路由已註冊 - 可在 /api/v1/admin/user-stats 訪問');
 
   // 註冊管理員路由（角色、權限管理）
+  app.use('/api/v1/feature-flags', publicFeatureFlagsRouter);
+  app.use('/api/v1/admin/feature-flags', adminFeatureFlagsRouter);
   app.use('/api/v1/admin', adminRoutes);
   console.log('🔐 v1 管理員路由已註冊 - 可在 /api/v1/admin 訪問');
 
